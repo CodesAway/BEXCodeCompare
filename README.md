@@ -36,7 +36,7 @@ Along the way, BEX identifies important versus non important changes (such as a 
       * **Name**: BEX Code Compare (beta)
       * **Location**: https://codesaway.info/eclipse-beta
       * Click **Add**
-3. Check the box next to BEX Code COmpare to install the plugin
+3. Check the box next to BEX Code Compare to install the plugin
 4. Click **Next**
 5. Accept the license agreement and click **Finish**
 6. When prompted, install the plugin even though it's not digitally signed
