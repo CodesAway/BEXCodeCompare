@@ -7,9 +7,9 @@ Be Enhanced Code Compare
 ### Stable
 * **Name**: CASTLE Searching
 * **Location**: https://codesaway.info/CASTLESearching/eclipse
-* **Version**: 0.1.1
+* **Version**: 0.1.2
 
 ### Beta
 * **Name**: CASTLE Searching (beta)
 * **Location**: https://codesaway.info/CASTLESearching/eclipse-beta
-* **Version**: 0.1.1
+* **Version**: 0.1.2
