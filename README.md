@@ -1,7 +1,9 @@
 ![BEX Code Compare](https://codesaway.info/images/BEXCodeCompare.png)
 
 # BEX Code Compare
-BEX Code Compare is an Eclipse plugin, which uses Patience sort / Myers diff and some post diff processing to yield an enhanced code compare
+BEX Code Compare is a library and Eclipse plugin, which uses Patience sort / Myers diff and some post diff processing to yield an enhanced code compare
+
+The library has no dependency on Eclipse and can be used in commercial or private projects.
 
 ## Update site
 [codesaway.info/eclipse](https://codesaway.info/eclipse)
