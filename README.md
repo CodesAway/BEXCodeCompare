@@ -5,11 +5,11 @@ Be Enhanced Code Compare
 [codesaway.info/CASTLESearching/eclipse](https://codesaway.info/CASTLESearching/eclipse)
 
 ### Stable
-* **Name**: CASTLE Searching
+* **Name**: BEX Code Compare
 * **Location**: https://codesaway.info/CASTLESearching/eclipse
 * **Version**: 0.1.1
 
 ### Beta
-* **Name**: CASTLE Searching (beta)
+* **Name**: BEX Code Compare (beta)
 * **Location**: https://codesaway.info/CASTLESearching/eclipse-beta
 * **Version**: 0.1.1
