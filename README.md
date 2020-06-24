@@ -41,5 +41,5 @@ Along the way, BEX identifies important versus non important changes (such as a 
 5. Accept the license agreement and click **Finish**
 6. When prompted, install the plugin even though it's not digitally signed
 7. Restart Eclipse when asked
-8. Start your enhanced compare! ![BEX Code Compare](https://codesaway.info/images/BEX.png)
+8. Start your enhanced compare! ![BEX Code Compare](https://codesaway.info/images/BEX@2x.png)
    * When you do a compare on Java files, select BEX Code Compare from the dropdown of available compare editors
