@@ -251,7 +251,7 @@ public class DiffHelper {
 	}
 
 	public static final ThreadLocal<Matcher> IMPORT_MATCHER = getThreadLocalMatcher(
-			"^\\s*+import(?<static>\\s++static)?+\\s++(?<package>(?:[A-Za-z0-9]++\\.)*)(?<class>[A-Z][A-Za-z0-9]*+);");
+			"^\\s*+import(?<static>\\s++static)?+\\s++(?<package>(?:[A-Za-z0-9]++\\.)+)?(?<class>[A-Z][A-Za-z0-9]*+)(?<method>\\.\\w++)?+;");
 
 	// TODO: need to tweak to yield better changes
 	/*

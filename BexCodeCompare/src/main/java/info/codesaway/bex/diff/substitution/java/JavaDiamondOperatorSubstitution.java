@@ -15,7 +15,9 @@ import info.codesaway.util.regex.Matcher;
 
 public class JavaDiamondOperatorSubstitution implements JavaSubstitution {
 	private static final ThreadLocal<Matcher> DIAMOND_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
-			"(?<head>(?<variable>\\w++) = new (?<class>\\w++)<)(?<type>\\w++)(?<tail>>\\()"));
+			"(?<head>(?<variable>\\w++) = new (?<class>\\w++)<)"
+					+ "(?<type>\\w++(?:\\[\\])?+(?: , \\w++(?:\\[\\])?+)*+)"
+					+ "(?<tail>>\\()"));
 
 	@Override
 	public RefactoringDiffType accept(final DiffEdit left, final DiffEdit right,

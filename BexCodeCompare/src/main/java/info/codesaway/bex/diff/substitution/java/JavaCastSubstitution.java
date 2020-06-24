@@ -17,7 +17,13 @@ import info.codesaway.util.regex.Matcher;
 
 public class JavaCastSubstitution implements JavaSubstitution {
 	private static final ThreadLocal<Matcher> CAST_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
-			"^(?<head>(?<type>\\w++)\\s++(?<variable>\\w++) = )\\(\\g{type}\\) (?<tail>.*+)"));
+			"^(?J)"
+					// common case of local variable
+					+ "(?:(?<head>(?<type>\\w++)\\s++(?<variable>\\w++) = )\\(\\g{type}\\)"
+					// Handle field reference (such as this.field = (Cast) value
+					+ "|(?<head>(?:\\w++\\.)*+\\w++ = )\\((?<type>\\w++)\\)"
+					+ ") "
+					+ "(?<tail>.*+)"));
 
 	@Override
 	public RefactoringDiffType accept(final DiffEdit left, final DiffEdit right,

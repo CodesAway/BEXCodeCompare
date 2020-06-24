@@ -40,6 +40,7 @@ import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.SubMonitor;
 
 import info.codesaway.bex.Activator;
+import info.codesaway.bex.diff.BasicDiffType;
 import info.codesaway.bex.diff.DiffChange;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
@@ -59,7 +60,7 @@ import info.codesaway.eclipse.compare.rangedifferencer.RangeDifference;
 
 public class RangeComparatorBEX {
 	private final DocLineComparator comparator1, comparator2;
-	private final boolean ignoreWhiteSpace;
+	private final boolean ignoreWhitespace;
 	private final boolean isMirrored;
 
 	private List<DiffUnit> diffBlocks;
@@ -85,7 +86,7 @@ public class RangeComparatorBEX {
 			final boolean isMirrored) {
 		this.comparator1 = comparator1;
 		this.comparator2 = comparator2;
-		this.ignoreWhiteSpace = comparator1.isIgnoreWhitespace() || comparator2.isIgnoreWhitespace();
+		this.ignoreWhitespace = comparator1.isIgnoreWhitespace() || comparator2.isIgnoreWhitespace();
 		this.isMirrored = isMirrored;
 	}
 
@@ -96,7 +97,7 @@ public class RangeComparatorBEX {
 		// TODO: there's a setting
 		// TODO: also need to check the setting whether to ignore whitespace (if so, use CompareDirectories.NORMALIZATION_FUNCTION)
 		// TODO: rename this to WHITESPACE_NORMALIZATION_FUNCTION
-		BiFunction<String, String, DiffNormalizedText> normalizationFunction = this.ignoreWhiteSpace
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = this.ignoreWhitespace
 				? DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION
 				: DiffHelper.NO_NORMALIZATION_FUNCTION;
 
@@ -154,6 +155,18 @@ public class RangeComparatorBEX {
 		DiffHelper.handleMovedLines(diff, normalizationFunction);
 		//		DiffHelper.handleImports(diff);
 
+		if (this.ignoreWhitespace) {
+			// Ignore blank lines
+			for (int i = 0; i < diff.size(); i++) {
+				DiffEdit diffEdit = diff.get(i);
+
+				if (diffEdit.isInsertOrDelete() && diffEdit.getLeftText().trim().isEmpty()
+						&& diffEdit.getRightText().trim().isEmpty()) {
+					diff.set(i, new DiffEdit(BasicDiffType.IGNORE, diffEdit.getLeftLine(), diffEdit.getRightLine()));
+				}
+			}
+		}
+
 		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, true);
 
 		if (shouldUseEnhancedCompare) {
@@ -187,12 +200,12 @@ public class RangeComparatorBEX {
 			if (blockType == EQUAL) {
 				this.isChangedMap.put(diffBlock, Boolean.FALSE);
 				continue;
-			} else if (blockType == NORMALIZE && this.ignoreWhiteSpace) {
+			} else if (blockType == NORMALIZE && this.ignoreWhitespace) {
 				this.isChangedMap.put(diffBlock, Boolean.FALSE);
 				continue;
 			}
 
-			if (!this.ignoreWhiteSpace) {
+			if (!this.ignoreWhitespace) {
 				// Check if lines are equal if ignore whitespace
 				// (if so, add to whitespace only changes)
 
