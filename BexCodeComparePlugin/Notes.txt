@@ -1,0 +1,54 @@
+Flow of code to get to compare
+
+0) In plugin.xml, extension point org.eclipse.compare.contentMergeViewers
+a) Defines the IViewerCreator class
+b) Fos us, that's JavaContentViewerCreator 
+
+1) JavaContentViewerCreator (creates new JavaMergeViewer)
+2) JavaMergeViewer (calls super constructor)
+
+3) TextMergeViewer
+a) Creates DocumentMerger, which will ultimately call the diff code
+b) Has fSavedDiff field which stores the diff (set from fCurrentDiff in TextMergeViewer.saveDiff())
+c) Has fCurrentDiff field 
+
+... not really following how it gets called, but eventually we do the diff
+
+4) Calls TextMergeViewer.doDiff()
+5) Calls DocumentMerger.doDiff()
+6) Calls RangeDifferencer.findRanges(IProgressMonitor, IRangeComparator, IRangeComparator, IRangeComparator)
+7) Calls RangeDifferencer.findRanges(AbstractRangeDifferenceFactory, IProgressMonitor, IRangeComparator, IRangeComparator, IRangeComparator)
+
+
+For a 2-way compare (no ancestor)
+1) Calls RangeDifferencer.findRanges(AbstractRangeDifferenceFactory, IProgressMonitor, IRangeComparator, IRangeComparator)
+2) Calls RangeDifferencer.findDifferences(AbstractRangeDifferenceFactory, IProgressMonitor, IRangeComparator, IRangeComparator)
+a) Eclipse calls RangeComparatorLCS.findDifferences(AbstractRangeDifferenceFactory, IProgressMonitor, IRangeComparator, IRangeComparator)
+b) My plugin will call RangeComparatorBEX.findDifferences(AbstractRangeDifferenceFactory, IProgressMonitor, IRangeComparator, IRangeComparator)
+c) BEX is the Be Enhanced Code Compare
+
+For a 3-way compare (with ancestor)
+XXX: currently not working with BEX (shows entire file as conflict; I'm not sure why)
+RangeDifferencer.findRanges(AbstractRangeDifferenceFactory, IProgressMonitor, IRangeComparator, IRangeComparator, IRangeComparator, boolean)
+
+Questions:
+
+1) Where does it do the backtrack to determine the LCS?
+Likely done somewhere in RangeComparatorBEX.getDifferences(SubMonitor, AbstractRangeDifferenceFactory)
+
+IRangeComparator:
+1) How is it used?
+a) Contains number of lines - this.comparator.getRangeCount()
+b) Determine if two lines are equal -  this.comparator1.rangesEqual(i1, this.comparator2, i2);
+
+2) What is the concrete class
+DocLineComparator for DocumentMerger class
+
+
+LCS:
+1) LCS.lcs_rec
+a) Mentions Myer's and snake
+b) BEX instead uses Patience / Myers versus LCS / Myers
+c) This also explains why comparing long files is so time consuming, since using LCS O(n^2) versus Linear Myer's, which I use
+
+

@@ -1,0 +1,387 @@
+/*******************************************************************************
+ * Copyright (c) 2006, 2011 IBM Corporation and others.
+ *
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License 2.0
+ * which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *     IBM Corporation - initial API and implementation
+ *******************************************************************************/
+package info.codesaway.bex.compare;
+
+import static info.codesaway.bex.diff.BasicDiffType.DELETE;
+import static info.codesaway.bex.diff.BasicDiffType.EQUAL;
+import static info.codesaway.bex.diff.BasicDiffType.INSERT;
+import static info.codesaway.bex.diff.BasicDiffType.NORMALIZE;
+import static info.codesaway.bex.diff.BasicDiffType.REPLACEMENT_BLOCK;
+import static info.codesaway.bex.diff.substitution.SubstitutionType.SUBSTITUTION_CONTAINS;
+import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE;
+import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_CAST;
+import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_DIAMOND_OPERATOR;
+import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_FINAL_KEYWORD;
+import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_UNBOXING;
+import static java.util.stream.Collectors.toList;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.stream.IntStream;
+
+import org.eclipse.compare.internal.core.Messages;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.OperationCanceledException;
+import org.eclipse.core.runtime.SubMonitor;
+
+import info.codesaway.bex.Activator;
+import info.codesaway.bex.diff.DiffChange;
+import info.codesaway.bex.diff.DiffEdit;
+import info.codesaway.bex.diff.DiffHelper;
+import info.codesaway.bex.diff.DiffLine;
+import info.codesaway.bex.diff.DiffNormalizedText;
+import info.codesaway.bex.diff.DiffType;
+import info.codesaway.bex.diff.DiffUnit;
+import info.codesaway.bex.diff.myers.MyersLinearDiff;
+import info.codesaway.bex.diff.patience.PatienceDiff;
+import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
+import info.codesaway.bex.diff.substitution.SubstitutionType;
+import info.codesaway.bex.diff.substitution.java.RefactorEnhancedForLoop;
+import info.codesaway.bex.views.BEXView;
+import info.codesaway.eclipse.compare.internal.DocLineComparator;
+import info.codesaway.eclipse.compare.rangedifferencer.AbstractRangeDifferenceFactory;
+import info.codesaway.eclipse.compare.rangedifferencer.RangeDifference;
+
+public class RangeComparatorBEX {
+	private final DocLineComparator comparator1, comparator2;
+	private final boolean ignoreWhiteSpace;
+	private final boolean isMirrored;
+
+	private List<DiffUnit> diffBlocks;
+	private Map<DiffUnit, Boolean> isChangedMap;
+
+	public static RangeDifference[] findDifferences(final AbstractRangeDifferenceFactory factory,
+			final IProgressMonitor pm, final DocLineComparator left, final DocLineComparator right,
+			final boolean isMirrored) {
+		RangeComparatorBEX bex = new RangeComparatorBEX(left, right, isMirrored);
+		SubMonitor monitor = SubMonitor.convert(pm, Messages.RangeComparatorLCS_0, 100);
+		try {
+			// TODO: how to use monitor?
+			bex.computeDifferences(monitor.newChild(95));
+			return bex.getDifferences(monitor.newChild(5), factory);
+		} finally {
+			if (pm != null) {
+				pm.done();
+			}
+		}
+	}
+
+	public RangeComparatorBEX(final DocLineComparator comparator1, final DocLineComparator comparator2,
+			final boolean isMirrored) {
+		this.comparator1 = comparator1;
+		this.comparator2 = comparator2;
+		this.ignoreWhiteSpace = comparator1.isIgnoreWhitespace() || comparator2.isIgnoreWhitespace();
+		this.isMirrored = isMirrored;
+	}
+
+	private void computeDifferences(final SubMonitor newChild) {
+
+		// TODO: by default the left lines in Eclipse represents the "new" version, which BEX interprets as the right lines
+		// TODO: there's a setting to swap panes, so need to check this setting
+		// TODO: there's a setting
+		// TODO: also need to check the setting whether to ignore whitespace (if so, use CompareDirectories.NORMALIZATION_FUNCTION)
+		// TODO: rename this to WHITESPACE_NORMALIZATION_FUNCTION
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = this.ignoreWhiteSpace
+				? DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION
+				: DiffHelper.NO_NORMALIZATION_FUNCTION;
+
+		//		System.out.println("Left range count: " + this.comparator1.getRangeCount());
+		List<DiffLine> leftLines = IntStream.range(0, this.comparator1.getRangeCount())
+				.mapToObj(i -> new DiffLine(i + 1 + this.comparator1.getLineOffset(),
+						this.comparator1.extract(i, false)))
+				.collect(toList());
+
+		//		System.out.println("Left lines");
+		//		leftLines.forEach(System.out::println);
+
+		//		System.out.println("Right range count: " + this.comparator2.getRangeCount());
+		List<DiffLine> rightLines = IntStream.range(0, this.comparator2.getRangeCount())
+				// Add 1 to line number, so matches displayed line numbers
+				.mapToObj(i -> new DiffLine(i + 1 + this.comparator2.getLineOffset(),
+						this.comparator2.extract(i, false)))
+				.collect(toList());
+
+		//		System.out.println("Right lines");
+		//		rightLines.forEach(System.out::println);
+
+		List<DiffEdit> diff = PatienceDiff.diff(leftLines, rightLines, normalizationFunction,
+				MyersLinearDiff.with(normalizationFunction));
+
+		if (!this.isMirrored) {
+			for (int i = 0; i < diff.size(); i++) {
+				DiffEdit diffEdit = diff.get(i);
+
+				if (!diffEdit.isInsertOrDelete()) {
+					continue;
+				}
+
+				DiffType type = (diffEdit.getType() == INSERT ? DELETE : INSERT);
+				DiffEdit newDiffEdit = new DiffEdit(type, diffEdit.getLeftLine(), diffEdit.getRightLine());
+
+				diff.set(i, newDiffEdit);
+			}
+		}
+
+		boolean shouldUseEnhancedCompare = Activator.shouldUseEnhancedCompare();
+
+		if (shouldUseEnhancedCompare) {
+			// Look first for common refactorings, so can group changes together
+			DiffHelper.handleSubstitution(diff, normalizationFunction, SUBSTITUTION_CONTAINS,
+					new RefactorEnhancedForLoop(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE, JAVA_UNBOXING, JAVA_CAST,
+					JAVA_FINAL_KEYWORD, JAVA_DIAMOND_OPERATOR,
+					SubstitutionType.LCS_MAX_OPERATOR, SubstitutionType.LCS_MIN_OPERATOR);
+		} else {
+			DiffHelper.handleSubstitution(diff, normalizationFunction, SUBSTITUTION_CONTAINS,
+					new RefactorEnhancedForLoop(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
+					SubstitutionType.LCS_MAX_OPERATOR, SubstitutionType.LCS_MIN_OPERATOR);
+		}
+
+		DiffHelper.handleMovedLines(diff, normalizationFunction);
+		//		DiffHelper.handleImports(diff);
+
+		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, true);
+
+		if (shouldUseEnhancedCompare) {
+			DiffHelper.handleSplitLines(diffBlocks, normalizationFunction);
+		}
+
+		DiffHelper.handleBlankLines(diffBlocks, normalizationFunction);
+
+		List<DiffChange<BEXChangeInfo>> changes = new ArrayList<>();
+
+		// For now, put each DiffUnit in it's own change
+
+		int index = 0;
+
+		// TODO: group into changes
+		// (such as if refactor, put all refactoring changes together)
+
+		List<DiffUnit> whitespaceOnlyChanges = new ArrayList<>();
+		List<DiffUnit> importOnlyChanges = new ArrayList<>();
+
+		List<DiffUnit> currentChanges = new ArrayList<>();
+		DiffType currentChangeType = null;
+		boolean isCurrentChangeImportant = false;
+
+		this.diffBlocks = diffBlocks;
+		this.isChangedMap = new HashMap<>();
+
+		for (DiffUnit diffBlock : diffBlocks) {
+			DiffType blockType = diffBlock.getType();
+
+			if (blockType == EQUAL) {
+				this.isChangedMap.put(diffBlock, Boolean.FALSE);
+				continue;
+			} else if (blockType == NORMALIZE && this.ignoreWhiteSpace) {
+				this.isChangedMap.put(diffBlock, Boolean.FALSE);
+				continue;
+			}
+
+			if (!this.ignoreWhiteSpace) {
+				// Check if lines are equal if ignore whitespace
+				// (if so, add to whitespace only changes)
+
+				// TODO: verify don't have the arguments accidently reversed
+				boolean isOnlyWhitespaceChange = diffBlock.getEdits()
+						.stream()
+						.allMatch(e -> DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION.apply(e.getLeftText(),
+								e.getRightText()).hasEqualText());
+
+				if (isOnlyWhitespaceChange) {
+					whitespaceOnlyChanges.add(diffBlock);
+					this.isChangedMap.put(diffBlock, Boolean.TRUE);
+					continue;
+				}
+			}
+
+			// All changes in block are import statements
+			boolean isOnlyImportChange = diffBlock.getEdits()
+					.stream()
+					.allMatch(e -> DiffHelper.IMPORT_MATCHER.get().reset(e.getText()).find());
+			if (isOnlyImportChange) {
+				importOnlyChanges.add(diffBlock);
+				this.isChangedMap.put(diffBlock, Boolean.TRUE);
+				continue;
+			}
+
+			DiffType type = diffBlock.getType();
+			Boolean hasChange;
+
+			if (!shouldUseEnhancedCompare) {
+				hasChange = Boolean.TRUE;
+				//			} else if (type instanceof SubstitutionDiffType) {
+				//				SubstitutionDiffType sub = (SubstitutionDiffType) type;
+				//
+				//				// TODO: add option to specify certain ones as change versus no change
+				//				// Certain refactorings can be treated as the same since logically equivalent
+				//				// If all items in the change are locally equivalent, indicate this as a NOCHANGE
+				//				hasChange = sub.shouldTreatAsNormalizedEqual() ? Boolean.FALSE : Boolean.TRUE;
+			} else {
+				hasChange = Boolean.TRUE;
+
+				boolean noChangeSubstitution = diffBlock.getEdits()
+						.stream()
+						.allMatch(d -> d.getType() instanceof SubstitutionDiffType
+								&& ((SubstitutionDiffType) d.getType()).shouldTreatAsNormalizedEqual());
+
+				if (noChangeSubstitution) {
+					hasChange = Boolean.FALSE;
+				}
+			}
+
+			this.isChangedMap.put(diffBlock, hasChange);
+
+			boolean partOfCurrentChanges = type == currentChangeType && !DiffType.isBasicDiffType(type);
+
+			if (partOfCurrentChanges) {
+				currentChanges.add(diffBlock);
+
+				if (Objects.equals(hasChange, Boolean.TRUE)) {
+					isCurrentChangeImportant = true;
+				}
+			} else {
+				if (!currentChanges.isEmpty()) {
+					BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, "Change " + (++index));
+					changes.add(new DiffChange<>(currentChangeType, currentChanges, info));
+					currentChanges.clear();
+				}
+
+				// Reset values
+				currentChangeType = type;
+				currentChanges.add(diffBlock);
+				isCurrentChangeImportant = Objects.equals(hasChange, Boolean.TRUE);
+			}
+		}
+
+		if (!currentChanges.isEmpty()) {
+			BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, "Change " + (++index));
+			changes.add(new DiffChange<>(currentChangeType, currentChanges, info));
+		}
+
+		if (!importOnlyChanges.isEmpty()) {
+			DiffChange<BEXChangeInfo> importOnlyChange = new DiffChange<>(REPLACEMENT_BLOCK, importOnlyChanges,
+					new BEXChangeInfo(false, "Import Declarations"));
+			changes.add(0, importOnlyChange);
+		}
+
+		// If has whitespace only change, add to start of list
+		if (!whitespaceOnlyChanges.isEmpty()) {
+			DiffChange<BEXChangeInfo> whitespaceOnlyChange = new DiffChange<>(NORMALIZE, whitespaceOnlyChanges,
+					new BEXChangeInfo(false, "Whitespace only change"));
+			changes.add(0, whitespaceOnlyChange);
+		}
+
+		BEXView.show(changes);
+	}
+
+	private RangeDifference[] getDifferences(final SubMonitor subMonitor,
+			final AbstractRangeDifferenceFactory factory) {
+		try {
+			List<RangeDifference> differences = new ArrayList<>();
+
+			// System.out.println(getMethodName());
+			//			this.diffBlocks.stream().forEach(System.out::println);
+
+			int priorRight = 0;
+			int priorLeft = 0;
+
+			for (DiffUnit diffUnit : this.diffBlocks) {
+				List<DiffEdit> diffEdits = diffUnit.getEdits();
+
+				// Subtract 1 to convert from 1-based line (used in displayed line number) to 0-based (used by factory)
+				int rightStart = diffEdits.stream()
+						.filter(DiffEdit::hasRightLine)
+						.mapToInt(DiffEdit::getRightLineNumber)
+						.min()
+						.orElse(0) - 1;
+
+				int leftStart = diffEdits.stream()
+						.filter(DiffEdit::hasLeftLine)
+						.mapToInt(DiffEdit::getLeftLineNumber)
+						.min()
+						.orElse(0) - 1;
+
+				int rightLength;
+				int leftLength;
+
+				// My algorithm says line -1 if there's no corresponding
+				// To correctly show the lines in Eclipse, want to instead show the last line
+				// (so can indicate where the insert / delete occurred)
+				if (rightStart != -1) {
+					//					priorRight = rightStart + 1;
+					int maxRight = diffEdits.stream()
+							.filter(DiffEdit::hasRightLine)
+							.mapToInt(DiffEdit::getRightLineNumber)
+							.max()
+							.orElse(0);
+					//							.orElse(-1);
+
+					priorRight = maxRight;
+					//					priorRight = maxRight + 1;
+
+					rightLength = (int) diffEdits.stream().filter(DiffEdit::hasRightLine).count();
+					//					rightLength = 1;
+				} else {
+					rightStart = priorRight;
+					rightLength = 0;
+				}
+
+				if (leftStart != -1) {
+					int maxLeft = diffEdits.stream()
+							.filter(DiffEdit::hasLeftLine)
+							.mapToInt(DiffEdit::getLeftLineNumber)
+							.max()
+							.orElse(0);
+					//							.orElse(-1);
+
+					priorLeft = maxLeft;
+					//					priorLeft = maxLeft + 1;
+					//					priorLeft = leftStart + 1;
+
+					leftLength = (int) diffEdits.stream().filter(DiffEdit::hasLeftLine).count();
+					//					leftLength = 1;
+				} else {
+					leftStart = priorLeft;
+					leftLength = 0;
+				}
+
+				// Only return differences (if has no change, don't return)
+				// (was causing the whole file to look like a conflict on 3-way merge)
+				//				int kind = Objects.equals(this.isChangedMap.get(diffUnit), Boolean.FALSE)
+				//						? RangeDifference.NOCHANGE
+				//						: RangeDifference.CHANGE;
+
+				if (Objects.equals(this.isChangedMap.get(diffUnit), Boolean.TRUE)) {
+					differences.add(factory.createRangeDifference(RangeDifference.CHANGE, rightStart, rightLength,
+							leftStart, leftLength));
+				}
+			}
+
+			return differences.toArray(new RangeDifference[differences.size()]);
+		} finally {
+			subMonitor.done();
+		}
+	}
+
+	private void worked(final SubMonitor subMonitor, final int work) {
+		if (subMonitor.isCanceled()) {
+			throw new OperationCanceledException();
+		}
+		subMonitor.worked(work);
+	}
+}

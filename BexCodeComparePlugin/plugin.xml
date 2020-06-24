@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.ui.views">
+      <category
+            name="BEX Code Compare"
+            id="info.codesaway.bex">
+      </category>
+      <view
+            id="info.codesaway.bex.views.BEXView"
+            name="BEX Code Compare"
+            icon="icons/BEX.png"
+            class="info.codesaway.bex.views.BEXView"
+            category="info.codesaway.bex"
+            inject="true">
+      </view>
+   </extension>
+   <!--<extension
+         point="org.eclipse.ui.perspectiveExtensions">
+      <perspectiveExtension
+            targetID="org.eclipse.jdt.ui.JavaPerspective">
+         <view
+               id="info.codesaway.bex.views.BEXView"
+               relative="org.eclipse.ui.views.ProblemView"
+               relationship="right"
+               ratio="0.5">
+         </view>
+      </perspectiveExtension>
+   </extension>-->
+   <extension
+         point="org.eclipse.help.contexts">
+      <contexts
+            file="contexts.xml">
+      </contexts>
+   </extension>
+   <extension
+      point="org.eclipse.compare.contentMergeViewers">
+      <viewer
+            class="info.codesaway.eclipse.jdt.internal.ui.compare.JavaContentViewerCreator"
+            extensions="java,java2"
+            id="info.codesaway.eclipse.jdt.internal.ui.compare.JavaContentViewerCreator"
+            label="BEX Code Compare">
+      </viewer>
+      <contentTypeBinding
+            contentTypeId="org.eclipse.jdt.core.javaSource"
+            contentMergeViewerId="info.codesaway.eclipse.jdt.internal.ui.compare.JavaContentViewerCreator">
+	  </contentTypeBinding>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <category
+            id="info.codesaway.bex.commands.category"
+            name="BEX Code Compare">
+      </category>
+      <command
+            categoryId="info.codesaway.bex.commands.category"
+            defaultHandler="info.codesaway.bex.handlers.EnhancedCompareHandler"
+            id="info.codesaway.bex.commands.enhancedCompare"
+            name="Use enhanced compare">
+            	<state
+         			class="org.eclipse.ui.handlers.RegistryToggleState:true"
+         			id="org.eclipse.ui.commands.toggleState">
+   				</state>
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="false"
+            locationURI="toolbar:info.codesaway.bex.views.BEXView">
+         <command
+               commandId="info.codesaway.bex.commands.enhancedCompare"
+               icon="icons/BEX.png"
+               label="Use enhanced compare"
+               style="toggle"
+               tooltip="Use enhanced compare">
+         </command>
+      </menuContribution>
+   </extension>
+</plugin>

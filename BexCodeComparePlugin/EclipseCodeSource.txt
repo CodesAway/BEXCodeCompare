@@ -1,0 +1,15 @@
+Most source from:
+https://github.com/eclipse/eclipse.jdt.ui
+
+
+DocumentMerger:
+DocLineComparator:
+https://github.com/eclipse/eclipse.platform.team/tree/master/bundles/org.eclipse.compare
+
+
+RangeDifferencer:
+DifferencesIterator:
+RangeDifference:
+AbstractRangeDifferenceFactory:
+RangeComparatorLCS (will instead use BEX Code Compare):
+https://github.com/eclipse/eclipse.platform.team/tree/master/bundles/org.eclipse.compare.core
