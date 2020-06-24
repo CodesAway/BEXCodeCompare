@@ -1,0 +1,17 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: BexCodeCompare
+Bundle-SymbolicName: BexCodeCompare;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: info.codesaway.bexcodecompare.Activator
+Bundle-Vendor: CodesAway
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ org.eclipse.jface.text,
+ org.eclipse.ui.editors,
+ org.eclipse.jdt.annotation;bundle-version="[2.0.0,3.0.0)"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-ActivationPolicy: lazy
+Bundle-ClassPath: lib/guava-29.0-jre.jar,
+ .,
+ lib/RegExPlus-0.4-beta.jar
