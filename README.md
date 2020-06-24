@@ -17,7 +17,7 @@ BEX Code Compare is an Eclipse plugin, which uses Patience sort / Myers diff and
 * **Version**: 0.1.2
 
 ## What is BEX Code Compare?
-BEX Code Compare is **B**e **E**nhanced Code Compare
+BEX Code Compare is **B**e **E**nhanced **ϽC** Code Compare
 
 ## How does it work?
 
