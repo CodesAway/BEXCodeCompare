@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 06/25/2020
+### Added
+*	Improved scrolling in compare window (still wonky, but much better than before)
+*	Recognize semicolon removal as a non-important change (there's a save action to remove redundant semicolons)
+
 ## [0.1.2] - 06/24/2020
 ### Added
 *	Pressing enter in BEX Code Compare view jumps to code in compare window (still wonky, but much better than before)
