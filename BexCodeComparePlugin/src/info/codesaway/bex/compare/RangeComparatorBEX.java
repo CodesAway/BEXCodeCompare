@@ -23,6 +23,7 @@ import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.IMPORT_
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_CAST;
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_DIAMOND_OPERATOR;
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_FINAL_KEYWORD;
+import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_SEMICOLON;
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_UNBOXING;
 import static java.util.stream.Collectors.toList;
 
@@ -68,12 +69,12 @@ public class RangeComparatorBEX {
 
 	public static RangeDifference[] findDifferences(final AbstractRangeDifferenceFactory factory,
 			final IProgressMonitor pm, final DocLineComparator left, final DocLineComparator right,
-			final boolean isMirrored) {
+			final boolean isMirrored, final boolean updateView) {
 		RangeComparatorBEX bex = new RangeComparatorBEX(left, right, isMirrored);
 		SubMonitor monitor = SubMonitor.convert(pm, Messages.RangeComparatorLCS_0, 100);
 		try {
 			// TODO: how to use monitor?
-			bex.computeDifferences(monitor.newChild(95));
+			bex.computeDifferences(monitor.newChild(95), updateView);
 			return bex.getDifferences(monitor.newChild(5), factory);
 		} finally {
 			if (pm != null) {
@@ -90,7 +91,7 @@ public class RangeComparatorBEX {
 		this.isMirrored = isMirrored;
 	}
 
-	private void computeDifferences(final SubMonitor newChild) {
+	private void computeDifferences(final SubMonitor newChild, final boolean updateView) {
 
 		// TODO: by default the left lines in Eclipse represents the "new" version, which BEX interprets as the right lines
 		// TODO: there's a setting to swap panes, so need to check this setting
@@ -142,7 +143,7 @@ public class RangeComparatorBEX {
 
 		if (shouldUseEnhancedCompare) {
 			// Look first for common refactorings, so can group changes together
-			DiffHelper.handleSubstitution(diff, normalizationFunction, SUBSTITUTION_CONTAINS,
+			DiffHelper.handleSubstitution(diff, normalizationFunction, JAVA_SEMICOLON, SUBSTITUTION_CONTAINS,
 					new RefactorEnhancedForLoop(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE, JAVA_UNBOXING, JAVA_CAST,
 					JAVA_FINAL_KEYWORD, JAVA_DIAMOND_OPERATOR,
 					SubstitutionType.LCS_MAX_OPERATOR, SubstitutionType.LCS_MIN_OPERATOR);
@@ -259,47 +260,51 @@ public class RangeComparatorBEX {
 
 			this.isChangedMap.put(diffBlock, hasChange);
 
-			boolean partOfCurrentChanges = type == currentChangeType && !DiffType.isBasicDiffType(type);
+			if (updateView) {
+				boolean partOfCurrentChanges = type == currentChangeType && !DiffType.isBasicDiffType(type);
 
-			if (partOfCurrentChanges) {
-				currentChanges.add(diffBlock);
+				if (partOfCurrentChanges) {
+					currentChanges.add(diffBlock);
 
-				if (Objects.equals(hasChange, Boolean.TRUE)) {
-					isCurrentChangeImportant = true;
+					if (Objects.equals(hasChange, Boolean.TRUE)) {
+						isCurrentChangeImportant = true;
+					}
+				} else {
+					if (!currentChanges.isEmpty()) {
+						BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, "Change " + (++index));
+						changes.add(new DiffChange<>(currentChangeType, currentChanges, info));
+						currentChanges.clear();
+					}
+
+					// Reset values
+					currentChangeType = type;
+					currentChanges.add(diffBlock);
+					isCurrentChangeImportant = Objects.equals(hasChange, Boolean.TRUE);
 				}
-			} else {
-				if (!currentChanges.isEmpty()) {
-					BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, "Change " + (++index));
-					changes.add(new DiffChange<>(currentChangeType, currentChanges, info));
-					currentChanges.clear();
-				}
-
-				// Reset values
-				currentChangeType = type;
-				currentChanges.add(diffBlock);
-				isCurrentChangeImportant = Objects.equals(hasChange, Boolean.TRUE);
 			}
 		}
 
-		if (!currentChanges.isEmpty()) {
-			BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, "Change " + (++index));
-			changes.add(new DiffChange<>(currentChangeType, currentChanges, info));
-		}
+		if (updateView) {
+			if (!currentChanges.isEmpty()) {
+				BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, "Change " + (++index));
+				changes.add(new DiffChange<>(currentChangeType, currentChanges, info));
+			}
 
-		if (!importOnlyChanges.isEmpty()) {
-			DiffChange<BEXChangeInfo> importOnlyChange = new DiffChange<>(REPLACEMENT_BLOCK, importOnlyChanges,
-					new BEXChangeInfo(false, "Import Declarations"));
-			changes.add(0, importOnlyChange);
-		}
+			if (!importOnlyChanges.isEmpty()) {
+				DiffChange<BEXChangeInfo> importOnlyChange = new DiffChange<>(REPLACEMENT_BLOCK, importOnlyChanges,
+						new BEXChangeInfo(false, "Import Declarations"));
+				changes.add(0, importOnlyChange);
+			}
 
-		// If has whitespace only change, add to start of list
-		if (!whitespaceOnlyChanges.isEmpty()) {
-			DiffChange<BEXChangeInfo> whitespaceOnlyChange = new DiffChange<>(NORMALIZE, whitespaceOnlyChanges,
-					new BEXChangeInfo(false, "Whitespace only change"));
-			changes.add(0, whitespaceOnlyChange);
-		}
+			// If has whitespace only change, add to start of list
+			if (!whitespaceOnlyChanges.isEmpty()) {
+				DiffChange<BEXChangeInfo> whitespaceOnlyChange = new DiffChange<>(NORMALIZE, whitespaceOnlyChanges,
+						new BEXChangeInfo(false, "Whitespace only change"));
+				changes.add(0, whitespaceOnlyChange);
+			}
 
-		BEXView.show(changes);
+			BEXView.show(changes);
+		}
 	}
 
 	private RangeDifference[] getDifferences(final SubMonitor subMonitor,
@@ -339,37 +344,42 @@ public class RangeComparatorBEX {
 					//					priorRight = rightStart + 1;
 					int maxRight = diffEdits.stream()
 							.filter(DiffEdit::hasRightLine)
+							.filter(d -> !d.getType().isMove())
 							.mapToInt(DiffEdit::getRightLineNumber)
 							.max()
-							.orElse(0);
+							.orElse(0) - 1;
 					//							.orElse(-1);
 
 					priorRight = maxRight;
 					//					priorRight = maxRight + 1;
 
-					rightLength = (int) diffEdits.stream().filter(DiffEdit::hasRightLine).count();
+					rightLength = maxRight - rightStart + 1;
+					//					rightLength = (int) diffEdits.stream().filter(DiffEdit::hasRightLine).count();
+					//					rightLength = diffEdits.size();
 					//					rightLength = 1;
 				} else {
-					rightStart = priorRight;
+					rightStart = priorRight + 1;
 					rightLength = 0;
 				}
 
 				if (leftStart != -1) {
 					int maxLeft = diffEdits.stream()
 							.filter(DiffEdit::hasLeftLine)
+							.filter(d -> !d.getType().isMove())
 							.mapToInt(DiffEdit::getLeftLineNumber)
 							.max()
-							.orElse(0);
+							.orElse(0) - 1;
 					//							.orElse(-1);
 
 					priorLeft = maxLeft;
 					//					priorLeft = maxLeft + 1;
 					//					priorLeft = leftStart + 1;
 
-					leftLength = (int) diffEdits.stream().filter(DiffEdit::hasLeftLine).count();
-					//					leftLength = 1;
+					leftLength = maxLeft - leftStart + 1;
+					//					leftLength = (int) diffEdits.stream().filter(DiffEdit::hasLeftLine).count();
+					//					leftLength = diffEdits.size();
 				} else {
-					leftStart = priorLeft;
+					leftStart = priorLeft + 1;
 					leftLength = 0;
 				}
 

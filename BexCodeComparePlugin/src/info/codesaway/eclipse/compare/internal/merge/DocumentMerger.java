@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 import org.eclipse.compare.CompareConfiguration;
 import org.eclipse.compare.ICompareFilter;
@@ -929,6 +930,7 @@ public class DocumentMerger {
 				int ancestorStart2 = 0;
 				int ancestorEnd2 = 0;
 				if (ancestorDoc != null) {
+					Objects.requireNonNull(sa);
 					ancestorStart2 = ancestorStart + sa.getTokenStart(first.ancestorStart());
 					ancestorEnd2 = ancestorStart + this.getTokenEnd(sa, last.ancestorStart(), last.ancestorLength());
 				}
@@ -979,6 +981,7 @@ public class DocumentMerger {
 				int ancestorStart2 = ancestorStart;
 				int ancestorEnd2 = ancestorStart;
 				if (ancestorDoc != null) {
+					Objects.requireNonNull(sa);
 					ancestorStart2 += sa.getTokenStart(es.ancestorStart());
 					ancestorEnd2 += this.getTokenEnd(sa, es.ancestorStart(), es.ancestorLength());
 				}

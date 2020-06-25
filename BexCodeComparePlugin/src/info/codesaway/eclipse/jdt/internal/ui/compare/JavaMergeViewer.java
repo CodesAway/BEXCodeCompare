@@ -13,13 +13,12 @@
  *******************************************************************************/
 package info.codesaway.eclipse.jdt.internal.ui.compare;
 
-import static info.codesaway.bex.BEXUtilities.getMethodName;
-
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 
 import org.eclipse.compare.CompareConfiguration;
 import org.eclipse.compare.IResourceProvider;
@@ -723,6 +722,7 @@ public class JavaMergeViewer extends TextMergeViewer {
 		} catch (SecurityException | NoSuchFieldException ex) {
 			JavaPlugin.log(ex);
 		}
+		Objects.requireNonNull(field);
 		field.setAccessible(true);
 		try {
 			field.set(editor, viewer);

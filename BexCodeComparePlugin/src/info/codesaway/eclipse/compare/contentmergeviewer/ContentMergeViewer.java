@@ -419,7 +419,7 @@ public abstract class ContentMergeViewer extends ContentViewer
 				this.updateToolItems();
 			}
 		};
-		cc.getPreferenceStore().addPropertyChangeListener(this.fPreferenceChangeListener);
+		this.fCompareConfiguration.getPreferenceStore().addPropertyChangeListener(this.fPreferenceChangeListener);
 
 		this.fDefaultContentProvider = new MergeViewerContentProvider(this.fCompareConfiguration);
 		this.updateContentProvider();

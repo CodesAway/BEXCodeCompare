@@ -51,6 +51,6 @@ public class DiffChange<T> implements DiffUnit {
 
 	@Override
 	public String toString() {
-		return String.format("DiffChange[%s] - %s", this.getType(), this.getInfo());
+		return String.format("%s - %s", this.getType(), this.getInfo());
 	}
 }

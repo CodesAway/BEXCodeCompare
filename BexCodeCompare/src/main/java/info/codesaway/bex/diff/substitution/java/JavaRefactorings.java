@@ -7,6 +7,7 @@ public class JavaRefactorings {
 	public static final JavaCastSubstitution JAVA_CAST = new JavaCastSubstitution();
 	public static final JavaFinalKeywordSubstitution JAVA_FINAL_KEYWORD = new JavaFinalKeywordSubstitution();
 	public static final JavaDiamondOperatorSubstitution JAVA_DIAMOND_OPERATOR = new JavaDiamondOperatorSubstitution();
+	public static final JavaSemicolonSubstitution JAVA_SEMICOLON = new JavaSemicolonSubstitution();
 
 	// Put static instances of Java Refactorings in a separate class
 	// Got SpotBugs error if put in Java Refactoring

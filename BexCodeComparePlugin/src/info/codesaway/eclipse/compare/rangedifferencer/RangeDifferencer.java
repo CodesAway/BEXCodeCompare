@@ -62,35 +62,35 @@ public final class RangeDifferencer {
 		// nothing to do
 	}
 
-	/**
-	 * Finds the differences between two <code>IRangeComparator</code>s.
-	 * The differences are returned as an array of <code>RangeDifference</code>s.
-	 * If no differences are detected an empty array is returned.
-	 *
-	 * @param left the left range comparator
-	 * @param right the right range comparator
-	 * @return an array of range differences, or an empty array if no differences were found
-	 */
-	public static RangeDifference[] findDifferences(final IRangeComparator left, final IRangeComparator right,
-			final boolean isMirrored) {
-		return findDifferences((IProgressMonitor) null, left, right, isMirrored);
-	}
+	//	/**
+	//	 * Finds the differences between two <code>IRangeComparator</code>s.
+	//	 * The differences are returned as an array of <code>RangeDifference</code>s.
+	//	 * If no differences are detected an empty array is returned.
+	//	 *
+	//	 * @param left the left range comparator
+	//	 * @param right the right range comparator
+	//	 * @return an array of range differences, or an empty array if no differences were found
+	//	 */
+	//	public static RangeDifference[] findDifferences(final IRangeComparator left, final IRangeComparator right,
+	//			final boolean isMirrored) {
+	//		return findDifferences((IProgressMonitor) null, left, right, isMirrored);
+	//	}
 
-	/**
-	 * Finds the differences between two <code>IRangeComparator</code>s.
-	 * The differences are returned as an array of <code>RangeDifference</code>s.
-	 * If no differences are detected an empty array is returned.
-	 *
-	 * @param pm if not <code>null</code> used to report progress
-	 * @param left the left range comparator
-	 * @param right the right range comparator
-	 * @return an array of range differences, or an empty array if no differences were found
-	 * @since 2.0
-	 */
-	public static RangeDifference[] findDifferences(final IProgressMonitor pm, final IRangeComparator left,
-			final IRangeComparator right, final boolean isMirrored) {
-		return findDifferences(defaultFactory, null, left, right, isMirrored);
-	}
+	//	/**
+	//	 * Finds the differences between two <code>IRangeComparator</code>s.
+	//	 * The differences are returned as an array of <code>RangeDifference</code>s.
+	//	 * If no differences are detected an empty array is returned.
+	//	 *
+	//	 * @param pm if not <code>null</code> used to report progress
+	//	 * @param left the left range comparator
+	//	 * @param right the right range comparator
+	//	 * @return an array of range differences, or an empty array if no differences were found
+	//	 * @since 2.0
+	//	 */
+	//	public static RangeDifference[] findDifferences(final IProgressMonitor pm, final IRangeComparator left,
+	//			final IRangeComparator right, final boolean isMirrored) {
+	//		return findDifferences(defaultFactory, null, left, right, isMirrored, false);
+	//	}
 
 	/**
 	 * Finds the differences between two <code>IRangeComparator</code>s.
@@ -106,16 +106,16 @@ public final class RangeDifferencer {
 	 */
 	public static RangeDifference[] findDifferences(final AbstractRangeDifferenceFactory factory,
 			final IProgressMonitor pm, final IRangeComparator left, final IRangeComparator right,
-			final boolean isMirrored) {
+			final boolean isMirrored, final boolean updateView) {
 
 		if (left instanceof DocLineComparator && right instanceof DocLineComparator) {
 			// If can get line text, then can use BEX search which uses Patience / Myers diff
 			// Additionally, it does post diff processing to yield better comparisons, handling common refactorings
 			return RangeComparatorBEX.findDifferences(factory, pm, (DocLineComparator) left, (DocLineComparator) right,
-					isMirrored);
+					isMirrored, updateView);
 		}
 
-		// Otherwise,uUse the existing LCS search (such as for Token search on a single line)
+		// Otherwise, use the existing LCS search (such as for Token search on a single line)
 		return RangeComparatorLCS.findDifferences(factory, pm, left, right);
 	}
 
@@ -175,15 +175,17 @@ public final class RangeDifferencer {
 			final IRangeComparator right, final boolean isMirrored) {
 		try {
 			if (ancestor == null) {
-				return findDifferences(factory, pm, left, right, isMirrored);
+				return findDifferences(factory, pm, left, right, isMirrored, true);
 			}
+			// TODO: need to fix BEX View for 3-way merge
+
 			SubMonitor monitor = SubMonitor.convert(pm, Messages.RangeComparatorLCS_0, 100);
 			RangeDifference[] leftAncestorScript = null;
 			RangeDifference[] rightAncestorScript = findDifferences(factory, monitor.newChild(50), ancestor, right,
-					isMirrored);
+					isMirrored, false);
 			if (rightAncestorScript != null) {
 				monitor.setWorkRemaining(100);
-				leftAncestorScript = findDifferences(factory, monitor.newChild(50), ancestor, left, isMirrored);
+				leftAncestorScript = findDifferences(factory, monitor.newChild(50), ancestor, left, isMirrored, false);
 			}
 			if (rightAncestorScript == null || leftAncestorScript == null) {
 				return null;
@@ -263,6 +265,9 @@ public final class RangeDifferencer {
 						changeRangeEnd));
 			}
 
+			// Will this meet the needs to populate BEX View?
+			findDifferences(factory, pm, left, right, isMirrored, true);
+
 			// remove sentinel
 			diff3.remove(0);
 			return diff3.toArray(EMPTY_RESULT);
@@ -273,35 +278,35 @@ public final class RangeDifferencer {
 		}
 	}
 
-	/**
-	 * Finds the differences among two <code>IRangeComparator</code>s.
-	 * In contrast to <code>findDifferences</code>, the result
-	 * contains <code>RangeDifference</code> elements for non-differing ranges too.
-	 *
-	 * @param left the left range comparator
-	 * @param right the right range comparator
-	 * @return an array of range differences
-	 */
-	public static RangeDifference[] findRanges(final IRangeComparator left,
-			final IRangeComparator right, final boolean isMirrored) {
-		return findRanges((IProgressMonitor) null, left, right, isMirrored);
-	}
+	//	/**
+	//	 * Finds the differences among two <code>IRangeComparator</code>s.
+	//	 * In contrast to <code>findDifferences</code>, the result
+	//	 * contains <code>RangeDifference</code> elements for non-differing ranges too.
+	//	 *
+	//	 * @param left the left range comparator
+	//	 * @param right the right range comparator
+	//	 * @return an array of range differences
+	//	 */
+	//	public static RangeDifference[] findRanges(final IRangeComparator left,
+	//			final IRangeComparator right, final boolean isMirrored) {
+	//		return findRanges((IProgressMonitor) null, left, right, isMirrored);
+	//	}
 
-	/**
-	 * Finds the differences among two <code>IRangeComparator</code>s.
-	 * In contrast to <code>findDifferences</code>, the result
-	 * contains <code>RangeDifference</code> elements for non-differing ranges too.
-	 *
-	 * @param pm if not <code>null</code> used to report progress
-	 * @param left the left range comparator
-	 * @param right the right range comparator
-	 * @return an array of range differences
-	 * @since 2.0
-	 */
-	public static RangeDifference[] findRanges(final IProgressMonitor pm, final IRangeComparator left,
-			final IRangeComparator right, final boolean isMirrored) {
-		return findRanges(defaultFactory, pm, left, right, isMirrored);
-	}
+	//	/**
+	//	 * Finds the differences among two <code>IRangeComparator</code>s.
+	//	 * In contrast to <code>findDifferences</code>, the result
+	//	 * contains <code>RangeDifference</code> elements for non-differing ranges too.
+	//	 *
+	//	 * @param pm if not <code>null</code> used to report progress
+	//	 * @param left the left range comparator
+	//	 * @param right the right range comparator
+	//	 * @return an array of range differences
+	//	 * @since 2.0
+	//	 */
+	//	public static RangeDifference[] findRanges(final IProgressMonitor pm, final IRangeComparator left,
+	//			final IRangeComparator right, final boolean isMirrored) {
+	//		return findRanges(defaultFactory, pm, left, right, isMirrored);
+	//	}
 
 	/**
 	 * Finds the differences among two <code>IRangeComparator</code>s.
@@ -317,7 +322,8 @@ public final class RangeDifferencer {
 	 */
 	public static RangeDifference[] findRanges(final AbstractRangeDifferenceFactory factory, final IProgressMonitor pm,
 			final IRangeComparator left, final IRangeComparator right, final boolean isMirrored) {
-		RangeDifference[] in = findDifferences(factory, pm, left, right, isMirrored);
+		// TODO: should this be true or false for updateView?
+		RangeDifference[] in = findDifferences(factory, pm, left, right, isMirrored, true);
 		List<RangeDifference> out = new ArrayList<>();
 
 		RangeDifference rd;
