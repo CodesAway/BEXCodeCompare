@@ -17,8 +17,8 @@ public class EnhancedCompareHandler extends AbstractHandler {
 		// Toggle the command we just clicked and refresh the compare
 		HandlerUtil.toggleCommandState(event.getCommand());
 
-		if (BEXView.INSTANCE != null) {
-			BEXView.INSTANCE.refreshMergeViewer();
+		if (BEXView.getInstance() != null) {
+			BEXView.getInstance().refreshMergeViewer();
 		}
 		return null;
 	}

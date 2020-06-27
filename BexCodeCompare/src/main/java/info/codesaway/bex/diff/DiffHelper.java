@@ -1078,6 +1078,18 @@ public class DiffHelper {
 		}
 	}
 
+	//	public static void ignoreBlankLines(final List<DiffEdit> diff) {
+	//		// Ignore blank lines
+	//		for (int i = 0; i < diff.size(); i++) {
+	//			DiffEdit diffEdit = diff.get(i);
+	//
+	//			if (diffEdit.isInsertOrDelete() && diffEdit.getLeftText().trim().isEmpty()
+	//					&& diffEdit.getRightText().trim().isEmpty()) {
+	//				diff.set(i, new DiffEdit(BasicDiffType.IGNORE, diffEdit.getLeftLine(), diffEdit.getRightLine()));
+	//			}
+	//		}
+	//	}
+
 	/**
 	 * Handle blank lines
 	 *

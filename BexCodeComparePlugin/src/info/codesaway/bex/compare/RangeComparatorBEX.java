@@ -41,7 +41,6 @@ import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.SubMonitor;
 
 import info.codesaway.bex.Activator;
-import info.codesaway.bex.diff.BasicDiffType;
 import info.codesaway.bex.diff.DiffChange;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
@@ -153,20 +152,23 @@ public class RangeComparatorBEX {
 					SubstitutionType.LCS_MAX_OPERATOR, SubstitutionType.LCS_MIN_OPERATOR);
 		}
 
-		DiffHelper.handleMovedLines(diff, normalizationFunction);
+		// Don't do moved lines, since not able to show well in Eclipse
+		//		DiffHelper.handleMovedLines(diff, normalizationFunction);
+
 		//		DiffHelper.handleImports(diff);
 
-		if (this.ignoreWhitespace) {
-			// Ignore blank lines
-			for (int i = 0; i < diff.size(); i++) {
-				DiffEdit diffEdit = diff.get(i);
-
-				if (diffEdit.isInsertOrDelete() && diffEdit.getLeftText().trim().isEmpty()
-						&& diffEdit.getRightText().trim().isEmpty()) {
-					diff.set(i, new DiffEdit(BasicDiffType.IGNORE, diffEdit.getLeftLine(), diffEdit.getRightLine()));
-				}
-			}
-		}
+		// Don't ignore whitespace until in blocks since causes odd blocks (such as if add a new method)
+		//		if (this.ignoreWhitespace) {
+		//			// Ignore blank lines
+		//			for (int i = 0; i < diff.size(); i++) {
+		//				DiffEdit diffEdit = diff.get(i);
+		//
+		//				if (diffEdit.isInsertOrDelete() && diffEdit.getLeftText().trim().isEmpty()
+		//						&& diffEdit.getRightText().trim().isEmpty()) {
+		//					diff.set(i, new DiffEdit(BasicDiffType.IGNORE, diffEdit.getLeftLine(), diffEdit.getRightLine()));
+		//				}
+		//			}
+		//		}
 
 		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, true);
 

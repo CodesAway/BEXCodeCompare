@@ -2056,8 +2056,8 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 	 */
 	@Override
 	protected void handleDispose(final DisposeEvent event) {
-		if (BEXView.INSTANCE != null) {
-			BEXView.INSTANCE.setMergeViewer(null);
+		if (BEXView.getInstance() != null) {
+			BEXView.getInstance().setMergeViewer(null);
 		}
 
 		OperationHistoryFactory.getOperationHistory().removeOperationHistoryListener(this.operationHistoryListener);
@@ -3738,7 +3738,7 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 		try {
 			this.fMerger.doDiff();
 			// After diff, let BEXView know about this, so can update scroll position
-			BEXView.INSTANCE.setMergeViewer(this);
+			BEXView.getInstance().setMergeViewer(this);
 		} catch (CoreException e) {
 			CompareUIPlugin.log(e.getStatus());
 			String title = Utilities.getString(this.getResourceBundle(), "tooComplexError.title"); //$NON-NLS-1$

@@ -9,8 +9,6 @@ import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
-import org.eclipse.jface.action.MenuManager;
-import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITreeContentProvider;
@@ -20,15 +18,12 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.IWorkbench;
-import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.part.DrillDownAdapter;
 import org.eclipse.ui.part.ViewPart;
 
 import info.codesaway.bex.compare.BEXChangeInfo;
@@ -63,15 +58,15 @@ public class BEXView extends ViewPart {
 	 */
 	public static final String ID = "info.codesaway.bex.views.BEXView";
 
-	public static BEXView INSTANCE;
+	private static BEXView INSTANCE;
 
 	@Inject
 	IWorkbench workbench;
 
 	private TreeViewer viewer;
-	private DrillDownAdapter drillDownAdapter;
-	private Action action1;
-	private Action action2;
+	//	private DrillDownAdapter drillDownAdapter;
+	//	private Action action1;
+	//	private Action action2;
 	private Action doubleClickAction;
 
 	private ViewContentProvider viewContentProvider;
@@ -212,7 +207,7 @@ public class BEXView extends ViewPart {
 	@Override
 	public void createPartControl(final Composite parent) {
 		this.viewer = new TreeViewer(parent, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
-		this.drillDownAdapter = new DrillDownAdapter(this.viewer);
+		//		this.drillDownAdapter = new DrillDownAdapter(this.viewer);
 
 		this.viewContentProvider = new ViewContentProvider();
 		this.viewer.setContentProvider(this.viewContentProvider);
@@ -232,14 +227,14 @@ public class BEXView extends ViewPart {
 		INSTANCE = this;
 	}
 
-	private void hookContextMenu() {
-		MenuManager menuMgr = new MenuManager("#PopupMenu");
-		menuMgr.setRemoveAllWhenShown(true);
-		menuMgr.addMenuListener(BEXView.this::fillContextMenu);
-		Menu menu = menuMgr.createContextMenu(this.viewer.getControl());
-		this.viewer.getControl().setMenu(menu);
-		this.getSite().registerContextMenu(menuMgr, this.viewer);
-	}
+	//	private void hookContextMenu() {
+	//		MenuManager menuMgr = new MenuManager("#PopupMenu");
+	//		menuMgr.setRemoveAllWhenShown(true);
+	//		menuMgr.addMenuListener(BEXView.this::fillContextMenu);
+	//		Menu menu = menuMgr.createContextMenu(this.viewer.getControl());
+	//		this.viewer.getControl().setMenu(menu);
+	//		this.getSite().registerContextMenu(menuMgr, this.viewer);
+	//	}
 
 	private void contributeToActionBars() {
 		IActionBars bars = this.getViewSite().getActionBars();
@@ -253,14 +248,14 @@ public class BEXView extends ViewPart {
 		//		manager.add(this.action2);
 	}
 
-	private void fillContextMenu(final IMenuManager manager) {
-		//		manager.add(this.action1);
-		//		manager.add(this.action2);
-		manager.add(new Separator());
-		this.drillDownAdapter.addNavigationActions(manager);
-		// Other plug-ins can contribute there actions here
-		manager.add(new Separator(IWorkbenchActionConstants.MB_ADDITIONS));
-	}
+	//	private void fillContextMenu(final IMenuManager manager) {
+	//		//		manager.add(this.action1);
+	//		//		manager.add(this.action2);
+	//		manager.add(new Separator());
+	//		this.drillDownAdapter.addNavigationActions(manager);
+	//		// Other plug-ins can contribute there actions here
+	//		manager.add(new Separator(IWorkbenchActionConstants.MB_ADDITIONS));
+	//	}
 
 	private void fillLocalToolBar(final IToolBarManager manager) {
 		//		manager.add(this.action1);
@@ -418,5 +413,9 @@ public class BEXView extends ViewPart {
 			// TODO: does this work as expected?
 			Display.getDefault().asyncExec(this.mergeViewer::refresh);
 		}
+	}
+
+	public static BEXView getInstance() {
+		return INSTANCE;
 	}
 }
