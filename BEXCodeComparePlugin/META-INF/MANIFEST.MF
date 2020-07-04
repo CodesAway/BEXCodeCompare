@@ -24,7 +24,6 @@ Bundle-ActivationPolicy: lazy
 Export-Package: info.codesaway.bex,
  info.codesaway.bex.compare,
  info.codesaway.bex.diff,
- info.codesaway.bex.diff.examples,
  info.codesaway.bex.diff.myers,
  info.codesaway.bex.diff.patience,
  info.codesaway.bex.diff.substitution,

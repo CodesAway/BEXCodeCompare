@@ -19,19 +19,29 @@ import info.codesaway.bex.diff.substitution.RefactoringType;
 import info.codesaway.util.regex.Matcher;
 
 public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringType {
-	private static final ThreadLocal<Matcher> ENHANCED_FOR_LOOP_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
-			" for \\( "
-					+ "(?<type>\\w++)\\s++(?<element>\\w++) "
-					+ ": (?<iterable>(?:this\\.)?+\\w++) "
-					+ "\\) \\{ "));
+	private static final String ITERABLE_REGEX = "(?<iterable>(?:\\w++\\.)??\\w++|\\w++\\.get\\w++\\(\\))";
 
-	private static final ThreadLocal<Matcher> INDEX_FOR_LOOP_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
-			" for \\( "
-					+ "(?<type>int)\\s++(?<element>\\w++) = 0 ; "
-					+ "\\k<element> < (?<iterable>(?:this\\.)?+\\w++)\\.(?:(?<collection>size)\\(\\)||(?<array>length)) ; "
-					// 6/6/2020 Support both pre and post fix notation, like Eclipse
-					+ "(?:\\k<element>\\+\\+|\\+\\+\\k<element>) "
-					+ "\\) \\{ "));
+	private static final ThreadLocal<Matcher> ENHANCED_FOR_LOOP_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
+			" for \\( (?:final )?+"
+					+ "(?<type>\\w++(?:\\[\\])?+) (?<element>\\w++) "
+					+ ": " + ITERABLE_REGEX + " "
+					+ "\\) \\{? "));
+
+	private static final String INDEX_FOR_LOOP_REGEX = " for \\( "
+			+ "(?<type>int)\\s++(?<element>\\w++) = 0 ; "
+			+ "\\k<element> < " + ITERABLE_REGEX + "\\.(?:(?<collection>size)\\(\\)||(?<array>length)) ; "
+			// 6/6/2020 Support both pre and post fix notation, like Eclipse
+			+ "(?:\\k<element>\\+\\+|\\+\\+\\k<element>) "
+			+ "\\) \\{? ";
+
+	private static final String ITERATOR_FOR_LOOP_REGEX = " for \\( "
+			+ "(?<type>Iterator) (?<element>\\w++) = "
+			+ ITERABLE_REGEX + "\\.(?<iterator>iterator)\\(\\) ; "
+			+ "(?:\\k<element>\\.hasNext\\(\\) ; ) "
+			+ "\\) \\{? ";
+
+	private static final ThreadLocal<Matcher> REGULAR_FOR_LOOP_MATCHER = getThreadLocalMatcher(
+			enhanceRegexWhitespace("(?J:" + INDEX_FOR_LOOP_REGEX + "|" + ITERATOR_FOR_LOOP_REGEX + ")"));
 
 	private final Map<String, State> states = new HashMap<>();
 	private State lastState = null;
@@ -44,14 +54,15 @@ public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringTyp
 		String normalizedRight = normalizedTexts.get(right);
 
 		Matcher enhancedForLoopMatcher = ENHANCED_FOR_LOOP_MATCHER.get();
-		Matcher indexedForLoopMatcher = INDEX_FOR_LOOP_MATCHER.get();
+		Matcher regularForLoopMatcher = REGULAR_FOR_LOOP_MATCHER.get();
 
 		DiffSide side;
+		// TODO: switch from matches to find to handle named loop and line comments at end?
 		if (enhancedForLoopMatcher.reset(normalizedRight).matches()
-				&& indexedForLoopMatcher.reset(normalizedLeft).matches()) {
+				&& regularForLoopMatcher.reset(normalizedLeft).matches()) {
 			side = DiffSide.RIGHT;
 		} else if (enhancedForLoopMatcher.reset(normalizedLeft).matches()
-				&& indexedForLoopMatcher.reset(normalizedRight).matches()) {
+				&& regularForLoopMatcher.reset(normalizedRight).matches()) {
 			side = DiffSide.LEFT;
 		} else {
 			// Check if this is a substitution part of the for loop (changing)
@@ -73,14 +84,22 @@ public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringTyp
 		String iterableName = enhancedForLoopMatcher.get("iterable");
 
 		// Verify iterable name matches
-		if (iterableName.equals(indexedForLoopMatcher.get("iterable"))) {
+		if (iterableName.equals(regularForLoopMatcher.get("iterable"))) {
 			String elementType = enhancedForLoopMatcher.get("type");
 			String elementName = enhancedForLoopMatcher.get("element");
 
-			String indexName = indexedForLoopMatcher.get("element");
-			IterableKind iterableKind = indexedForLoopMatcher.matched("array")
-					? IterableKind.ARRAY
-					: IterableKind.COLLECTION;
+			String indexName = regularForLoopMatcher.get("element");
+			IterableKind iterableKind;
+
+			if (regularForLoopMatcher.matched("array")) {
+				iterableKind = IterableKind.ARRAY;
+			} else if (regularForLoopMatcher.matched("collection")) {
+				iterableKind = IterableKind.COLLECTION;
+			} else if (regularForLoopMatcher.matched("iterator")) {
+				iterableKind = IterableKind.ITERATOR;
+			} else {
+				throw new AssertionError("Unexpected iterable kind: " + regularForLoopMatcher.text());
+			}
 
 			State state = new State(side, elementType, elementName, iterableName, indexName, iterableKind);
 
@@ -125,7 +144,7 @@ public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringTyp
 	}
 
 	private enum IterableKind {
-		ARRAY, COLLECTION
+		ARRAY, COLLECTION, ITERATOR
 	}
 
 	// Store state information so can track the changes
@@ -149,13 +168,18 @@ public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringTyp
 			//			this.indexName = indexName;
 			//			this.iterableKind = iterableKind;
 
-			// Text to search indexed
-			if (iterableKind == IterableKind.COLLECTION) {
+			switch (iterableKind) {
+			case COLLECTION:
 				this.searchText = iterableName + ".get(" + indexName + ")";
-			} else if (iterableKind == IterableKind.ARRAY) {
+				break;
+			case ARRAY:
 				this.searchText = iterableName + "[" + indexName + "]";
-			} else {
-				this.searchText = "";
+				break;
+			case ITERATOR:
+				this.searchText = indexName + ".next()";
+				break;
+			default:
+				throw new AssertionError("Unexpected iterable kind: " + iterableKind);
 			}
 
 			// Use null character to allow special handling near the matches
@@ -187,15 +211,32 @@ public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringTyp
 			// However, this would require parsing the source code
 			String refactoredText = originalText.replace(this.searchText, this.replacementText);
 
-			//			System.out.println("Search for " + this.searchText);
-			//			System.out.println("Refactored: " + refactoredText);
-			//			System.out.println("Enhanced: " + expectedText);
+			//			System.out.println("Checking for " + this.searchText);
+			//			System.out.println(refactoredText);
+			//			System.out.println(expectedText);
 
 			// Intentionally doing identify equal check
 			// (since if there are no occurrences of searchText, then indexedForText will be returned unmodified)
 			// (In this case, no refactoring was done)
-			return !identityEquals(refactoredText, originalText)
-					&& equalsWithSpecialHandling(refactoredText, expectedText);
+			if (identityEquals(refactoredText, originalText)) {
+				return false;
+			}
+
+			if (equalsWithSpecialHandling(refactoredText, expectedText)) {
+				return true;
+			}
+
+			// Handle if line also has cast
+			// For example
+			// Message message = (Message) messageList.getMessages().get(i);
+			// Message message = element;
+			refactoredText = refactoredText.replace("(" + this.elementType + ")", "\0");
+
+			if (equalsWithSpecialHandling(refactoredText, expectedText)) {
+				return true;
+			}
+
+			return false;
 		}
 	}
 }

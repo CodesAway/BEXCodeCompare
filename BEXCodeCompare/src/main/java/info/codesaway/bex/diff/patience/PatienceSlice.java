@@ -10,41 +10,70 @@ public class PatienceSlice {
 	/**
 	 * Creates a slice from start to end (exclusive)
 	 *
-	 * @param leftStart
-	 * @param leftEnd
-	 * @param rightStart
-	 * @param rightEnd
+	 * @param start
+	 * @param end
 	 */
 	public PatienceSlice(final IntPair start, final IntPair end) {
 		this.start = new MutableIntLeftRightPair(start);
 		this.end = new MutableIntLeftRightPair(end);
 	}
 
+	/**
+	 * Creates a slice from start to end (exclusive)
+	 * @param leftStart
+	 * @param leftEnd
+	 * @param rightStart
+	 * @param rightEnd
+	 */
 	public PatienceSlice(final int leftStart, final int leftEnd, final int rightStart, final int rightEnd) {
 		this.start = new MutableIntLeftRightPair(leftStart, rightStart);
 		this.end = new MutableIntLeftRightPair(leftEnd, rightEnd);
 	}
 
+	/**
+	 * Gets the start (as a left/right IntPair)
+	 * @return the start
+	 */
 	public IntPair getStart() {
 		return this.start;
 	}
 
+	/**
+	 * Gets the end (as a left/right IntPair)
+	 * @return the end
+	 */
 	public IntPair getEnd() {
 		return this.end;
 	}
 
+	/**
+	 * Gets the left start
+	 * @return the left start
+	 */
 	public int getLeftStart() {
 		return this.start.getLeft();
 	}
 
+	/**
+	 * Gets the left end
+	 * @return the left end
+	 */
 	public int getLeftEnd() {
 		return this.end.getLeft();
 	}
 
+	/**
+	 * Gets the right start
+	 * @return the right start
+	 */
 	public int getRightStart() {
 		return this.start.getRight();
 	}
 
+	/**
+	 * Gets the right end
+	 * @return the right end
+	 */
 	public int getRightEnd() {
 		return this.end.getRight();
 	}

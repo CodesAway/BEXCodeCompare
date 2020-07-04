@@ -16,12 +16,13 @@ import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.util.regex.Matcher;
 
 public class JavaCastSubstitution implements JavaSubstitution {
+	private static final String TYPE_REGEX = "(?<type>\\w++(?:<\\w++>)?+)";
 	private static final ThreadLocal<Matcher> CAST_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
-			"^(?J)"
+			"(?J)"
 					// common case of local variable
-					+ "(?:(?<head>(?<type>\\w++)\\s++(?<variable>\\w++) = )\\(\\g{type}\\)"
+					+ "(?:(?<head>" + TYPE_REGEX + " (?<variable>\\w++) = )\\(\\g{type}\\)"
 					// Handle field reference (such as this.field = (Cast) value
-					+ "|(?<head>(?:\\w++\\.)*+\\w++ = )\\((?<type>\\w++)\\)"
+					+ "|(?<head>(?:\\w++\\.)*+\\w++ = )\\(" + TYPE_REGEX + "\\)"
 					+ ") "
 					+ "(?<tail>.*+)"));
 
@@ -33,6 +34,9 @@ public class JavaCastSubstitution implements JavaSubstitution {
 		String normalizedRight = normalizedTexts.get(right);
 
 		Matcher castMatcher = CAST_MATCHER.get();
+
+		//		System.out.println("CAST? " + castMatcher.reset(normalizedLeft).find() + "\t" + normalizedLeft);
+
 		DiffSide side;
 		String expectedText;
 		String originalText;
@@ -54,7 +58,8 @@ public class JavaCastSubstitution implements JavaSubstitution {
 
 		// Use null character to allow special handling near the matches
 		// Java text file shouldn't contain null characters
-		String refactoredText = castMatcher.getReplacement("${head}\0${tail}");
+		//		String refactoredText = castMatcher.getReplacement("${head}\0${tail}");
+		String refactoredText = castMatcher.replaceFirst("${head}\0${tail}");
 
 		String type = castMatcher.get("type");
 

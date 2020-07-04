@@ -61,7 +61,7 @@ public class PatienceDiff extends AbstractDiffAlgorithm {
 
 		// For first pass, don't remove head / tail lines, since this can lead to less than optimal looking diffs
 		// Except from https://blog.jcoglan.com/2017/09/28/implementing-patience-diff/
-		//      Git doesn’t perform these steps first,
+		//      Git doesn't perform these steps first,
 		//      it performs them after calculating the matching lines
 		//      but before recursing into each slice.
 		//

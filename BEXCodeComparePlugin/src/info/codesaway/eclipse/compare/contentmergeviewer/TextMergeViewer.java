@@ -6172,23 +6172,16 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 		// Subtract 1 to change to 0-based
 		line--;
 
-		//		line = this.fMerger.realToVirtualPosition(contributor, line);
 		int offset = this.fMerger.getOffset(contributor, line);
 		Position position = new Position(offset);
-		//		Diff diff = this.fMerger.findDiff(position, isLeft);
 
 		if (leftLineNumber != -1 && rightLineNumber != -1) {
-			// Doesn't correct align left and right
-			//			this.scrollVertical(0, leftLineNumber - 1, rightLineNumber - 1, this.fAncestor);
+			// Subtract 1 to make 0-based line
+			int rightOffset = this.fMerger.getOffset(RIGHT_CONTRIBUTOR, rightLineNumber - 1);
+			Position rightPosition = new Position(rightOffset);
 
 			reveal(mergeSourceViewer, position);
-			this.fLeft.vscroll(leftLineNumber - 1);
-			//			this.fRight.vscroll(rightLineNumber - 1);
-			//			this.fLeft.vscroll(leftLineNumber - 1);
-			//			this.fLeft.setSelection(position);
-			//			this.fRight.setSelection(new Position(rightLineNumber - 1));
-			//			this.fLeft.setRegion(new Position(leftLineNumber - 1));
-			//			this.fRight.setRegion(new Position(rightLineNumber - 1));
+			this.fRight.setSelection(rightPosition);
 		} else {
 			reveal(mergeSourceViewer, position);
 		}

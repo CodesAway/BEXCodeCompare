@@ -2,7 +2,7 @@ package info.codesaway.bex.diff.substitution.java;
 
 import static info.codesaway.bex.diff.BasicDiffType.DELETE;
 import static info.codesaway.bex.diff.BasicDiffType.INSERT;
-import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_DIAMOND_OPERATOR;
+import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_CAST;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
@@ -19,27 +19,26 @@ import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 
-public class JavaDiamondOperatorSubstitutionTests {
+public class JavaCastSubstitutionTests {
 	@Test
-	void diamondSubstitutionTest() {
-		String leftText = "		this.jobSteps = new Vector<JobStep>();";
-		String rightText = "		this.jobSteps = new Vector<>();";
-
-		this.testHelper(leftText, rightText, "JobStep");
+	void javaCastWithGenericsTest() {
+		String leftText = "Parm parm = (Parm) this.getParm();";
+		String rightText = "Parm parm = this.getParm();";
+		this.testHelper(leftText, rightText, "Parm");
 	}
 
 	@Test
-	void diamondSubstitutionReturnTest() {
-		String leftText = "		return new ArrayList<Object>();";
-		String rightText = "		return new ArrayList<>();";
-		this.testHelper(leftText, rightText, "Object");
+	void castWithGenericsTest() {
+		String leftText = "List<Parm> parmList = (List<Parm>) this.batchParmsArray;";
+		String rightText = "List<Parm> parmList = this.batchParmsArray;";
+		this.testHelper(leftText, rightText, "List<Parm>");
 	}
 
 	@Test
-	void diamondSubstitutionGenericsTest() {
-		String leftText = "ArrayList<ArrayList<Address>> addresses = new ArrayList<ArrayList<Address>>();";
-		String rightText = "ArrayList<ArrayList<Address>> addresses = new ArrayList<>();";
-		this.testHelper(leftText, rightText, "ArrayList<Address>");
+	void castWithModifiersTest() {
+		String leftText = "final List<Parm> parmList = (List<Parm>) this.batchParmsArray;";
+		String rightText = "final List<Parm> parmList = this.batchParmsArray;";
+		this.testHelper(leftText, rightText, "List<Parm>");
 	}
 
 	private void testHelper(final String leftText, final String rightText, final String type) {
@@ -47,11 +46,10 @@ public class JavaDiamondOperatorSubstitutionTests {
 		DiffEdit right = new DiffEdit(DELETE, new DiffLine(1, rightText), null);
 		Map<DiffEdit, String> map = ImmutableMap.of(left, leftText, right, rightText);
 
-		DiffType expectedType = new RefactoringDiffTypeValue('R', DiffSide.RIGHT, "diamond operator", type, true);
-		SubstitutionDiffType diffType = JAVA_DIAMOND_OPERATOR.accept(left, right, map,
-				DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION);
+		DiffType expectedType = new RefactoringDiffTypeValue('R', DiffSide.RIGHT, "cast", type, true);
+		SubstitutionDiffType diffType = JAVA_CAST.accept(left, right, map,
+				DiffHelper.NO_NORMALIZATION_FUNCTION);
 
 		assertThat(diffType).isEqualTo(expectedType);
 	}
-
 }

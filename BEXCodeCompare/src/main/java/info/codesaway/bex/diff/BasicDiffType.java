@@ -54,6 +54,10 @@ public enum BasicDiffType implements DiffType {
 
 	// Values not part of enum, but wanted to keep in same class, so can easily use static imports for all the BasicDiffType
 	// Not part of enum, since want these instances to implement certain interfaces
+
+	/**
+	 * Indicates a substitution
+	 */
 	public static final SubstitutionDiffType SUBSTITUTE = new SubstitutionDiffTypeValue('S', "SUBSTITUTE");
 
 	/**
@@ -91,5 +95,10 @@ public enum BasicDiffType implements DiffType {
 	@Override
 	public boolean isSubstitution() {
 		return false;
+	}
+
+	@Override
+	public boolean shouldIgnore() {
+		return this == IGNORE;
 	}
 }

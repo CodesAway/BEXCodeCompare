@@ -75,14 +75,17 @@ public class FrequencyCount {
 	/**
 	 * Indicates if the line is unique within both documents
 	 *
-	 * <p>This occurs when <code>{@link #getLeftCount()} = 1 and {@link #getRightCount()} = 1</code></p>
-	 *
-	 * @return
+	 * @return <code>true</code> if the line is unique within both documents
 	 */
 	public boolean isLineUnique() {
 		return this.leftCount == 1 && this.rightCount == 1;
 	}
 
+	/**
+	 *
+	 * @param frequencyCount a FrequencyCount (possibly <code>null</code>)
+	 * @return the specified value if not <code>null</code>; otherwise, creates a new FrequencyCount
+	 */
 	public static FrequencyCount emptyIfNull(final FrequencyCount frequencyCount) {
 		return frequencyCount != null ? frequencyCount : new FrequencyCount();
 	}

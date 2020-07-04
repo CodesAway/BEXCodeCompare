@@ -31,7 +31,7 @@ public class RefactoringDiffTypeValue implements RefactoringDiffType {
 	 * @param diffSide the DiffSide (may be <code>null</code>)
 	 * @param category the category (may be <code>null</code>)
 	 * @param info the info (may be <code>null</code>)
-	 * @param isMove
+	 * @param shouldTreatAsNormalizedEqual
 	 */
 	public RefactoringDiffTypeValue(final char tag, final DiffSide diffSide, final String category, final String info,
 			final boolean shouldTreatAsNormalizedEqual) {

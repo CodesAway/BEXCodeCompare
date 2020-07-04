@@ -52,3 +52,47 @@ b) BEX instead uses Patience / Myers versus LCS / Myers
 c) This also explains why comparing long files is so time consuming, since using LCS O(n^2) versus Linear Myer's, which I use
 
 
+
+
+
+Tested scroll logic, seems to work, but reveal works just as well
+
+			// Based on logic from setCurrentDiff and revealDiff
+			if (this.fSynchronizedScrolling && !this.fSynchronizedScrolling) {
+				int vpos = leftLineNumber;
+				int rvpos;
+				int lvpos;
+				int avpos;
+				MergeSourceViewer allButThis = null;
+
+				avpos = lvpos = rvpos = vpos;
+
+				int delta = this.fRight.getViewportLines() / 4;
+				avpos -= delta;
+				if (avpos < 0) {
+					avpos = 0;
+				}
+				lvpos -= delta;
+				if (lvpos < 0) {
+					lvpos = 0;
+				}
+				rvpos -= delta;
+				if (rvpos < 0) {
+					rvpos = 0;
+				}
+
+				// TODO: doesn't work perfectly
+				// May need to factor in fact that due ty my handling of whitespace, line matching isn't 1-1
+				// TODO: see if I can figure out how to have the correct position on left and right
+				// Mainly think I need to figure if the right line needs to have a delta
+
+				this.scrollVertical(avpos, lvpos, rvpos, allButThis);
+
+				if (this.fVScrollBar != null) {
+					this.fVScrollBar.setSelection(avpos);
+				}
+
+				this.fRight.setSelection(rightPosition);
+			} else {
+				reveal(mergeSourceViewer, position);
+			}

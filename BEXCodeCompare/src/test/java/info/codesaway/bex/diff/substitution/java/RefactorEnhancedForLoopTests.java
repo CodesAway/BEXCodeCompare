@@ -44,21 +44,43 @@ public class RefactorEnhancedForLoopTests {
 	}
 
 	@Test
-	void testIndexToEnhancedForWithField() {
+	void testIndexToEnhancedForWithThisField() {
 		// TODO Auto-generated method stub
 
-		DiffLine indexedLine1 = new DiffLine(1, "for (int cell = 0; cell < this.cells.size(); cell++) {");
+		DiffLine indexedLine = new DiffLine(1, "for (int cell = 0; cell < this.cells.size(); cell++) {");
 
 		DiffLine enhancedLine = new DiffLine(1, "			for (Cell element : this.cells) {");
 
+		this.testHelper(indexedLine, enhancedLine, "this.cells");
+	}
+
+	@Test
+	void testIndexToEnhancedForWithObjectField() {
+		// TODO Auto-generated method stub
+
+		DiffLine indexedLine = new DiffLine(1, "for (int m = 0; m < value.msg.size(); m++) {");
+
+		DiffLine enhancedLine = new DiffLine(1, "	for		(Object element : value.msg) {");
+		this.testHelper(indexedLine, enhancedLine, "value.msg");
+	}
+
+	@Test
+	void testIndexToEnhancedForWithGetter() {
+		DiffLine indexedLine = new DiffLine(1, "for (int m = 0; m < value.getMessages().size(); m++) {");
+
+		DiffLine enhancedLine = new DiffLine(1, "	for		(Object element : value.getMessages()) {");
+		this.testHelper(indexedLine, enhancedLine, "value.getMessages()");
+	}
+
+	private void testHelper(final DiffLine indexedLine, final DiffLine enhancedLine, final String iterableName) {
 		List<DiffEdit> diff = new ArrayList<>(ImmutableList.of(
-				new DiffEdit(INSERT, null, indexedLine1),
+				new DiffEdit(INSERT, null, indexedLine),
 				new DiffEdit(DELETE, enhancedLine, null)));
 
 		DiffHelper.handleSubstitution(diff, DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION,
 				new RefactorEnhancedForLoop());
 
-		DiffType expectedType = new RefactoringDiffTypeValue('R', DiffSide.LEFT, "enhanced for", "this.cells", true);
+		DiffType expectedType = new RefactoringDiffTypeValue('R', DiffSide.LEFT, "enhanced for", iterableName, true);
 
 		assertThat(diff)
 				.extracting(DiffEdit::getType)

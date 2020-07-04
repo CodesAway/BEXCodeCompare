@@ -605,6 +605,12 @@ public class DiffHelper {
 						throw new AssertionError("DiffType is not a substitution");
 					}
 
+					//					if (diffType.getTag() == 'S') {
+					//						System.out.println(diffType + "\t" + substitutionType.getClass());
+					//						System.out.println("L: " + left);
+					//						System.out.println("R: " + right);
+					//					}
+
 					DiffEdit substitution = new DiffEdit(diffType, left.getLeftLine(), right.getRightLine());
 
 					potentialReplacements.put(left, null);
@@ -1052,8 +1058,17 @@ public class DiffHelper {
 
 			// First handling simple case where entire block is identical text, just split into multiple lines
 			// TODO: find example where parts of block are identical text (or similar text) and handle
+
+			//			System.out.println("Maybe split lines?");
+			boolean hasEntry = false;
 			for (DiffEdit diffEdit : block.getEdits()) {
+				if (diffEdit.getType().shouldTreatAsNormalizedEqual()) {
+					continue;
+				}
+
 				DiffNormalizedText normalizedText = normalize(diffEdit, normalizationFunction);
+				//				System.out.println(diffEdit.toString(true));
+				hasEntry = true;
 
 				if (diffEdit.hasLeftLine()) {
 					normalizedLeftTextBuilder.append(normalizedText.getLeftText());
@@ -1068,11 +1083,8 @@ public class DiffHelper {
 			// No impact based on how I implemented the normalization function
 
 			// Identical text split across lines
-			if (normalizedLeftTextBuilder.toString().equals(normalizedRightTextBuilder.toString())) {
-				// Should mark entire block as normalized
-				// TODO: what should be done with the individual diff lines?
-				// (should their type be changed as well?)
-
+			if (hasEntry && normalizedLeftTextBuilder.toString().equals(normalizedRightTextBuilder.toString())) {
+				// Mark entire block as normalized
 				diffUnits.set(i, new DiffBlock(BasicDiffType.NORMALIZE, block.getEdits()));
 			}
 		}

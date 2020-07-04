@@ -22,7 +22,7 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	 *
 	 * @param leftLines
 	 * @param rightLines
-	 * @param normalizationFunction the normalization function (if null, will be {@link DiffAlgorithm#NO_NORMALIZATION_FUNCTION})
+	 * @param normalizationFunction the normalization function (if null, will be {@link DiffHelper#NO_NORMALIZATION_FUNCTION})
 	 */
 	protected AbstractDiffAlgorithm(final List<DiffLine> leftLines, final List<DiffLine> rightLines,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {

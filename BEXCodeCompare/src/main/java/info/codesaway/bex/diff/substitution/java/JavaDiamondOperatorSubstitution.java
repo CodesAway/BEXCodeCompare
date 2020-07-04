@@ -14,9 +14,11 @@ import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.util.regex.Matcher;
 
 public class JavaDiamondOperatorSubstitution implements JavaSubstitution {
+	private static final String TYPE_PART_REGEX = "\\w++(?:\\[\\]|<\\w++>)?+";
 	private static final ThreadLocal<Matcher> DIAMOND_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
-			"(?<head>(?<variable>\\w++) = new (?<class>\\w++)<)"
-					+ "(?<type>\\w++(?:\\[\\])?+(?: , \\w++(?:\\[\\])?+)*+)"
+			"(?<head>(?:(?<variable>\\w++) = |return\\s++)"
+					+ "new (?<class>\\w++)<)"
+					+ "(?<type>" + TYPE_PART_REGEX + "(?: , " + TYPE_PART_REGEX + ")*+)"
 					+ "(?<tail>>\\()"));
 
 	@Override
@@ -25,6 +27,10 @@ public class JavaDiamondOperatorSubstitution implements JavaSubstitution {
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
 		String normalizedLeft = normalizedTexts.get(left);
 		String normalizedRight = normalizedTexts.get(right);
+
+		//		System.out.println("Java Diamond?");
+		//		System.out.println(normalizedLeft);
+		//		System.out.println(normalizedRight);
 
 		Matcher diamondMatcher = DIAMOND_MATCHER.get();
 		DiffSide side;

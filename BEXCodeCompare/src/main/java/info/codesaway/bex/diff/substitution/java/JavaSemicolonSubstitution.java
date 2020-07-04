@@ -21,6 +21,12 @@ public class JavaSemicolonSubstitution implements JavaSubstitution {
 			return new RefactoringDiffTypeValue(';', DiffSide.LEFT, "semicolon", null, true);
 		} else if (normalizedLeft.equals(";") && normalizedRight.isEmpty()) {
 			return new RefactoringDiffTypeValue(';', DiffSide.RIGHT, "semicolon", null, true);
+		} else if (normalizedLeft.endsWith(";;")
+				&& normalizedLeft.substring(0, normalizedLeft.length() - 1).equals(normalizedRight)) {
+			return new RefactoringDiffTypeValue(';', DiffSide.RIGHT, "double semicolon", null, true);
+		} else if (normalizedRight.endsWith(";;")
+				&& normalizedRight.substring(0, normalizedRight.length() - 1).equals(normalizedLeft)) {
+			return new RefactoringDiffTypeValue(';', DiffSide.LEFT, "double semicolon", null, true);
 		} else {
 			return null;
 		}

@@ -155,18 +155,11 @@ public final class DiffEdit implements DiffUnit {
 
 	@Override
 	public String toString() {
-		return this.toString(false);
+		return this.toString(this.getType().getTag());
 	}
 
-	public String toString(final DiffSide diffSide) {
-		char tag = this.getType().getTag();
-		String lineNumber = this.getLineNumberString(diffSide);
-
-		String leftLineNumber = diffSide == DiffSide.LEFT ? lineNumber : "";
-		String rightLineNumber = diffSide == DiffSide.RIGHT ? lineNumber : "";
-
-		// Format with line numbers
-		return String.format("%s%6s%6s    %s", tag, leftLineNumber, rightLineNumber, this.getText(diffSide));
+	public String toString(final char tag) {
+		return this.toString(tag, false);
 	}
 
 	/**
@@ -176,8 +169,15 @@ public final class DiffEdit implements DiffUnit {
 	 * @return
 	 */
 	public String toString(final boolean shouldHandleSubstitutionSpecial) {
-		char tag = this.getType().getTag();
+		return this.toString(this.getType().getTag(), shouldHandleSubstitutionSpecial);
+	}
 
+	/**
+	 * @param tag
+	 * @param shouldHandleSubstitutionSpecial
+	 * @return
+	 */
+	public String toString(final char tag, final boolean shouldHandleSubstitutionSpecial) {
 		String leftLineNumber = this.getLineNumberString(DiffSide.LEFT);
 		String rightLineNumber = this.getLineNumberString(DiffSide.RIGHT);
 
@@ -193,6 +193,17 @@ public final class DiffEdit implements DiffUnit {
 
 		// Format with line numbers
 		return String.format("%s%6s%6s    %s", tag, leftLineNumber, rightLineNumber, this.getText());
+	}
+
+	public String toString(final DiffSide diffSide) {
+		char tag = this.getType().getTag();
+		String lineNumber = this.getLineNumberString(diffSide);
+
+		String leftLineNumber = diffSide == DiffSide.LEFT ? lineNumber : "";
+		String rightLineNumber = diffSide == DiffSide.RIGHT ? lineNumber : "";
+
+		// Format with line numbers
+		return String.format("%s%6s%6s    %s", tag, leftLineNumber, rightLineNumber, this.getText(diffSide));
 	}
 
 	@Override

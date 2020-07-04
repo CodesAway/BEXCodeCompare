@@ -11,9 +11,10 @@ public interface SubstitutionType {
 	/**
 	 * Determines if the delete / insert pair is a substitution
 	 *
-	 * @param delete
-	 * @param insert
+	 * @param left
+	 * @param right
 	 * @param normalizedTexts
+	 * @param normalizationFunction
 	 * @return the SubstitutionDiffType or <code>null</code> indicating the delete / insert pair is not a valid substitution
 	 */
 	SubstitutionDiffType accept(final DiffEdit left, final DiffEdit right, final Map<DiffEdit, String> normalizedTexts,

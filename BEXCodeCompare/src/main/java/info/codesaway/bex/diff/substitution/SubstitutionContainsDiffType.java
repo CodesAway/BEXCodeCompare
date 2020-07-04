@@ -4,8 +4,6 @@ import java.util.Objects;
 
 /**
  * Indicates a substitution where either the left line fully contains the right line or the right line fully contains the left line
- *
- * @return
  */
 // TODO: give better name
 // Maybe SubstitutionFullyContained
