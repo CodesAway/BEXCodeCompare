@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **NOTE**: Initially, the version number for BEX Code Compare and the Eclipse plugin will be in sync. At some point, they will diverge, which will be indicated in the below change log. When they diverage, the BEX Code Compare version number will be what takes precidency, since this will also be the version for the Maven artifact. The Eclipse plugin changelog will always indicate which version of BEX Code Compare is used.
 
 ## [Unreleased]
+
+## [0.2.0] - 2020-07-04
 ### Added
 * Refactoring for enhanced for loop recognizes changing from iterator for loop to enhanced for loop
 ### Changed
@@ -17,16 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 * Eclipse plugin no longer matches moved lines (Eclipse didn't handle these changes well)
 
-## [0.1.3] - 06/25/2020
+## [0.1.3] - 2020-06-25
 ### Added
 *	Improved scrolling in compare window (still wonky, but much better than before)
 *	Recognize semicolon removal as a non-important change (there's a save action to remove redundant semicolons)
 
-## [0.1.2] - 06/24/2020
+## [0.1.2] - 2020-06-24
 ### Added
 *	Pressing enter in BEX Code Compare view jumps to code in compare window (still wonky, but much better than before)
 *	Enhanced the compare with better handling of common refactorings
 
-## [0.1.1] - 06/23/2020
+## [0.1.1] - 2020-06-23
 ### Added
 * Initial version
