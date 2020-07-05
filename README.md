@@ -5,18 +5,27 @@ BEX Code Compare is a library and Eclipse plugin, which uses Patience sort / Mye
 
 The library has no dependency on Eclipse and can be used in commercial or private projects.
 
+<a name="maven-dependency"></a>
+## Maven Dependency
+
+    <dependency>
+        <groupId>info.codesaway</groupId>
+        <artifactId>bex</artifactId>
+        <version>0.2</version>
+    </dependency>
+
 ## Update site
 [codesaway.info/eclipse](https://codesaway.info/eclipse)
 
 ### Stable
 * **Name**: BEX Code Compare
 * **Location**: https://codesaway.info/eclipse
-* **Version**: 0.1.3
+* **Version**: 0.2.0
 
 ### Beta
 * **Name**: BEX Code Compare
 * **Location**: https://codesaway.info/eclipse-beta
-* **Version**: 0.1.3
+* **Version**: 0.2.0
 
 ## What is BEX Code Compare?
 BEX Code Compare is **B**e **E**nhanced **ϽC** Code Compare
