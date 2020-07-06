@@ -7,7 +7,7 @@ The library has no dependency on Eclipse and can be used in commercial or privat
 
  - [Maven Dependency](#maven-dependency)
  - [Update Site](#update-site)
- - [What is BEX Code Compare](#what)
+ - [What is BEX Code Compare?](#what)
  - [How does it work?](#how)
  - [Installation](#install)
 
