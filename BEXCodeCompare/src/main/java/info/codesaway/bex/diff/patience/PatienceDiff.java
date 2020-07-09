@@ -10,15 +10,15 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import info.codesaway.bex.BEXSide;
+import info.codesaway.bex.IntPair;
+import info.codesaway.bex.MutableIntBEXPair;
 import info.codesaway.bex.diff.AbstractDiffAlgorithm;
 import info.codesaway.bex.diff.BasicDiffType;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffLine;
 import info.codesaway.bex.diff.DiffNormalizedText;
-import info.codesaway.bex.diff.DiffSide;
-import info.codesaway.bex.diff.IntPair;
-import info.codesaway.bex.diff.MutableIntLeftRightPair;
 
 public class PatienceDiff extends AbstractDiffAlgorithm {
 	private final BiFunction<List<DiffLine>, List<DiffLine>, List<DiffEdit>> fallbackDiffAlgorithm;
@@ -97,7 +97,7 @@ public class PatienceDiff extends AbstractDiffAlgorithm {
 
 		PatienceMatch match = DiffHelper.patienceSort(uniqueMatchingLines);
 
-		MutableIntLeftRightPair start = new MutableIntLeftRightPair(slice.getStart());
+		MutableIntBEXPair start = new MutableIntBEXPair(slice.getStart());
 
 		// For each match, get info needed to create slices
 		List<PatienceSliceMatch> sliceMatches = new ArrayList<>();
@@ -237,7 +237,7 @@ public class PatienceDiff extends AbstractDiffAlgorithm {
 
 			// Use Java 8 Map.compute to record that the line was found, creating a new PatienceCount if needed
 			counts.compute(text,
-					(k, v) -> FrequencyCount.emptyIfNull(v).recordFoundInSlice(DiffSide.LEFT, lineNumber));
+					(k, v) -> FrequencyCount.emptyIfNull(v).recordFoundInSlice(BEXSide.LEFT, lineNumber));
 		}
 
 		// Iterate over the range of the slice for right lines
@@ -249,7 +249,7 @@ public class PatienceDiff extends AbstractDiffAlgorithm {
 
 			// Use Java 8 Map.compute to record that the line was found, creating a new PatienceCount if needed
 			counts.compute(text,
-					(k, v) -> FrequencyCount.emptyIfNull(v).recordFoundInSlice(DiffSide.RIGHT, lineNumber));
+					(k, v) -> FrequencyCount.emptyIfNull(v).recordFoundInSlice(BEXSide.RIGHT, lineNumber));
 		}
 
 		return counts.values()

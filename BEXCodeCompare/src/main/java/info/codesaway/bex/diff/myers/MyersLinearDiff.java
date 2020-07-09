@@ -6,11 +6,11 @@ import java.util.Optional;
 import java.util.function.BiFunction;
 
 import info.codesaway.bex.diff.AbstractDiffAlgorithm;
+import info.codesaway.bex.diff.BasicDiffType;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffLine;
 import info.codesaway.bex.diff.DiffNormalizedText;
-import info.codesaway.bex.diff.BasicDiffType;
 
 public final class MyersLinearDiff extends AbstractDiffAlgorithm {
 	// Java implementation of Ruby source code found at

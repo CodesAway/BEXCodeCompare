@@ -11,10 +11,10 @@ import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableMap;
 
+import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffLine;
-import info.codesaway.bex.diff.DiffSide;
 import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
@@ -29,7 +29,7 @@ public class JavaFinalKeywordSubstitutionTests {
 		DiffEdit right = new DiffEdit(DELETE, new DiffLine(1, rightText), null);
 		Map<DiffEdit, String> map = ImmutableMap.of(left, leftText, right, rightText);
 
-		DiffType expectedType = new RefactoringDiffTypeValue('R', DiffSide.LEFT, "final keyword", null, true);
+		DiffType expectedType = new RefactoringDiffTypeValue('R', BEXSide.LEFT, "final keyword", null, true);
 		SubstitutionDiffType diffType = JAVA_FINAL_KEYWORD.accept(left, right, map,
 				DiffHelper.NO_NORMALIZATION_FUNCTION);
 

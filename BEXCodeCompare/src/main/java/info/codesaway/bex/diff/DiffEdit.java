@@ -8,6 +8,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import info.codesaway.bex.BEXSide;
+import info.codesaway.bex.IntBEXPair;
+
+// TODO: see if can simplify this code by using BEXPairCore
 public final class DiffEdit implements DiffUnit {
 	// Reference: https://blog.jcoglan.com/2017/02/17/the-myers-diff-algorithm-part-3/
 	private final DiffType type;
@@ -63,12 +67,12 @@ public final class DiffEdit implements DiffUnit {
 	/**
 	 * Gets the first side which has data (left or right)
 	 */
-	public DiffSide getFirstSide() {
-		return this.hasLeftLine() ? DiffSide.LEFT : DiffSide.RIGHT;
+	public BEXSide getFirstSide() {
+		return this.hasLeftLine() ? BEXSide.LEFT : BEXSide.RIGHT;
 	}
 
-	public Optional<DiffLine> getLine(final DiffSide diffSide) {
-		return diffSide == DiffSide.LEFT ? this.getLeftLine() : this.getRightLine();
+	public Optional<DiffLine> getLine(final BEXSide side) {
+		return side == BEXSide.LEFT ? this.getLeftLine() : this.getRightLine();
 	}
 
 	public Optional<DiffLine> getLeftLine() {
@@ -97,22 +101,22 @@ public final class DiffEdit implements DiffUnit {
 		return this.getText(this.getFirstSide());
 	}
 
-	public String getText(final DiffSide diffSide) {
-		return this.getLine(diffSide).orElse(ABSENT_LINE).getText();
+	public String getText(final BEXSide side) {
+		return this.getLine(side).orElse(ABSENT_LINE).getText();
 	}
 
 	/**
 	 * Gets the text for the left line
 	 */
 	public String getLeftText() {
-		return this.getText(DiffSide.LEFT);
+		return this.getText(BEXSide.LEFT);
 	}
 
 	/**
 	 * Gets the text for the right line
 	 */
 	public String getRightText() {
-		return this.getText(DiffSide.RIGHT);
+		return this.getText(BEXSide.RIGHT);
 	}
 
 	/**
@@ -120,8 +124,8 @@ public final class DiffEdit implements DiffUnit {
 	 *
 	 * @return the line number (or -1 if there is no line for the specified side)
 	 */
-	public IntLeftRightPair getLineNumber() {
-		return IntLeftRightPair.of(this.getLeftLineNumber(), this.getRightLineNumber());
+	public IntBEXPair getLineNumber() {
+		return IntBEXPair.of(this.getLeftLineNumber(), this.getRightLineNumber());
 	}
 
 	/**
@@ -147,8 +151,8 @@ public final class DiffEdit implements DiffUnit {
 	 *
 	 * @return the line number (or the empty string if there is no line for the specified side)
 	 */
-	public String getLineNumberString(final DiffSide diffSide) {
-		return this.getLine(diffSide)
+	public String getLineNumberString(final BEXSide side) {
+		return this.getLine(side)
 				.map(l -> Integer.toString(l.getNumber()))
 				.orElse("");
 	}
@@ -178,8 +182,8 @@ public final class DiffEdit implements DiffUnit {
 	 * @return
 	 */
 	public String toString(final char tag, final boolean shouldHandleSubstitutionSpecial) {
-		String leftLineNumber = this.getLineNumberString(DiffSide.LEFT);
-		String rightLineNumber = this.getLineNumberString(DiffSide.RIGHT);
+		String leftLineNumber = this.getLineNumberString(BEXSide.LEFT);
+		String rightLineNumber = this.getLineNumberString(BEXSide.RIGHT);
 
 		if (shouldHandleSubstitutionSpecial && this.getType().isSubstitution()) {
 			// Format with line numbers
@@ -195,15 +199,15 @@ public final class DiffEdit implements DiffUnit {
 		return String.format("%s%6s%6s    %s", tag, leftLineNumber, rightLineNumber, this.getText());
 	}
 
-	public String toString(final DiffSide diffSide) {
+	public String toString(final BEXSide side) {
 		char tag = this.getType().getTag();
-		String lineNumber = this.getLineNumberString(diffSide);
+		String lineNumber = this.getLineNumberString(side);
 
-		String leftLineNumber = diffSide == DiffSide.LEFT ? lineNumber : "";
-		String rightLineNumber = diffSide == DiffSide.RIGHT ? lineNumber : "";
+		String leftLineNumber = side == BEXSide.LEFT ? lineNumber : "";
+		String rightLineNumber = side == BEXSide.RIGHT ? lineNumber : "";
 
 		// Format with line numbers
-		return String.format("%s%6s%6s    %s", tag, leftLineNumber, rightLineNumber, this.getText(diffSide));
+		return String.format("%s%6s%6s    %s", tag, leftLineNumber, rightLineNumber, this.getText(side));
 	}
 
 	@Override

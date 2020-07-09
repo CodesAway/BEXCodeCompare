@@ -64,6 +64,26 @@
          			id="org.eclipse.ui.commands.toggleState">
    				</state>
       </command>
+      <command
+            categoryId="info.codesaway.bex.commands.category"
+            defaultHandler="info.codesaway.bex.handlers.EnhancedCompareHandler"
+            id="info.codesaway.bex.commands.ignoreComments"
+            name="Ignore comments">
+        		<state
+         			class="org.eclipse.ui.handlers.RegistryToggleState:false"
+         			id="org.eclipse.ui.commands.toggleState">
+   				</state>
+      </command>
+      <command
+            categoryId="info.codesaway.bex.commands.category"
+            defaultHandler="info.codesaway.bex.handlers.ShowBothSidesOfSubstitutionHandler"
+            id="info.codesaway.bex.commands.showBothSidesOfSubstitution"
+            name="Show both sides of substitution">
+        		<state
+         			class="org.eclipse.ui.handlers.RegistryToggleState:false"
+         			id="org.eclipse.ui.commands.toggleState">
+   				</state>
+      </command>
    </extension>
    <extension
          point="org.eclipse.ui.menus">
@@ -76,6 +96,20 @@
                label="Use enhanced compare"
                style="toggle"
                tooltip="Use enhanced compare">
+         </command>
+         <command
+               commandId="info.codesaway.bex.commands.ignoreComments"
+               icon="icons/IgnoreComments.png"
+               label="Ignore comments"
+               style="toggle"
+               tooltip="Ignore comments">
+         </command>
+         <command
+               commandId="info.codesaway.bex.commands.showBothSidesOfSubstitution"
+               icon="icons/ShowBothSidesOfSubstitution.png"
+               label="Show both sides of substitution"
+               style="toggle"
+               tooltip="Show both sides of substitution in BEX View">
          </command>
       </menuContribution>
    </extension>

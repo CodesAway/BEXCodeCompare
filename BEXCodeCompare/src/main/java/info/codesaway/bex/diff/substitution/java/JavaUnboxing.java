@@ -6,9 +6,9 @@ import static info.codesaway.util.regex.Pattern.getThreadLocalMatcher;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffNormalizedText;
-import info.codesaway.bex.diff.DiffSide;
 import info.codesaway.bex.diff.substitution.RefactoringDiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.util.regex.Matcher;
@@ -25,13 +25,13 @@ public class JavaUnboxing implements JavaSubstitution {
 		String normalizedRight = normalizedTexts.get(right);
 
 		Matcher unboxingMatcher = UNBOXING_MATCHER.get();
-		DiffSide side;
+		BEXSide side;
 		String expectedText;
 		if (unboxingMatcher.reset(normalizedLeft).find()) {
-			side = DiffSide.RIGHT;
+			side = BEXSide.RIGHT;
 			expectedText = normalizedRight;
 		} else if (unboxingMatcher.reset(normalizedRight).find()) {
-			side = DiffSide.LEFT;
+			side = BEXSide.LEFT;
 			expectedText = normalizedLeft;
 		} else {
 			return null;
