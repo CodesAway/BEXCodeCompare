@@ -83,4 +83,12 @@ public class Activator extends AbstractUIPlugin {
 	public static boolean shouldUseEnhancedCompare() {
 		return getToggleState("info.codesaway.bex.commands.enhancedCompare");
 	}
+
+	public static boolean ignoreComments() {
+		return getToggleState("info.codesaway.bex.commands.ignoreComments");
+	}
+
+	public static boolean shouldShowBothSidesOfSubstitution() {
+		return getToggleState("info.codesaway.bex.commands.showBothSidesOfSubstitution");
+	}
 }

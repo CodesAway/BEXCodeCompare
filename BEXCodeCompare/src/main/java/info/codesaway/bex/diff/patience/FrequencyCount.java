@@ -1,6 +1,6 @@
 package info.codesaway.bex.diff.patience;
 
-import info.codesaway.bex.diff.DiffSide;
+import info.codesaway.bex.BEXSide;
 
 /**
  * Instances of this class track the number of occurrences and first occurrence of the line in the current slice
@@ -52,12 +52,12 @@ public class FrequencyCount {
 	 * <li>Sets the line number if this is the first occurrence of the text</li>
 	 * </ul>
 	 *
-	 * @param diffSide {@link DiffSide#LEFT} or {@link DiffSide#RIGHT}
+	 * @param side {@link BEXSide#LEFT} or {@link BEXSide#RIGHT}
 	 * @param lineNumber the line number in the line text
 	 * @return <code>this</code>
 	 */
-	public FrequencyCount recordFoundInSlice(final DiffSide diffSide, final int lineNumber) {
-		if (diffSide == DiffSide.LEFT) {
+	public FrequencyCount recordFoundInSlice(final BEXSide side, final int lineNumber) {
+		if (side == BEXSide.LEFT) {
 			this.leftCount++;
 			if (this.leftLineNumber == NOT_FOUND) {
 				this.leftLineNumber = lineNumber;

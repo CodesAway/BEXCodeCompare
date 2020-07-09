@@ -1,11 +1,11 @@
 package info.codesaway.bex.diff.patience;
 
-import info.codesaway.bex.diff.IntPair;
-import info.codesaway.bex.diff.MutableIntLeftRightPair;
+import info.codesaway.bex.IntPair;
+import info.codesaway.bex.MutableIntBEXPair;
 
 public class PatienceSlice {
-	private final MutableIntLeftRightPair start;
-	private final MutableIntLeftRightPair end;
+	private final MutableIntBEXPair start;
+	private final MutableIntBEXPair end;
 
 	/**
 	 * Creates a slice from start to end (exclusive)
@@ -14,8 +14,8 @@ public class PatienceSlice {
 	 * @param end
 	 */
 	public PatienceSlice(final IntPair start, final IntPair end) {
-		this.start = new MutableIntLeftRightPair(start);
-		this.end = new MutableIntLeftRightPair(end);
+		this.start = new MutableIntBEXPair(start);
+		this.end = new MutableIntBEXPair(end);
 	}
 
 	/**
@@ -26,8 +26,8 @@ public class PatienceSlice {
 	 * @param rightEnd
 	 */
 	public PatienceSlice(final int leftStart, final int leftEnd, final int rightStart, final int rightEnd) {
-		this.start = new MutableIntLeftRightPair(leftStart, rightStart);
-		this.end = new MutableIntLeftRightPair(leftEnd, rightEnd);
+		this.start = new MutableIntBEXPair(leftStart, rightStart);
+		this.end = new MutableIntBEXPair(leftEnd, rightEnd);
 	}
 
 	/**

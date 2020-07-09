@@ -28,6 +28,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import info.codesaway.bex.BEXPair;
+import info.codesaway.bex.BEXSide;
+import info.codesaway.bex.IntBEXPair;
 import info.codesaway.bex.diff.patience.FrequencyCount;
 import info.codesaway.bex.diff.patience.PatienceMatch;
 import info.codesaway.bex.diff.substitution.RefactoringDiffType;
@@ -110,9 +113,9 @@ public class DiffHelper {
 		//		return builder.build();
 	}
 
-	public static String normalize(final DiffSide diffSide, final String text,
+	public static String normalize(final BEXSide side, final String text,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
-		return diffSide == DiffSide.LEFT
+		return side == BEXSide.LEFT
 				? normalize(text, "", normalizationFunction).getLeftText()
 				: normalize("", text, normalizationFunction).getRightText();
 	}
@@ -192,8 +195,8 @@ public class DiffHelper {
 	public static List<DiffEdit> handleMovedLines(final List<DiffEdit> diff,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
 
-		Map<Integer, DiffWithIndex> leftMap = createMap(diff, DiffSide.LEFT);
-		Map<Integer, DiffWithIndex> rightMap = createMap(diff, DiffSide.RIGHT);
+		Map<Integer, DiffWithIndex> leftMap = createMap(diff, BEXSide.LEFT);
+		Map<Integer, DiffWithIndex> rightMap = createMap(diff, BEXSide.RIGHT);
 
 		boolean done;
 
@@ -204,12 +207,12 @@ public class DiffHelper {
 			Iterable<DiffWithIndex> iterable = stream::iterator;
 
 			for (DiffWithIndex iDiff : iterable) {
-				DiffSide diffSide = iDiff.getFirstSide();
-				DiffLine line = iDiff.getLine(diffSide).get();
-				String text = normalize(diffSide, line.getText(), normalizationFunction);
+				BEXSide side = iDiff.getFirstSide();
+				DiffLine line = iDiff.getLine(side).get();
+				String text = normalize(side, line.getText(), normalizationFunction);
 
 				counts.compute(text,
-						(k, v) -> FrequencyCount.emptyIfNull(v).recordFoundInSlice(diffSide, line.getNumber()));
+						(k, v) -> FrequencyCount.emptyIfNull(v).recordFoundInSlice(side, line.getNumber()));
 			}
 
 			List<FrequencyCount> movedUniqueLines = counts.values()
@@ -358,9 +361,9 @@ public class DiffHelper {
 		return new ImportSameClassnameDiffType(rightClass, leftImport, rightImport, isMove);
 	}
 
-	private static Map<Integer, DiffWithIndex> createMap(final List<DiffEdit> diff, final DiffSide diffSide) {
+	private static Map<Integer, DiffWithIndex> createMap(final List<DiffEdit> diff, final BEXSide side) {
 		return IntStream.range(0, diff.size())
-				.filter(i -> diff.get(i).getFirstSide() == diffSide)
+				.filter(i -> diff.get(i).getFirstSide() == side)
 				.mapToObj(i -> new DiffWithIndex(diff.get(i), i))
 				.collect(toMap(d -> d.getLine(d.getFirstSide()).get().getNumber(), Function.identity()));
 	}
@@ -567,7 +570,7 @@ public class DiffHelper {
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction,
 			final SubstitutionType[] substitutionTypes, final List<RefactoringType> refactoringTypes) {
 		// TODO: accept as parameter (to allow user defined traversal)
-		Collection<LeftRightPair<DiffEdit>> checkPairs = calculateSimilarDiffEdits(diffEdits, normalizedTexts,
+		Collection<BEXPair<DiffEdit>> checkPairs = calculateSimilarDiffEdits(diffEdits, normalizedTexts,
 				!refactoringTypes.isEmpty());
 
 		// Track which DiffEdit are already part of a substitution found in this method
@@ -581,7 +584,7 @@ public class DiffHelper {
 
 		List<PatienceMatch> patienceMatches = new ArrayList<>();
 
-		for (LeftRightPair<DiffEdit> checkPair : checkPairs) {
+		for (BEXPair<DiffEdit> checkPair : checkPairs) {
 			DiffEdit left = checkPair.getLeft();
 			DiffEdit right = checkPair.getRight();
 
@@ -638,7 +641,7 @@ public class DiffHelper {
 				}
 
 				for (RefactoringType refactoringType : refactoringTypes) {
-					RefactoringDiffType diffType = refactoringType.acceptSingleSide(DiffSide.LEFT, left,
+					RefactoringDiffType diffType = refactoringType.acceptSingleSide(BEXSide.LEFT, left,
 							normalizedTexts, normalizationFunction);
 
 					if (diffType != null) {
@@ -660,7 +663,7 @@ public class DiffHelper {
 				}
 
 				for (RefactoringType refactoringType : refactoringTypes) {
-					RefactoringDiffType diffType = refactoringType.acceptSingleSide(DiffSide.RIGHT, right,
+					RefactoringDiffType diffType = refactoringType.acceptSingleSide(BEXSide.RIGHT, right,
 							normalizedTexts, normalizationFunction);
 
 					if (diffType != null) {
@@ -771,12 +774,12 @@ public class DiffHelper {
 	}
 
 	// Handle in order, which yields correct results for refactoring that contains state based on the text order
-	private static final ToIntFunction<LeftRightPair<DiffEdit>> EARLIER_LEFT_LINE_FUNCTION = p -> p.getLeft()
+	private static final ToIntFunction<BEXPair<DiffEdit>> EARLIER_LEFT_LINE_FUNCTION = p -> p.getLeft()
 			.getLeftLineNumber();
-	private static final ToIntFunction<LeftRightPair<DiffEdit>> EARLIER_RIGHT_LINE_FUNCTION = p -> p.getRight()
+	private static final ToIntFunction<BEXPair<DiffEdit>> EARLIER_RIGHT_LINE_FUNCTION = p -> p.getRight()
 			.getRightLineNumber();
 
-	private static final Comparator<LeftRightPair<DiffEdit>> SIMILAR_DIFFEDIT_COMPARATOR = Comparator
+	private static final Comparator<BEXPair<DiffEdit>> SIMILAR_DIFFEDIT_COMPARATOR = Comparator
 			.comparingInt(EARLIER_LEFT_LINE_FUNCTION)
 			.thenComparingInt(EARLIER_RIGHT_LINE_FUNCTION);
 
@@ -786,7 +789,7 @@ public class DiffHelper {
 	 * @param normalizedTexts
 	 * @return
 	 */
-	private static Collection<LeftRightPair<DiffEdit>> calculateSimilarDiffEdits(final List<DiffEdit> diffEdits,
+	private static Collection<BEXPair<DiffEdit>> calculateSimilarDiffEdits(final List<DiffEdit> diffEdits,
 			final Map<DiffEdit, String> normalizedTexts, final boolean includeSingleSideDiffEdit) {
 
 		// TODO: how to use includeSingleSideDiffEdit?
@@ -825,7 +828,7 @@ public class DiffHelper {
 			}
 		}
 
-		Set<LeftRightPair<DiffEdit>> results = new TreeSet<>(SIMILAR_DIFFEDIT_COMPARATOR);
+		Set<BEXPair<DiffEdit>> results = new TreeSet<>(SIMILAR_DIFFEDIT_COMPARATOR);
 
 		// Add pairs based on the partition
 		for (Entry<String, Collection<DiffEdit>> entry : similarLefts.entrySet()) {
@@ -838,7 +841,7 @@ public class DiffHelper {
 			Collection<DiffEdit> leftEdits = entry.getValue();
 			for (DiffEdit left : leftEdits) {
 				for (DiffEdit right : rightEdits) {
-					LeftRightPair<DiffEdit> pair = new LeftRightPair<>(left, right);
+					BEXPair<DiffEdit> pair = new BEXPair<>(left, right);
 					//					System.out.printf("Pair:%nL: %s%nR: %s%n", pair.getLeft(), pair.getRight());
 					results.add(pair);
 				}
@@ -931,9 +934,8 @@ public class DiffHelper {
 	/**
 	 * Combines consecutive DiffEdit to form DiffBlock when possible
 	 *
-	 * <p>The returned list will consist of DiffUnit objects and may be combined back to a flat map using the following:</p>
+	 * <p>The returned list will consist of DiffUnit objects (either DiffBlock or DiffEdit)</p>
 	 *
-	 *  // TODO: indicate how to using flatMap to make as a stream
 	 * @param diff
 	 * @return
 	 */
@@ -944,9 +946,8 @@ public class DiffHelper {
 	/**
 	 * Combines consecutive DiffEdit to form DiffBlock when possible
 	 *
-	 * <p>The returned list will consist of DiffUnit objects and may be combined back to a flat map using the following:</p>
+	 * <p>The returned list will consist of DiffUnit objects (either DiffBlock or DiffEdit)</p>
 	 *
-	 *  // TODO: indicate how to using flatMap to make as a stream
 	 * @param diff
 	 * @return
 	 */
@@ -1020,15 +1021,15 @@ public class DiffHelper {
 
 	private static boolean hasConsecutiveLines(final DiffEdit diffEdit, final DiffEdit nextDiffEdit,
 			final boolean isReplancement) {
-		IntLeftRightPair lineNumber = diffEdit.getLineNumber();
-		IntLeftRightPair nextLineNumber = nextDiffEdit.getLineNumber();
+		IntBEXPair lineNumber = diffEdit.getLineNumber();
+		IntBEXPair nextLineNumber = nextDiffEdit.getLineNumber();
 
-		return isConsecutive(DiffSide.LEFT, lineNumber, nextLineNumber, isReplancement)
-				&& isConsecutive(DiffSide.RIGHT, lineNumber, nextLineNumber, isReplancement);
+		return isConsecutive(BEXSide.LEFT, lineNumber, nextLineNumber, isReplancement)
+				&& isConsecutive(BEXSide.RIGHT, lineNumber, nextLineNumber, isReplancement);
 	}
 
-	private static boolean isConsecutive(final DiffSide side, final IntLeftRightPair lineNumberPair,
-			final IntLeftRightPair nextLineNumberPair, final boolean isReplacement) {
+	private static boolean isConsecutive(final BEXSide side, final IntBEXPair lineNumberPair,
+			final IntBEXPair nextLineNumberPair, final boolean isReplacement) {
 		int lineNumber = lineNumberPair.get(side);
 		int nextLineNumber = nextLineNumberPair.get(side);
 
