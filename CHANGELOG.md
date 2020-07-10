@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * IntPair (interface with a **default** method)
   * MutableIntBEXPair (renamed from MutableIntLeftRightPair)
   
+* DiffUnit gets some useful default methods added to the interface
+
 * Eclipse plugin has option to ignore comments when doing a compare
 * Eclipse plugin has option to show both sides of substitution in BEX view
 
@@ -29,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * For Java files, shows changes per method / field
   
 ### Changed
-* Made classes final 
+* Made classes final
+* Renamed DiffType.getTag() to DiffType.getSymbol()
 
 ### Fixed
 * Some odd behavior related to 3-way compares with repository
