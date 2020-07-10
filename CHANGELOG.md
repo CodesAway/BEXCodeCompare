@@ -21,8 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
 * Eclipse plugin has option to ignore comments when doing a compare
 * Eclipse plugin has option to show both sides of substitution in BEX view
+
 * First release of BECR, pronounced  Beccer; BECR is Be Enhanced Code Refactoring
-  * This will contain utilities to help refactor code 
+  * This will contain utilities to help refactor code
+  * Included is an example CompareDirectories which compares two directories and creates an Excel report of the differences
+    * For non-Java files, does a normal compare
+    * For Java files, shows changes per method / field
+  
+### Changed
+* Made classes final 
+
+### Fixed
+* Some odd behavior related to 3-way compares with repository
 
 ## [0.2.0] - 2020-07-04
 ### Added
