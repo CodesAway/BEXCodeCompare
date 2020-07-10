@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-**NOTE**: Initially, the version number for BEX Code Compare and the Eclipse plugin will be in sync. At some point, they will diverge, which will be indicated in the below change log. When they diverage, the BEX Code Compare version number will be what takes precidency, since this will also be the version for the Maven artifact. The Eclipse plugin changelog will always indicate which version of BEX Code Compare is used.
+**NOTE**: Initially, the version number for BEX Code Compare and the Eclipse plugin will be in sync. At some point, they will diverge, which will be indicated in the below change log. When they diverage, the BEX Code Compare version number will be what takes precedence, since this will also be the version for the Maven artifact. The Eclipse plugin changelog will always indicate which version of BEX Code Compare is used.
 
 ## [Unreleased]
 ### Added
