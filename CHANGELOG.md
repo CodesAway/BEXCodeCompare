@@ -8,7 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+* BEX Library adds some useful Pair classes to handle left/right pairs which are the same type (some coll Java 8 stuff is made available)
+  * BEXListPair
+  * BEXMapPair
+  * BEXPair (renamed from LeftRightPair)
+  * BEXPairCore (interface with lots of useful **default** methods)
+  * BEXSide (renamed from DiffSide)
+  * IntBEXPair (renamed from IntLeftRightPair)
+  * IntPair (interface with a **default** method)
+  * MutableIntBEXPair (renamed from MutableIntLeftRightPair)
+  
 * Eclipse plugin has option to ignore comments when doing a compare
+* Eclipse plugin has option to show both sides of substitution in BEX view
+* First release of BECR, pronounced  Beccer; BECR is Be Enhanced Code Refactoring
+  * This will contain utilities to help refactor code 
 
 ## [0.2.0] - 2020-07-04
 ### Added
