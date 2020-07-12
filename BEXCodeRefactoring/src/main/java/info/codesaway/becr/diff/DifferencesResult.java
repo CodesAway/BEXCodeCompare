@@ -15,6 +15,7 @@ public final class DifferencesResult {
 	private final Path relativePath;
 	private final BEXListPair<DiffLine> lines;
 	private final BiFunction<String, String, DiffNormalizedText> normalizationFunction;
+	// TODO: see if can remove (think only used once and can use diffBlocks instead)
 	private final List<DiffEdit> diff;
 	private final List<DiffUnit> diffBlocks;
 

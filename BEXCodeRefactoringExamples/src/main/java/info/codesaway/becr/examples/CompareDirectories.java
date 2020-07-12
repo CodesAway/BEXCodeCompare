@@ -113,25 +113,25 @@ public class CompareDirectories {
 	 * <li>Use null to not copy files</li>
 	 * </ul>
 	 */
-	private static Path copyChangedFilesDestinationPath = null;
+	private final Path copyChangedFilesDestinationPath = null;
 
-	private static Path copyChangedFilesSourcePath;
+	private Path copyChangedFilesSourcePath;
 
-	private static int DIRECTORY_COLUMN;
-	private static int FILENAME_COLUMN;
-	private static int DIFFERENCES_COLUMN;
-	private static int DELTAS_COLUMN;
-	private static int PATHNAME_COLUMN;
+	private int DIRECTORY_COLUMN;
+	private int FILENAME_COLUMN;
+	private int DIFFERENCES_COLUMN;
+	private int DELTAS_COLUMN;
+	private int PATHNAME_COLUMN;
 
-	private static XSSFCellStyle WRAP_TEXT_CELL_STYLE;
+	private XSSFCellStyle WRAP_TEXT_CELL_STYLE;
 
 	private static final Splitter lineSplitter = Splitter.onPattern("\r?+\n|\r");
 
 	// Read from JAVA_HOME environment variable
 	// TODO: also support specifying it
-	private static String jrePathname = System.getenv("JAVA_HOME");
+	private final String jrePathname = System.getenv("JAVA_HOME");
 
-	private static boolean isTesting;
+	private boolean isTesting;
 
 	// Settings for the compare
 	private BiFunction<String, String, ASTParser> parserBiFunction = ParsingUtilities::getParser;
@@ -147,6 +147,10 @@ public class CompareDirectories {
 	// However, if directory a/b/c had no files or directories would still report
 	// TODO: name something clearer
 	private boolean flattenReportingOfAddedDirectories = true;
+
+	private boolean shouldShowDisplayMessages = false;
+
+	private Path excelReportPath;
 
 	public CompareDirectories() {
 		this.addSubstitutionTypes(JAVA_SEMICOLON, SUBSTITUTION_CONTAINS, IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
@@ -197,6 +201,24 @@ public class CompareDirectories {
 	 */
 	public CompareDirectories flattenReportingOfAddedDirectories(final boolean flattenReportingOfAddedDirectories) {
 		this.flattenReportingOfAddedDirectories = flattenReportingOfAddedDirectories;
+		return this;
+	}
+
+	/**
+	 * @param shouldShowDisplayMessages
+	 * @return <code>this</code> object
+	 */
+	public CompareDirectories shouldShowDisplayMessages(final boolean shouldShowDisplayMessages) {
+		this.shouldShowDisplayMessages = shouldShowDisplayMessages;
+		return this;
+	}
+
+	/**
+	 * @param excelReportPath
+	 * @return <code>this</code> object
+	 */
+	public CompareDirectories excelReportPath(final Path excelReportPath) {
+		this.excelReportPath = excelReportPath;
 		return this;
 	}
 
@@ -261,11 +283,7 @@ public class CompareDirectories {
 		//		isTesting = optionalTestingFile.isPresent();
 		//		String testingFile = optionalTestingFile.orElse("");
 
-		BEXPair<ASTParser> parser = workspace.map(w -> this.parserBiFunction.apply(w, jrePathname));
-
-		String excelReportFilename = String.format("Compare Test%s.xlsx", isTesting ? " (Testing)" : "");
-
-		Path excelReportPath = Paths.get("G:/", excelReportFilename);
+		BEXPair<ASTParser> parser = workspace.map(w -> this.parserBiFunction.apply(w, this.jrePathname));
 
 		// TODO: add logic to detect type of change
 		//  This will be a common difference, so detect common differences
@@ -276,15 +294,18 @@ public class CompareDirectories {
 		// Store location where should copy files from
 		// (copy from right rootPath, which is thought as the "after" changes location)
 		// (leave null if shouldn't copy files)
-		copyChangedFilesSourcePath = copyChangedFilesDestinationPath != null ? rootPath.getRight() : null;
+		this.copyChangedFilesSourcePath = this.copyChangedFilesDestinationPath != null ? rootPath.getRight() : null;
 
 		// TODO: might sort using Pattern.getNaturalComparator()
 		// (This way the help files are in the correct order numerically, versus lexographically
 
+		// TODO: refactor so split excel report creation from comparison
+		// This way, compare would return the results of the compare, regardless if an excel report was generated or not
+		// This allows, for example, creating a custom report
 		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
 			XSSFCellStyle wrapTextCellStyle = workbook.createCellStyle();
 			wrapTextCellStyle.setWrapText(true);
-			WRAP_TEXT_CELL_STYLE = wrapTextCellStyle;
+			this.WRAP_TEXT_CELL_STYLE = wrapTextCellStyle;
 
 			XSSFCellStyle hyperlinkCellStyle = workbook.createCellStyle();
 			Font hyperlinkFont = workbook.createFont();
@@ -300,11 +321,11 @@ public class CompareDirectories {
 			// Initialize column numbers and names
 			int directoryColumn = headerColumnNames.size();
 			headerColumnNames.add("Directory");
-			DIRECTORY_COLUMN = directoryColumn;
+			this.DIRECTORY_COLUMN = directoryColumn;
 
 			int filenameColumn = headerColumnNames.size();
 			headerColumnNames.add("Filename");
-			FILENAME_COLUMN = filenameColumn;
+			this.FILENAME_COLUMN = filenameColumn;
 
 			//			int extensionColumn = headerColumnNames.size();
 			headerColumnNames.add("Ext");
@@ -317,15 +338,15 @@ public class CompareDirectories {
 
 			int differencesColumn = headerColumnNames.size();
 			headerColumnNames.add("Differences");
-			DIFFERENCES_COLUMN = differencesColumn;
+			this.DIFFERENCES_COLUMN = differencesColumn;
 
 			int deltasColumn = headerColumnNames.size();
 			headerColumnNames.add("Deltas");
-			DELTAS_COLUMN = deltasColumn;
+			this.DELTAS_COLUMN = deltasColumn;
 
 			int pathnameColumn = headerColumnNames.size();
 			headerColumnNames.add("Pathname");
-			PATHNAME_COLUMN = pathnameColumn;
+			this.PATHNAME_COLUMN = pathnameColumn;
 
 			int lastColumn = headerColumnNames.size() - 1;
 
@@ -394,7 +415,7 @@ public class CompareDirectories {
 			CompareDirectoriesResult compareDirectoriesResult = this.findDifferences(rootPath);
 
 			for (PathChangeInfo change : compareDirectoriesResult.getPathChanges()) {
-				addDifference(sheet, change);
+				this.addDifference(sheet, change);
 			}
 
 			BEXListPair<ProjectPath> javaPaths = compareDirectoriesResult.getJavaPaths();
@@ -406,16 +427,16 @@ public class CompareDirectories {
 				//						.map(ProjectPath::getPathname)
 				//						.toArray(String[]::new));
 
-				System.out.println("Parsing Java code");
-				BEXMapPair<String, CompareJavaCodeInfo> results = parse(parser, javaPaths, diffs);
+				this.println("Parsing Java code");
+				BEXMapPair<String, CompareJavaCodeInfo> parseResults = parse(parser, javaPaths, diffs);
 
-				System.out.println("Analyzing Java code");
+				this.println("Analyzing Java code");
 
 				// For each pair of paths
 				for (int i = 0; i < javaPaths.rightSize(); i++) {
 
 					if ((i + 1) % 10000 == 0) {
-						System.out.printf("Analyzing Java code: Path %d of %d%n", i + 1, javaPaths.rightSize());
+						this.printf("Analyzing Java code: Path %d of %d%n", i + 1, javaPaths.rightSize());
 					}
 
 					BEXPair<ProjectPath> javaPath = javaPaths.get(i);
@@ -429,47 +450,31 @@ public class CompareDirectories {
 							TreeRangeMap::create);
 					BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> ranges = new BEXPair<>(TreeRangeMap::create);
 
-					BEXPair<CompareJavaCodeInfo> result = results.get(javaPath.map(ProjectPath::getPathname));
+					BEXPair<CompareJavaCodeInfo> parseResult = parseResults.get(javaPath.map(ProjectPath::getPathname));
 
-					String packageName = result.getRight().getPackageName();
+					String packageName = parseResult.getRight().getPackageName();
 
-					for (CodeInfoWithLineInfo detail : result.getLeft().getDetails()) {
-						Range<Integer> extendedRange = Range.closed(detail.getExtendedStartLine(),
-								detail.getEndLine());
-						Range<Integer> range = Range.closed(detail.getStartLine(), detail.getEndLine());
+					parseResult.acceptWithSide((r, side) -> {
+						for (CodeInfoWithLineInfo detail : r.getDetails()) {
+							Range<Integer> extendedRange = Range.closed(detail.getExtendedStartLine(),
+									detail.getEndLine());
+							Range<Integer> range = Range.closed(detail.getStartLine(), detail.getEndLine());
 
-						// Has class defined within a method
-						if (!extendedRanges.getLeft().subRangeMap(extendedRange).asMapOfRanges().isEmpty()) {
-							continue;
+							// Has class defined within a method
+							if (!extendedRanges.get(side).subRangeMap(extendedRange).asMapOfRanges().isEmpty()) {
+								continue;
+							}
+
+							if (!ranges.get(side).subRangeMap(range).asMapOfRanges().isEmpty()) {
+								//											continue;
+								throw new AssertionError(
+										String.format("Range has overlap in %s: %s", javaPath.get(side), range));
+							}
+
+							extendedRanges.get(side).put(extendedRange, detail);
+							ranges.get(side).put(range, detail);
 						}
-
-						if (!ranges.getLeft().subRangeMap(range).asMapOfRanges().isEmpty()) {
-							//											continue;
-							throw new AssertionError(
-									String.format("Range has overlap in %s: %s", javaPath.getLeft(), range));
-						}
-
-						extendedRanges.getLeft().put(extendedRange, detail);
-						ranges.getLeft().put(range, detail);
-					}
-
-					for (CodeInfoWithLineInfo detail : result.getRight().getDetails()) {
-						Range<Integer> extendedRange = Range.closed(detail.getExtendedStartLine(),
-								detail.getEndLine());
-						Range<Integer> range = Range.closed(detail.getStartLine(), detail.getEndLine());
-
-						if (!extendedRanges.getRight().subRangeMap(extendedRange).asMapOfRanges().isEmpty()) {
-							continue;
-						}
-
-						if (!ranges.getRight().subRangeMap(range).asMapOfRanges().isEmpty()) {
-							throw new AssertionError(
-									String.format("Range has overlap in %s: %s", javaPath.getRight(), range));
-						}
-
-						extendedRanges.getRight().put(extendedRange, detail);
-						ranges.getRight().put(range, detail);
-					}
+					});
 
 					// TODO: how to handle moved lines?
 					// For example if moved within same method
@@ -477,254 +482,10 @@ public class CompareDirectories {
 
 					DifferencesResult differencesResult = diffs.get(javaPath.getRight().getPath());
 
-					List<DiffUnit> diffBlocks = differencesResult.getDiffBlocks();
+					CorrespondingCodeResult correspondingCodeResult = this.determineCorrespondingCode(differencesResult,
+							parseResult, ranges);
 
-					// Map from source to destination the various code
-					// Use to detect added / removed / modified methods / fields / etc.
-
-					// First look at equal and normalized equal blocks
-					// (these will tell me what stuff was modified)
-					// For example, method signature changes, but parts of method code is the same
-					// Versus, an added / removed method wouldn't be part of an equals block
-					BiMap<CodeInfoWithLineInfo, CodeInfoWithLineInfo> mapCodeBlocks = HashBiMap.create();
-
-					Multiset<CorrespondingCode> correspondingCodeCounts = LinkedHashMultiset.create();
-					Multiset<CorrespondingCode> matchingCodeCounts = LinkedHashMultiset.create();
-
-					for (DiffUnit unit : diffBlocks) {
-						DiffType type = unit.getType();
-
-						// Also allow substitution
-						boolean checkForCorrespondingCode = false;
-
-						checkForCorrespondingCode |= BEXUtilities.in(type, BasicDiffType.EQUAL,
-								BasicDiffType.NORMALIZE);
-
-						// 11/20/2019 - if substitution, also include these lines
-						// (handle cases where comment out large blocks of code)
-						checkForCorrespondingCode |= type.isSubstitution() && !type.isMove();
-
-						if (!checkForCorrespondingCode) {
-							continue;
-						}
-
-						for (DiffEdit edit : unit.getEdits()) {
-							// Ignore blank lines
-							if (edit.getText().trim().isEmpty()) {
-								continue;
-							}
-
-							CodeInfoWithLineInfo leftDetail = ranges.getLeft().get(edit.getLeftLineNumber());
-
-							if (leftDetail == null) {
-								continue;
-							}
-
-							CodeInfoWithLineInfo rightDetail = ranges.getRight().get(edit.getRightLineNumber());
-
-							if (rightDetail == null) {
-								continue;
-							}
-
-							CorrespondingCode correspondingCode = new CorrespondingCode(leftDetail, rightDetail);
-
-							// Mark line as corresponding
-							// Will then see which to join based on how many lines have the same corresponding code
-							correspondingCodeCounts.add(correspondingCode);
-
-							if (BEXUtilities.in(type, BasicDiffType.EQUAL,
-									BasicDiffType.NORMALIZE)) {
-								matchingCodeCounts.add(correspondingCode);
-							}
-						}
-					}
-
-					Map<CodeInfoWithLineInfo, Integer> leftBlankLineCounts = new HashMap<>();
-					Map<CodeInfoWithLineInfo, Integer> rightBlankLineCounts = new HashMap<>();
-
-					Map<CodeInfoWithLineInfo, Integer> leftCorrespondingCode = new HashMap<>();
-					Map<CodeInfoWithLineInfo, Integer> rightCorrespondingCode = new HashMap<>();
-
-					// Find corresponding code
-					// (must have more than 50% match to be considered for this first pass)
-					// TODO: change this to be greedy algorithm so will match highest corresponding counts first
-					for (Multiset.Entry<CorrespondingCode> entry : correspondingCodeCounts.entrySet()) {
-						CorrespondingCode correspondingCode = entry.getElement();
-
-						// 12/4/2019 - ensure has at least one matching line to consider corresponding
-						// (this way if all lines are substitution, don't consider corresponding)
-						if (!matchingCodeCounts.contains(correspondingCode)) {
-							continue;
-						}
-
-						CodeInfoWithLineInfo leftCode = correspondingCode.getLeft();
-						CodeInfoWithLineInfo rightCode = correspondingCode.getRight();
-
-						// Used to ignore blank lines from line counts
-						int leftBlankLines = leftBlankLineCounts.computeIfAbsent(leftCode,
-								c -> countBlankLines(differencesResult.getLeftLines(), c));
-
-						int rightBlankLines = rightBlankLineCounts.computeIfAbsent(rightCode,
-								c -> countBlankLines(differencesResult.getRightLines(), c));
-
-						int leftLines = leftCode.getLineCount() - leftBlankLines;
-						int rightLines = rightCode.getLineCount() - rightBlankLines;
-
-						// TODO: there's a potential that 2 methods match
-						// (such as if split one method into two)
-						// In this case, choose the one with the most matching lines
-						// Then, match method with closer signature
-						// 5/31/2020 - change to use max, since getting false positives with short methods
-						int lines = Math.max(leftLines, rightLines);
-
-						if (entry.getCount() > 0.50 * lines) {
-							boolean haveUsedLeftCode = mapCodeBlocks.containsKey(leftCode);
-							boolean haveUsedRightCode = mapCodeBlocks.containsValue(rightCode);
-
-							if (haveUsedLeftCode && haveUsedRightCode) {
-								// TODO: how to handle, for now, just skip
-								throw new IllegalStateException();
-								//								continue;
-							}
-
-							if (haveUsedLeftCode) {
-								// Determine whether this entry has more matching lines
-								Integer existingCount = leftCorrespondingCode.get(leftCode);
-
-								if (entry.getCount() > existingCount) {
-									// This new entry has more matching rows, so use it instead of the current value
-									mapCodeBlocks.remove(leftCode);
-								} else {
-									// Existing match is better, so keep it
-									continue;
-								}
-							} else if (haveUsedRightCode) {
-								// Determine whether this entry has more matching lines
-								Integer existingCount = rightCorrespondingCode.get(rightCode);
-
-								if (entry.getCount() > existingCount) {
-									// This new entry has more matching rows, so use it instead of the current value
-									mapCodeBlocks.inverse().remove(rightCode);
-								} else {
-									// Existing match is better, so keep it
-									continue;
-								}
-							}
-
-							// If matches on more than 50%, consider a match
-							mapCodeBlocks.put(leftCode, rightCode);
-
-							leftCorrespondingCode.put(leftCode, entry.getCount());
-							rightCorrespondingCode.put(rightCode, entry.getCount());
-						}
-					}
-
-					// For remaining ones, if signature matches, consider a match
-					// 1) This way, handles if refactor method to add parameter, but also add method with original signature
-					// a) The refactored method (with the added parameter) would be matched up to the original method (due to equal lines of code)
-					// b) Then, the added method with the original signature would show as being added
-					// 2) Or, if the method doesn't share at least 50% of the code, but the signature remained the same
-					for (Multiset.Entry<CorrespondingCode> entry : correspondingCodeCounts.entrySet()) {
-						CorrespondingCode correspondingCode = entry.getElement();
-						CodeInfoWithLineInfo leftCode = correspondingCode.getLeft();
-						CodeInfoWithLineInfo rightCode = correspondingCode.getRight();
-
-						if (mapCodeBlocks.containsKey(leftCode)) {
-							continue;
-						}
-
-						if (mapCodeBlocks.containsValue(rightCode)) {
-							continue;
-						}
-
-						if (leftCode.getCodeInfo().equals(rightCode.getCodeInfo())) {
-							mapCodeBlocks.put(leftCode, rightCode);
-
-							if (isTesting) {
-								System.out.println("Same signature! " + leftCode
-										+ " -> "
-										+ rightCode);
-							}
-						}
-					}
-
-					if (isTesting) {
-						System.out.println();
-						System.out.println("Corresponding code counts:");
-						correspondingCodeCounts.entrySet().forEach(System.out::println);
-
-						System.out.println();
-						System.out.println("Corresponding blocks:");
-						mapCodeBlocks.entrySet()
-								.stream()
-								.sorted((a, b) -> Integer.compare(a.getKey().getStartLine(), b.getKey().getStartLine()))
-								.forEach(e -> System.out.println(
-										(!e.getKey().getCodeInfo().equals(e.getValue().getCodeInfo()) ? "(Different) "
-												: "") + e.getKey()
-												+ " -> "
-												+ e.getValue()));
-					}
-					//							.collect(toList());
-
-					//					System.out.println();
-
-					List<CodeInfoWithLineInfo> deletedBlocks = result.getLeft()
-							.getDetails()
-							.stream()
-							// Ignore if already found the corresponding match
-							.filter(d -> !mapCodeBlocks.containsKey(d))
-							.collect(toList());
-
-					List<CodeInfoWithLineInfo> addedBlocks = result.getRight()
-							.getDetails()
-							.stream()
-							// Ignore if already found the corresponding match
-							.filter(d -> !mapCodeBlocks.containsValue(d))
-							.collect(toList());
-
-					if (isTesting && !deletedBlocks.isEmpty()) {
-						System.out.println();
-						System.out.println("Deleted blocks");
-						deletedBlocks.forEach(System.out::println);
-					}
-
-					if (isTesting && !addedBlocks.isEmpty()) {
-						System.out.println();
-						System.out.println("Added blocks");
-						addedBlocks.forEach(System.out::println);
-					}
-
-					// Check for blocks which are marked as both added and deleted
-					// Mark these as corresponding
-					Map<CodeInfo, CodeInfoWithLineInfo> deletedBlocksMap = new HashMap<>();
-
-					for (CodeInfoWithLineInfo deletedBlock : deletedBlocks) {
-						deletedBlocksMap.put(deletedBlock.getCodeInfo(), deletedBlock);
-					}
-
-					for (Iterator<CodeInfoWithLineInfo> iterator = addedBlocks.iterator(); iterator.hasNext();) {
-						CodeInfoWithLineInfo addedBlock = iterator.next();
-						CodeInfoWithLineInfo deletedBlock = deletedBlocksMap.get(addedBlock.getCodeInfo());
-
-						if (deletedBlock != null) {
-							// There is a corresponding deleted block (same signature) as the added block
-							mapCodeBlocks.put(deletedBlock, addedBlock);
-
-							// Remove added block
-							iterator.remove();
-
-							// Removed deleted block
-							deletedBlocks.remove(deletedBlock);
-
-							// Note: not updating deleted / added blocks since not using for anything
-
-							if (isTesting) {
-								System.out.println("Found another match: " + deletedBlock
-										+ " -> "
-										+ addedBlock);
-							}
-						}
-					}
+					List<CodeInfoWithLineInfo> deletedBlocks = correspondingCodeResult.getDeletedBlocks();
 
 					List<CompareDirectoriesJoinedDetail> changes = new ArrayList<>();
 
@@ -733,7 +494,9 @@ public class CompareDirectories {
 					CompareDirectoriesJoinedDetail unknownChange = new CompareDirectoriesJoinedDetail(null, null);
 					changes.add(unknownChange);
 
-					BiMap<CodeInfoWithLineInfo, CodeInfoWithLineInfo> inverseMapCodeBlocks = mapCodeBlocks.inverse();
+					BiMap<CodeInfoWithLineInfo, CodeInfoWithLineInfo> inverseMapCodeBlocks = correspondingCodeResult
+							.getCodeBlocksMap()
+							.inverse();
 
 					// From from changed code to joint change
 					BEXMapPair<CodeInfoWithLineInfo, CompareDirectoriesJoinedDetail> changesMapPair = new BEXMapPair<>(
@@ -747,7 +510,7 @@ public class CompareDirectories {
 
 					// Iterate over "destination" code, since will have modified / added code
 					// TODO: (then add in deleted code where it fits)
-					for (CodeInfoWithLineInfo rightCode : result.getRight().getDetails()) {
+					for (CodeInfoWithLineInfo rightCode : parseResult.getRight().getDetails()) {
 						// leftCode may be null, which means that the code was added
 						CodeInfoWithLineInfo leftCode = inverseMapCodeBlocks.get(rightCode);
 
@@ -757,8 +520,8 @@ public class CompareDirectories {
 							// The deleted block comes before the next modified block
 							// Add the deleted block
 
-							if (isTesting) {
-								System.out.printf("Added deleted block %s before %s%n", deletedBlock, rightCode);
+							if (this.isTesting) {
+								this.printf("Added deleted block %s before %s%n", deletedBlock, rightCode);
 							}
 
 							addChange(changes, changesMapPair, deletedBlock, null);
@@ -785,7 +548,7 @@ public class CompareDirectories {
 					// How to handle if moved lines are in different methods?
 
 					// Track how many differences and deltas are in each CodeInfo (extended range vs regular range)
-					for (DiffUnit unit : diffBlocks) {
+					for (DiffUnit unit : differencesResult.getDiffBlocks()) {
 						if (BEXUtilities.in(unit.getType(), BasicDiffType.EQUAL, BasicDiffType.NORMALIZE,
 								BasicDiffType.IGNORE)) {
 							continue;
@@ -846,7 +609,7 @@ public class CompareDirectories {
 							//									&& change2 != null) {
 							//								// For modified methods, output testing info
 							//
-							//								System.out.println("getJavaLineChangeType: "
+							//								println("getJavaLineChangeType: "
 							//										+ (edit.getType().isSubstitution() ? System.lineSeparator() : "")
 							//										+ edit.toString(true));
 							//							}
@@ -859,8 +622,8 @@ public class CompareDirectories {
 									continue;
 								}
 
-								if (isTesting) {
-									System.out.println("Unknown difference (here): "
+								if (this.isTesting) {
+									this.println("Unknown difference (here): "
 											+ (edit.isSubstitution() ? System.lineSeparator() : "")
 											+ edit.toString(true));
 								}
@@ -895,19 +658,19 @@ public class CompareDirectories {
 									// Changed method signature and was able to find substitution with commented out code
 									// In this case, just presume that the substitutino is not in the extended lines, since one of them is not in the extended area
 									isInExtendedLines = false;
-									//														System.out.println(codeInfo + "\t" + bothCodeInfo);
+									//														println(codeInfo + "\t" + bothCodeInfo);
 									//														throw new AssertionError(
 									//																"Difference is in both extended lines and regular lines: "
 									//																		+ edit);
 								}
 
-								checkChange(edit, change.getLeft(), isInExtendedLines);
+								this.checkChange(edit, change.getLeft(), isInExtendedLines);
 							} else if (change.getRight() == null) {
 								// Deleted code
-								checkChange(edit, change.getLeft(), isInExtendedLeftLines);
+								this.checkChange(edit, change.getLeft(), isInExtendedLeftLines);
 							} else if (change.getLeft() == null) {
 								// Added code
-								checkChange(edit, change.getRight(), isInExtendedRightLines);
+								this.checkChange(edit, change.getRight(), isInExtendedRightLines);
 							} else {
 								boolean handleLeftChange = true;
 								boolean handleRightChange = true;
@@ -920,7 +683,7 @@ public class CompareDirectories {
 								//									handleChange2 = false;
 								//
 								//									if (isTesting) {
-								//										System.out.println("Commented out line: " + edit);
+								//										println("Commented out line: " + edit);
 								//									}
 								//								} else if (lineChangeType == LineChangeType.UNCOMMENTED) {
 								//									// "Source" has code commented out
@@ -928,7 +691,7 @@ public class CompareDirectories {
 								//									handleChange1 = false;
 								//
 								//									if (isTesting) {
-								//										System.out.println("Uncommented line: " + edit);
+								//										println("Uncommented line: " + edit);
 								//									}
 								//								}
 
@@ -937,23 +700,22 @@ public class CompareDirectories {
 
 								// For now, just track the diff in each independent change block
 								if (handleLeftChange) {
-									checkChange(edit, change.getLeft(), isInExtendedLeftLines);
+									this.checkChange(edit, change.getLeft(), isInExtendedLeftLines);
 								}
 
 								if (handleRightChange) {
-									checkChange(edit, change.getRight(), isInExtendedRightLines);
+									this.checkChange(edit, change.getRight(), isInExtendedRightLines);
 								}
 
-								if (isTesting && handleLeftChange && handleRightChange) {
+								if (this.isTesting && handleLeftChange && handleRightChange) {
 									try {
 										Thread.sleep(50);
 									} catch (InterruptedException e) {
 									}
-									System.err.println("DiffEdit spans multiple change blocks:");
-									System.err.println(edit.toString(true));
-									System.err.printf("Handle left  change? %s: %s%n", handleLeftChange,
-											change.getLeft());
-									System.err.printf("Handle right change? %s: %s%n", handleRightChange,
+									this.errPrintln("DiffEdit spans multiple change blocks:");
+									this.errPrintln(edit.toString(true));
+									this.errPrintf("Handle left  change? %s: %s%n", handleLeftChange, change.getLeft());
+									this.errPrintf("Handle right change? %s: %s%n", handleRightChange,
 											change.getRight());
 									try {
 										Thread.sleep(50);
@@ -1019,8 +781,8 @@ public class CompareDirectories {
 						long differences = getDifferenceCount(rangeDifferencesResult);
 						long deltas = getDeltaCount(rangeDifferencesResult);
 
-						if (isTesting) {
-							System.out.printf("Diff: %s\t%s\t%s%n", change, differences, deltas);
+						if (this.isTesting) {
+							this.printf("Diff: %s\t%s\t%s%n", change, differences, deltas);
 						}
 
 						if (deltas == 0) {
@@ -1035,7 +797,7 @@ public class CompareDirectories {
 					// For each change, output to spreadsheet
 
 					for (CompareDirectoriesJoinedDetail change : changes) {
-						//										System.out.println(
+						//										println(
 						//												change.getCodeInfo() + "\t" + change.getExtendedDifferenceCount() + "\t"
 						//														+ change.getDifferenceCount());
 
@@ -1075,11 +837,9 @@ public class CompareDirectories {
 								changeType = PathChangeType.DELETED;
 								codeInfo = change.getLeftCode();
 
-								if (isTesting) {
-									System.out.println(
-											"Deleted change: " + change
-													+ "\t"
-													+ change.getLineChanges().entrySet());
+								if (this.isTesting) {
+									this.println("Deleted change: " + change + "\t"
+											+ change.getLineChanges().entrySet());
 								}
 
 								//								int commentedOutLinesCount = change.getLineChanges()
@@ -1101,11 +861,9 @@ public class CompareDirectories {
 								// Get "destination" code block, in case changed (such as method signature change)
 								codeInfo = change.getRightCode();
 
-								if (isTesting) {
-									System.out.println(
-											"Modified change: " + change
-													+ "\t"
-													+ change.getLineChanges().entrySet());
+								if (this.isTesting) {
+									this.println("Modified change: " + change + "\t"
+											+ change.getLineChanges().entrySet());
 								}
 							}
 						}
@@ -1230,8 +988,8 @@ public class CompareDirectories {
 						}
 
 						if (change.isImpactBlank() && !change.getLineChanges().isEmpty()) {
-							if (isTesting) {
-								System.out.println(change.getLineChanges());
+							if (this.isTesting) {
+								this.println(change.getLineChanges());
 							}
 							boolean isLowImpactChange = change.getLineChanges()
 									.keySet()
@@ -1343,7 +1101,7 @@ public class CompareDirectories {
 				}
 			}
 
-			System.out.println("Formatting reports");
+			this.println("Formatting reports");
 
 			// ParsingUtilities.makeReportsPretty(sheet, lastColumn);
 
@@ -1410,23 +1168,314 @@ public class CompareDirectories {
 				//				sheet0.setColumnWidth(linesColumn, 7 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 			}
 
-			System.out.println("Writing report at: " + excelReportPath);
-			try (OutputStream outputStream = Files.newOutputStream(excelReportPath)) {
-				workbook.write(outputStream);
-				System.out.println("Report saved at: " + excelReportPath);
+			if (this.excelReportPath != null) {
+				this.println("Writing report at: " + this.excelReportPath);
+				try (OutputStream outputStream = Files.newOutputStream(this.excelReportPath)) {
+					workbook.write(outputStream);
+					this.println("Report saved at: " + this.excelReportPath);
 
-				if (copyChangedFilesDestinationPath != null) {
-					Path source = excelReportPath;
-					Path destination = copyChangedFilesDestinationPath.resolve(excelReportFilename);
+					if (this.copyChangedFilesDestinationPath != null) {
+						Path destination = this.copyChangedFilesDestinationPath
+								.resolve(this.excelReportPath.getFileName());
 
-					Files.copy(source, destination);
-					System.out.println("Saved a copy of the report to: " + destination);
+						Files.copy(this.excelReportPath, destination);
+						this.println("Saved a copy of the report to: " + destination);
+					}
 				}
 			}
 		}
 
 		long endTime = System.currentTimeMillis();
-		System.out.printf("It took %d seconds.", (endTime - startTime) / 1000);
+		this.printf("It took %d seconds.", (endTime - startTime) / 1000);
+	}
+
+	private void println() {
+		if (this.shouldShowDisplayMessages) {
+			System.out.println();
+		}
+	}
+
+	private void println(final String text) {
+		if (this.shouldShowDisplayMessages) {
+			System.out.println(text);
+		}
+	}
+
+	private void println(final Object object) {
+		if (this.shouldShowDisplayMessages) {
+			System.out.println(object);
+		}
+	}
+
+	private void printf(final String format, final Object... args) {
+		if (this.shouldShowDisplayMessages) {
+			System.out.printf(format, args);
+		}
+	}
+
+	private void errPrintln(final String text) {
+		if (this.shouldShowDisplayMessages) {
+			System.err.println(text);
+		}
+	}
+
+	private void errPrintf(final String format, final Object... args) {
+		if (this.shouldShowDisplayMessages) {
+			System.err.printf(format, args);
+		}
+	}
+
+	private CorrespondingCodeResult determineCorrespondingCode(final DifferencesResult differencesResult,
+			final BEXPair<CompareJavaCodeInfo> parseResult,
+			final BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> ranges) {
+		// Map from source to destination the various code
+		// Use to detect added / removed / modified methods / fields / etc.
+
+		// First look at equal and normalized equal blocks
+		// (these will tell me what stuff was modified)
+		// For example, method signature changes, but parts of method code is the same
+		// Versus, an added / removed method wouldn't be part of an equals block
+		BiMap<CodeInfoWithLineInfo, CodeInfoWithLineInfo> codeBlocksMap = HashBiMap.create();
+
+		Multiset<CorrespondingCode> correspondingCodeCounts = LinkedHashMultiset.create();
+		Multiset<CorrespondingCode> matchingCodeCounts = LinkedHashMultiset.create();
+
+		for (DiffUnit unit : differencesResult.getDiffBlocks()) {
+			DiffType type = unit.getType();
+
+			// Also allow substitutiou
+			boolean checkForCorrespondingCode = false;
+
+			checkForCorrespondingCode |= BEXUtilities.in(type, BasicDiffType.EQUAL,
+					BasicDiffType.NORMALIZE);
+
+			// 11/20/2019 - if substitution, also include these lines
+			// (handle cases where comment out large blocks of code)
+			checkForCorrespondingCode |= type.isSubstitution() && !type.isMove();
+
+			if (!checkForCorrespondingCode) {
+				continue;
+			}
+
+			for (DiffEdit edit : unit.getEdits()) {
+				// Ignore blank lines
+				if (edit.getText().trim().isEmpty()) {
+					continue;
+				}
+
+				CodeInfoWithLineInfo leftDetail = ranges.getLeft().get(edit.getLeftLineNumber());
+
+				if (leftDetail == null) {
+					continue;
+				}
+
+				CodeInfoWithLineInfo rightDetail = ranges.getRight().get(edit.getRightLineNumber());
+
+				if (rightDetail == null) {
+					continue;
+				}
+
+				CorrespondingCode correspondingCode = new CorrespondingCode(leftDetail, rightDetail);
+
+				// Mark line as corresponding
+				// Will then see which to join based on how many lines have the same corresponding code
+				correspondingCodeCounts.add(correspondingCode);
+
+				if (BEXUtilities.in(type, BasicDiffType.EQUAL,
+						BasicDiffType.NORMALIZE)) {
+					matchingCodeCounts.add(correspondingCode);
+				}
+			}
+		}
+
+		Map<CodeInfoWithLineInfo, Integer> leftBlankLineCounts = new HashMap<>();
+		Map<CodeInfoWithLineInfo, Integer> rightBlankLineCounts = new HashMap<>();
+
+		Map<CodeInfoWithLineInfo, Integer> leftCorrespondingCode = new HashMap<>();
+		Map<CodeInfoWithLineInfo, Integer> rightCorrespondingCode = new HashMap<>();
+
+		// Find corresponding code
+		// (must have more than 50% match to be considered for this first pass)
+		// TODO: change this to be greedy algorithm so will match highest corresponding counts first
+		for (Multiset.Entry<CorrespondingCode> entry : correspondingCodeCounts.entrySet()) {
+			CorrespondingCode correspondingCode = entry.getElement();
+
+			// 12/4/2019 - ensure has at least one matching line to consider corresponding
+			// (this way if all lines are substitution, don't consider corresponding)
+			if (!matchingCodeCounts.contains(correspondingCode)) {
+				continue;
+			}
+
+			CodeInfoWithLineInfo leftCode = correspondingCode.getLeft();
+			CodeInfoWithLineInfo rightCode = correspondingCode.getRight();
+
+			// Used to ignore blank lines from line counts
+			int leftBlankLines = leftBlankLineCounts.computeIfAbsent(leftCode,
+					c -> countBlankLines(differencesResult.getLeftLines(), c));
+
+			int rightBlankLines = rightBlankLineCounts.computeIfAbsent(rightCode,
+					c -> countBlankLines(differencesResult.getRightLines(), c));
+
+			int leftLines = leftCode.getLineCount() - leftBlankLines;
+			int rightLines = rightCode.getLineCount() - rightBlankLines;
+
+			// TODO: there's a potential that 2 methods match
+			// (such as if split one method into two)
+			// In this case, choose the one with the most matching lines
+			// Then, match method with closer signature
+			// 5/31/2020 - change to use max, since getting false positives with short methods
+			int lines = Math.max(leftLines, rightLines);
+
+			if (entry.getCount() > 0.50 * lines) {
+				boolean haveUsedLeftCode = codeBlocksMap.containsKey(leftCode);
+				boolean haveUsedRightCode = codeBlocksMap.containsValue(rightCode);
+
+				if (haveUsedLeftCode && haveUsedRightCode) {
+					// TODO: how to handle, for now, just skip
+					throw new IllegalStateException();
+					//								continue;
+				}
+
+				if (haveUsedLeftCode) {
+					// Determine whether this entry has more matching lines
+					Integer existingCount = leftCorrespondingCode.get(leftCode);
+
+					if (entry.getCount() > existingCount) {
+						// This new entry has more matching rows, so use it instead of the current value
+						codeBlocksMap.remove(leftCode);
+					} else {
+						// Existing match is better, so keep it
+						continue;
+					}
+				} else if (haveUsedRightCode) {
+					// Determine whether this entry has more matching lines
+					Integer existingCount = rightCorrespondingCode.get(rightCode);
+
+					if (entry.getCount() > existingCount) {
+						// This new entry has more matching rows, so use it instead of the current value
+						codeBlocksMap.inverse().remove(rightCode);
+					} else {
+						// Existing match is better, so keep it
+						continue;
+					}
+				}
+
+				// If matches on more than 50%, consider a match
+				codeBlocksMap.put(leftCode, rightCode);
+
+				leftCorrespondingCode.put(leftCode, entry.getCount());
+				rightCorrespondingCode.put(rightCode, entry.getCount());
+			}
+		}
+
+		// For remaining ones, if signature matches, consider a match
+		// 1) This way, handles if refactor method to add parameter, but also add method with original signature
+		// a) The refactored method (with the added parameter) would be matched up to the original method (due to equal lines of code)
+		// b) Then, the added method with the original signature would show as being added
+		// 2) Or, if the method doesn't share at least 50% of the code, but the signature remained the same
+		for (Multiset.Entry<CorrespondingCode> entry : correspondingCodeCounts.entrySet()) {
+			CorrespondingCode correspondingCode = entry.getElement();
+			CodeInfoWithLineInfo leftCode = correspondingCode.getLeft();
+			CodeInfoWithLineInfo rightCode = correspondingCode.getRight();
+
+			if (codeBlocksMap.containsKey(leftCode)) {
+				continue;
+			}
+
+			if (codeBlocksMap.containsValue(rightCode)) {
+				continue;
+			}
+
+			if (leftCode.getCodeInfo().equals(rightCode.getCodeInfo())) {
+				codeBlocksMap.put(leftCode, rightCode);
+
+				if (this.isTesting) {
+					this.println("Same signature! " + leftCode
+							+ " -> "
+							+ rightCode);
+				}
+			}
+		}
+
+		if (this.isTesting) {
+			this.println();
+			this.println("Corresponding code counts:");
+			correspondingCodeCounts.entrySet().forEach(this::println);
+
+			this.println();
+			this.println("Corresponding blocks:");
+			codeBlocksMap.entrySet()
+					.stream()
+					.sorted((a, b) -> Integer.compare(a.getKey().getStartLine(), b.getKey().getStartLine()))
+					.forEach(e -> this.println(
+							(!e.getKey().getCodeInfo().equals(e.getValue().getCodeInfo()) ? "(Different) "
+									: "") + e.getKey()
+									+ " -> "
+									+ e.getValue()));
+		}
+		//							.collect(toList());
+
+		//					System.out.println();
+
+		List<CodeInfoWithLineInfo> deletedBlocks = parseResult.getLeft()
+				.getDetails()
+				.stream()
+				// Ignore if already found the corresponding match
+				.filter(d -> !codeBlocksMap.containsKey(d))
+				.collect(toList());
+
+		List<CodeInfoWithLineInfo> addedBlocks = parseResult.getRight()
+				.getDetails()
+				.stream()
+				// Ignore if already found the corresponding match
+				.filter(d -> !codeBlocksMap.containsValue(d))
+				.collect(toList());
+
+		if (this.isTesting && !deletedBlocks.isEmpty()) {
+			this.println();
+			this.println("Deleted blocks");
+			deletedBlocks.forEach(this::println);
+		}
+
+		if (this.isTesting && !addedBlocks.isEmpty()) {
+			this.println();
+			this.println("Added blocks");
+			addedBlocks.forEach(this::println);
+		}
+
+		// Check for blocks which are marked as both added and deleted
+		// Mark these as corresponding
+		Map<CodeInfo, CodeInfoWithLineInfo> deletedBlocksMap = new HashMap<>();
+
+		for (CodeInfoWithLineInfo deletedBlock : deletedBlocks) {
+			deletedBlocksMap.put(deletedBlock.getCodeInfo(), deletedBlock);
+		}
+
+		for (Iterator<CodeInfoWithLineInfo> iterator = addedBlocks.iterator(); iterator.hasNext();) {
+			CodeInfoWithLineInfo addedBlock = iterator.next();
+			CodeInfoWithLineInfo deletedBlock = deletedBlocksMap.get(addedBlock.getCodeInfo());
+
+			if (deletedBlock != null) {
+				// There is a corresponding deleted block (same signature) as the added block
+				codeBlocksMap.put(deletedBlock, addedBlock);
+
+				// Remove added block
+				iterator.remove();
+
+				// Removed deleted block
+				deletedBlocks.remove(deletedBlock);
+
+				// Note: not updating deleted / added blocks since not using for anything
+
+				if (this.isTesting) {
+					this.println("Found another match: " + deletedBlock
+							+ " -> "
+							+ addedBlock);
+				}
+			}
+		}
+
+		return new CorrespondingCodeResult(codeBlocksMap, deletedBlocks, addedBlocks);
 	}
 
 	private static String getReturnValue(final CodeInfoWithSourceInfo codeInfoWithSourceInfo) {
@@ -1538,7 +1587,7 @@ public class CompareDirectories {
 		}
 	}
 
-	private static void checkChange(final DiffEdit edit, final CompareDirectoriesJoinedDetail change,
+	private void checkChange(final DiffEdit edit, final CompareDirectoriesJoinedDetail change,
 			final boolean isInExtendedLines) {
 		//			final boolean isInExtendedLines, final LineChangeType lineChangeType) {
 
@@ -1559,8 +1608,8 @@ public class CompareDirectories {
 		//			change.addLineChange(lineChangeType);
 		//		}
 
-		if (isTesting) {
-			System.out.println(edit.toString(true));
+		if (this.isTesting) {
+			this.println(edit.toString(true));
 		}
 
 		if (edit.isInsertOrDelete() || edit.isMove()) {
@@ -1632,7 +1681,7 @@ public class CompareDirectories {
 		return true;
 	}
 
-	public static String readFileContents(final Path path) throws IOException {
+	private static String readFileContents(final Path path) throws IOException {
 		return new String(Files.readAllBytes(path));
 	}
 
@@ -1718,7 +1767,7 @@ public class CompareDirectories {
 					public void acceptAST(final String sourcePathname,
 							final CompilationUnit cu) {
 
-						//						System.out.println("Parsing " + sourcePathname);
+						//						println("Parsing " + sourcePathname);
 
 						executorService.execute(() -> {
 							Path path = Paths.get(sourcePathname);
@@ -1763,7 +1812,7 @@ public class CompareDirectories {
 				.count();
 	}
 
-	public CompareDirectoriesResult findDifferences(final BEXPair<Path> rootPath)
+	private CompareDirectoriesResult findDifferences(final BEXPair<Path> rootPath)
 			throws IOException {
 		BEXListPair<Path> paths = new BEXListPair<>(rootPath.mapThrows(r -> Files.walk(r)
 				// Run in parallel for performance boost
@@ -1799,7 +1848,7 @@ public class CompareDirectories {
 			// Since both left index and right index could increase together, check 0 and 1 remaining, so don't miss a progress output
 			// (if only checked remainder 0, could have remainder 1 for a long time and not get progress indicator)
 			if ((index.getLeft() + index.getRight()) % 1000 <= 1) {
-				System.out.printf("Checking %s%n", relativePath.get(side));
+				this.printf("Checking %s%n", relativePath.get(side));
 			}
 
 			if (compare < 0) {
@@ -1808,7 +1857,8 @@ public class CompareDirectories {
 				// (that is, the path was deleted)
 				index.incrementAndGet(side);
 				executorService.execute(
-						() -> pathChanges.add(createDifference(side, relativePath, fileType, PathChangeType.DELETED)));
+						() -> pathChanges
+								.add(this.createDifference(side, relativePath, fileType, PathChangeType.DELETED)));
 			} else if (compare > 0) {
 				// Left path is after right path
 				// This means right path does not exist in the left directory
@@ -1817,7 +1867,7 @@ public class CompareDirectories {
 
 				if (this.shouldReportAdd(path.get(side), fileType.get(side))) {
 					executorService.execute(() -> pathChanges
-							.add(createDifference(side, relativePath, fileType, PathChangeType.ADDED)));
+							.add(this.createDifference(side, relativePath, fileType, PathChangeType.ADDED)));
 				}
 			} else {
 				// Same name
@@ -1841,7 +1891,7 @@ public class CompareDirectories {
 				} else {
 					// Type differs
 					// TODO: write to report as difference
-					System.err.printf("'%s'\t'%s' (%s)\t'%s' (%s)%n", relativePath.get(side),
+					this.errPrintf("'%s'\t'%s' (%s)\t'%s' (%s)%n", relativePath.get(side),
 							path.getLeft(), fileType.getLeft(),
 							path.getRight(), fileType.getRight());
 
@@ -1850,13 +1900,15 @@ public class CompareDirectories {
 					// Show directory last, so groups directory and any subfolder's files together
 					if (fileType.getLeft() == FileType.DIRECTORY) {
 						executorService.execute(() -> {
-							pathChanges.add(createDifference(RIGHT, relativePath, fileType, PathChangeType.ADDED));
-							pathChanges.add(createDifference(LEFT, relativePath, fileType, PathChangeType.DELETED));
+							pathChanges.add(this.createDifference(RIGHT, relativePath, fileType, PathChangeType.ADDED));
+							pathChanges
+									.add(this.createDifference(LEFT, relativePath, fileType, PathChangeType.DELETED));
 						});
 					} else {
 						executorService.execute(() -> {
-							pathChanges.add(createDifference(LEFT, relativePath, fileType, PathChangeType.DELETED));
-							pathChanges.add(createDifference(RIGHT, relativePath, fileType, PathChangeType.ADDED));
+							pathChanges
+									.add(this.createDifference(LEFT, relativePath, fileType, PathChangeType.DELETED));
+							pathChanges.add(this.createDifference(RIGHT, relativePath, fileType, PathChangeType.ADDED));
 						});
 					}
 				}
@@ -1894,8 +1946,8 @@ public class CompareDirectories {
 			Path path = paths.get(side).get(index.getAndIncrement(side));
 			FileType fileType = FileType.determineFileType(path);
 
-			if (!isTesting) {
-				System.out.printf("Extra %s: '%s' (%s)%n", pathChangeType, path, fileType);
+			if (!this.isTesting) {
+				this.printf("Extra %s: '%s' (%s)%n", pathChangeType, path, fileType);
 			}
 
 			boolean shouldInclude = pathChangeType == PathChangeType.DELETED || this.shouldReportAdd(path, fileType);
@@ -1903,7 +1955,7 @@ public class CompareDirectories {
 			if (shouldInclude) {
 				Path relativePath = rootPath.getLeft().relativize(path);
 
-				pathChanges.add(createDifference(relativePath, fileType, pathChangeType));
+				pathChanges.add(this.createDifference(relativePath, fileType, pathChangeType));
 			}
 		}
 
@@ -1920,14 +1972,14 @@ public class CompareDirectories {
 			text = path.mapThrows(CompareDirectories::readFileContents);
 		} catch (IOException e) {
 			// If not able to read file, add as difference
-			pathChanges.add(createDifference(relativePath, FileType.FILE, PathChangeType.MODIFIED));
+			pathChanges.add(this.createDifference(relativePath, FileType.FILE, PathChangeType.MODIFIED));
 			return;
 		}
 
 		if (!text.test(Object::equals)) {
 			// File was modified
-			if (!isTesting) {
-				System.out.printf("Modified '%s' (%s)%n", relativePath, FileType.FILE);
+			if (!this.isTesting) {
+				this.printf("Modified '%s' (%s)%n", relativePath, FileType.FILE);
 			}
 
 			DifferencesResult differencesResult;
@@ -1953,7 +2005,7 @@ public class CompareDirectories {
 				deltas = getDeltaCount(differencesResult);
 			}
 
-			pathChanges.add(createDifference(relativePath, FileType.FILE, PathChangeType.MODIFIED,
+			pathChanges.add(this.createDifference(relativePath, FileType.FILE, PathChangeType.MODIFIED,
 					differenceCount, deltas));
 
 			if (deltas > 0 && path.getRight().toString().endsWith(".java")) {
@@ -1971,15 +2023,15 @@ public class CompareDirectories {
 		}
 	}
 
-	private static PathChangeInfo createDifference(final BEXSide side, final BEXPair<Path> relativePath,
+	private PathChangeInfo createDifference(final BEXSide side, final BEXPair<Path> relativePath,
 			final BEXPair<FileType> fileType, final PathChangeType changeType) {
-		return createDifference(relativePath.get(side), fileType.get(side), changeType);
+		return this.createDifference(relativePath.get(side), fileType.get(side), changeType);
 	}
 
-	private static PathChangeInfo createDifference(final Path relativePath, final FileType fileType,
+	private PathChangeInfo createDifference(final Path relativePath, final FileType fileType,
 			final PathChangeType changeType) {
 		// Pass negative number so don't include count
-		return createDifference(relativePath, fileType, changeType, -1, -1);
+		return this.createDifference(relativePath, fileType, changeType, -1, -1);
 	}
 
 	/**
@@ -1990,11 +2042,11 @@ public class CompareDirectories {
 	 * @param differenceCount the number of differences (or negative to not include count)
 	 * @return
 	 */
-	private static PathChangeInfo createDifference(final Path relativePath, final FileType fileType,
+	private PathChangeInfo createDifference(final Path relativePath, final FileType fileType,
 			final PathChangeType changeType, final int differenceCount, final int deltaCount) {
 
-		if (isTesting) {
-			System.out.println("Add difference: " + relativePath);
+		if (this.isTesting) {
+			this.println("Add difference: " + relativePath);
 		}
 
 		String project = getProject(relativePath);
@@ -2014,8 +2066,7 @@ public class CompareDirectories {
 		}
 
 		return new PathChangeInfo(relativePath, project, directory, filename, extension, fileType, changeType,
-				differenceCount,
-				deltaCount);
+				differenceCount, deltaCount);
 	}
 
 	/**
@@ -2024,9 +2075,9 @@ public class CompareDirectories {
 	 * @param sheet
 	 * @return
 	 */
-	private static Row addDifference(final XSSFSheet sheet, final PathChangeInfo change) {
-		if (isTesting) {
-			System.out.println("Add difference: " + change.getRelativePath());
+	private Row addDifference(final XSSFSheet sheet, final PathChangeInfo change) {
+		if (this.isTesting) {
+			this.println("Add difference: " + change.getRelativePath());
 		}
 
 		// Add most values, others added below
@@ -2034,27 +2085,27 @@ public class CompareDirectories {
 				change.getFilenameWithoutExtension(), change.getExtension(), change.getFileType().toString(),
 				change.getPathChangeType().toString());
 
-		row.getCell(DIRECTORY_COLUMN).setCellStyle(WRAP_TEXT_CELL_STYLE);
-		row.getCell(FILENAME_COLUMN).setCellStyle(WRAP_TEXT_CELL_STYLE);
+		row.getCell(this.DIRECTORY_COLUMN).setCellStyle(this.WRAP_TEXT_CELL_STYLE);
+		row.getCell(this.FILENAME_COLUMN).setCellStyle(this.WRAP_TEXT_CELL_STYLE);
 
 		int differenceCount = change.getDifferenceCount();
-		Cell differencesCell = row.createCell(DIFFERENCES_COLUMN);
+		Cell differencesCell = row.createCell(this.DIFFERENCES_COLUMN);
 
 		if (differenceCount >= 0) {
 			differencesCell.setCellValue(differenceCount);
 		}
 
 		int deltaCount = change.getDeltaCount();
-		Cell deltasCell = row.createCell(DELTAS_COLUMN);
+		Cell deltasCell = row.createCell(this.DELTAS_COLUMN);
 
 		if (deltaCount >= 0) {
 			deltasCell.setCellValue(deltaCount);
 		}
 
-		Cell pathnameCell = row.createCell(PATHNAME_COLUMN);
+		Cell pathnameCell = row.createCell(this.PATHNAME_COLUMN);
 
 		pathnameCell.setCellValue(change.getRelativePath().toString());
-		pathnameCell.setCellStyle(WRAP_TEXT_CELL_STYLE);
+		pathnameCell.setCellStyle(this.WRAP_TEXT_CELL_STYLE);
 
 		// TODO: separate out the copying of the changes files to another directory
 		//		if (CompareDirectories.copyChangedFilesSourcePath != null
@@ -2072,12 +2123,12 @@ public class CompareDirectories {
 		//					}
 		//					Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING,
 		//							StandardCopyOption.COPY_ATTRIBUTES);
-		//					System.out.printf("Copied file%n"
+		//					printf("Copied file%n"
 		//							+ "\tfrom \"%s\"%n"
 		//							+ "\tto \"%s\"%n", source, destination);
 		//				} catch (IOException e) {
 		//					// Continue, since not end of world if cannot copy file
-		//					System.err.printf("Could not copy file%n"
+		//					errPrintf("Could not copy file%n"
 		//							+ "\t\from \"%s\"%n"
 		//							+ "\tto \"%s\"%n", source, destination);
 		//					e.printStackTrace();

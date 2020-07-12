@@ -1,5 +1,6 @@
 package info.codesaway.bex;
 
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -137,6 +138,15 @@ public interface BEXPairCore<T> {
 	public default void acceptBoth(final Consumer<T> consumer) {
 		consumer.accept(this.getLeft());
 		consumer.accept(this.getRight());
+	}
+
+	/**
+	 * Performs the specified operation on both {@link #getLeft()} and {@link #getRight()}, passing the side as the second argument
+	 * @param consumer the BiConsumer to accept
+	 */
+	public default void acceptWithSide(final BiConsumer<T, BEXSide> consumer) {
+		consumer.accept(this.getLeft(), BEXSide.LEFT);
+		consumer.accept(this.getRight(), BEXSide.RIGHT);
 	}
 
 	/**
