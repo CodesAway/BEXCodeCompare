@@ -1,12 +1,13 @@
 package info.codesaway.bex.diff;
 
-import static info.codesaway.bex.util.Utilities.checkArgument;
+import static info.codesaway.bex.util.BEXUtilities.checkArgument;
 
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.IntBEXPair;
@@ -55,13 +56,14 @@ public final class DiffEdit implements DiffUnit {
 		return this.type;
 	}
 
-	public boolean isInsertOrDelete() {
-		return this.getType() == BasicDiffType.INSERT || this.getType() == BasicDiffType.DELETE;
-	}
-
 	@Override
 	public List<DiffEdit> getEdits() {
 		return Arrays.asList(this);
+	}
+
+	@Override
+	public Stream<DiffEdit> stream() {
+		return Stream.of(this);
 	}
 
 	/**
@@ -159,11 +161,11 @@ public final class DiffEdit implements DiffUnit {
 
 	@Override
 	public String toString() {
-		return this.toString(this.getType().getTag());
+		return this.toString(this.getType().getSymbol());
 	}
 
-	public String toString(final char tag) {
-		return this.toString(tag, false);
+	public String toString(final char symbol) {
+		return this.toString(symbol, false);
 	}
 
 	/**
@@ -173,41 +175,41 @@ public final class DiffEdit implements DiffUnit {
 	 * @return
 	 */
 	public String toString(final boolean shouldHandleSubstitutionSpecial) {
-		return this.toString(this.getType().getTag(), shouldHandleSubstitutionSpecial);
+		return this.toString(this.getType().getSymbol(), shouldHandleSubstitutionSpecial);
 	}
 
 	/**
-	 * @param tag
+	 * @param symbol
 	 * @param shouldHandleSubstitutionSpecial
 	 * @return
 	 */
-	public String toString(final char tag, final boolean shouldHandleSubstitutionSpecial) {
+	public String toString(final char symbol, final boolean shouldHandleSubstitutionSpecial) {
 		String leftLineNumber = this.getLineNumberString(BEXSide.LEFT);
 		String rightLineNumber = this.getLineNumberString(BEXSide.RIGHT);
 
-		if (shouldHandleSubstitutionSpecial && this.getType().isSubstitution()) {
+		if (shouldHandleSubstitutionSpecial && this.isSubstitution()) {
 			// Format with line numbers
 			return String.format("%s%6s%6s    %s%n"
 					+ "%s%6s%6s    %s"
 			// Left
-					, tag, leftLineNumber, "", this.getLeftText()
+					, symbol, leftLineNumber, "", this.getLeftText()
 					// Right
-					, tag, "", rightLineNumber, this.getRightText());
+					, symbol, "", rightLineNumber, this.getRightText());
 		}
 
 		// Format with line numbers
-		return String.format("%s%6s%6s    %s", tag, leftLineNumber, rightLineNumber, this.getText());
+		return String.format("%s%6s%6s    %s", symbol, leftLineNumber, rightLineNumber, this.getText());
 	}
 
 	public String toString(final BEXSide side) {
-		char tag = this.getType().getTag();
+		char symbol = this.getSymbol();
 		String lineNumber = this.getLineNumberString(side);
 
 		String leftLineNumber = side == BEXSide.LEFT ? lineNumber : "";
 		String rightLineNumber = side == BEXSide.RIGHT ? lineNumber : "";
 
 		// Format with line numbers
-		return String.format("%s%6s%6s    %s", tag, leftLineNumber, rightLineNumber, this.getText(side));
+		return String.format("%s%6s%6s    %s", symbol, leftLineNumber, rightLineNumber, this.getText(side));
 	}
 
 	@Override

@@ -19,7 +19,7 @@ import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 
-public class JavaSemicolonSubstitutionTests {
+class JavaSemicolonSubstitutionTests {
 	@Test
 	void diamondSubstitutionTest() {
 		String leftText = "		;    ";

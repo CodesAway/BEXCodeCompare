@@ -1,6 +1,6 @@
 package info.codesaway.bex.diff.myers;
 
-public class MyersPoint {
+public final class MyersPoint {
 	private final int x;
 	private final int y;
 

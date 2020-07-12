@@ -2,7 +2,7 @@ package info.codesaway.becr.parsing;
 
 import java.util.Objects;
 
-public class CodeInfoWithLineInfo {
+public final class CodeInfoWithLineInfo {
 	private final CodeInfo codeInfo;
 
 	private final int extendedStartLine;

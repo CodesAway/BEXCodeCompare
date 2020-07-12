@@ -1,6 +1,6 @@
 package info.codesaway.bex.diff;
 
-import static info.codesaway.bex.util.Utilities.immutableCopyOf;
+import static info.codesaway.bex.util.BEXUtilities.immutableCopyOf;
 
 import java.util.List;
 import java.util.Objects;
@@ -8,7 +8,7 @@ import java.util.Objects;
 /**
  * Class representing consecutive <code>DiffEdit</code>s with a common DiffType
  */
-public class DiffBlock implements DiffUnit {
+public final class DiffBlock implements DiffUnit {
 	private final DiffType type;
 	private final List<DiffEdit> edits;
 

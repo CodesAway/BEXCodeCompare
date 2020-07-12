@@ -1,7 +1,9 @@
 package info.codesaway.becr.examples;
 
+import static info.codesaway.becr.util.ExcelUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER;
 import static info.codesaway.bex.BEXSide.LEFT;
 import static info.codesaway.bex.BEXSide.RIGHT;
+import static info.codesaway.bex.diff.substitution.SubstitutionType.LCS_MAX_OPERATOR;
 import static info.codesaway.bex.diff.substitution.SubstitutionType.SUBSTITUTION_CONTAINS;
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE;
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_CAST;
@@ -11,30 +13,33 @@ import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_SE
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_UNBOXING;
 import static java.util.stream.Collectors.toList;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
-import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
@@ -62,11 +67,13 @@ import com.google.common.collect.TreeRangeMap;
 
 import info.codesaway.becr.diff.CompareDirectoriesJoinedDetail;
 import info.codesaway.becr.diff.CompareDirectoriesResult;
+import info.codesaway.becr.diff.CompareJavaCodeInfo;
 import info.codesaway.becr.diff.CorrespondingCode;
 import info.codesaway.becr.diff.DifferencesResult;
-import info.codesaway.becr.diff.FileChangeType;
 import info.codesaway.becr.diff.FileType;
 import info.codesaway.becr.diff.ImpactType;
+import info.codesaway.becr.diff.PathChangeInfo;
+import info.codesaway.becr.diff.PathChangeType;
 import info.codesaway.becr.parsing.CodeInfo;
 import info.codesaway.becr.parsing.CodeInfoWithLineInfo;
 import info.codesaway.becr.parsing.CodeInfoWithSourceInfo;
@@ -74,7 +81,8 @@ import info.codesaway.becr.parsing.CodeType;
 import info.codesaway.becr.parsing.FieldInfo;
 import info.codesaway.becr.parsing.MethodSignature;
 import info.codesaway.becr.parsing.ParsingUtilities;
-import info.codesaway.becr.parsing.ProjectFile;
+import info.codesaway.becr.parsing.ProjectPath;
+import info.codesaway.becr.util.ExcelUtilities;
 import info.codesaway.bex.BEXListPair;
 import info.codesaway.bex.BEXMapPair;
 import info.codesaway.bex.BEXPair;
@@ -91,9 +99,7 @@ import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.substitution.SubstitutionType;
 import info.codesaway.bex.diff.substitution.java.RefactorEnhancedForLoop;
-import info.codesaway.bex.util.Utilities;
-import info.codesaway.util.regex.Matcher;
-import info.codesaway.util.regex.Pattern;
+import info.codesaway.bex.util.BEXUtilities;
 
 // TODO: change this into a utility and separate out report generation from determining differences
 // Use this as an example, but have the common functionality available for anyone to use how they want
@@ -125,31 +131,141 @@ public class CompareDirectories {
 	// TODO: also support specifying it
 	private static String jrePathname = System.getenv("JAVA_HOME");
 
-	private static Set<String> IGNORE_PROJECTS;
 	private static boolean isTesting;
 
-	public static void compare(final BEXPair<String> workspace,
-			final BiFunction<String, String, ASTParser> parserFunction,
-			final Map<String, String> projectSheetNameMap,
-			final Set<String> ignoreProjects, final Optional<String> optionalTestingFile)
-			throws IOException, InvalidFormatException {
+	// Settings for the compare
+	private BiFunction<String, String, ASTParser> parserBiFunction = ParsingUtilities::getParser;
+	private Set<String> ignoreProjects;
+	private Predicate<Path> skipTextCompare;
+
+	private final List<BiFunction<Path, BEXListPair<DiffLine>, SubstitutionType>> substitutionTypes = new ArrayList<>();
+	private boolean excludeLCSMaxSubstitution = false;
+
+	// Flatten reporting of directories
+	// Only report if contains files or contains nothing (meaning deepest level)
+	// This way, for example if created a/b/c subfolders, would only report "a/b/c" versus also reporting "a", "a/b"
+	// However, if directory a/b/c had no files or directories would still report
+	// TODO: name something clearer
+	private boolean flattenReportingOfAddedDirectories = true;
+
+	public CompareDirectories() {
+		this.addSubstitutionTypes(JAVA_SEMICOLON, SUBSTITUTION_CONTAINS, IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
+				JAVA_UNBOXING, JAVA_CAST, JAVA_FINAL_KEYWORD, JAVA_DIAMOND_OPERATOR);
+		this.addSubstitutionTypes(RefactorEnhancedForLoop::new);
+	}
+
+	/**
+	 * Sets the parser used when parsing Java files
+	 * @param parserBiFunction BiFunction accepting the workspace pathname and JRE pathname
+	 * @return <code>this</code> object
+	 */
+	public CompareDirectories parserBiFunction(final BiFunction<String, String, ASTParser> parserBiFunction) {
+		this.parserBiFunction = parserBiFunction;
+		return this;
+	}
+
+	/**
+	 * @param ignoreProjects
+	 * @return <code>this</code> object
+	 */
+	public CompareDirectories ignoreProjects(final Set<String> ignoreProjects) {
+		this.ignoreProjects = ignoreProjects;
+		return this;
+	}
+
+	/**
+	 * @param skipTextCompare
+	 * @return <code>this</code> object
+	 */
+	public CompareDirectories skipTextCompare(final Predicate<Path> skipTextCompare) {
+		this.skipTextCompare = skipTextCompare;
+		return this;
+	}
+
+	/**
+	 * @param excludeLCSMaxSubstitution
+	 * @return <code>this</code> object
+	 */
+	public CompareDirectories excludeLCSMaxSubstitution(final boolean excludeLCSMaxSubstitution) {
+		this.excludeLCSMaxSubstitution = excludeLCSMaxSubstitution;
+		return this;
+	}
+
+	/**
+	 * @param flattenReportingOfAddedDirectories
+	 * @return <code>this</code> object
+	 */
+	public CompareDirectories flattenReportingOfAddedDirectories(final boolean flattenReportingOfAddedDirectories) {
+		this.flattenReportingOfAddedDirectories = flattenReportingOfAddedDirectories;
+		return this;
+	}
+
+	/**
+	 * @param substitutionTypeSuppliers
+	 * @return <code>this</code> object
+	 */
+	@SafeVarargs
+	public final CompareDirectories addSubstitutionTypes(
+			final Supplier<SubstitutionType>... substitutionTypeSuppliers) {
+		for (Supplier<SubstitutionType> substitutionTypeSupplier : substitutionTypeSuppliers) {
+			this.substitutionTypes.add((p, l) -> substitutionTypeSupplier.get());
+		}
+		return this;
+	}
+
+	/**
+	 * @param substitutionTypeBiFunctions <code>BiFunction</code> taking relative Path and list of lines of the file to be compared
+	 * @return <code>this</code> object
+	 */
+	@SafeVarargs
+	public final CompareDirectories addSubstitutionTypes(
+			final BiFunction<Path, BEXListPair<DiffLine>, SubstitutionType>... substitutionTypeBiFunctions) {
+		for (BiFunction<Path, BEXListPair<DiffLine>, SubstitutionType> substitutionTypeBiFunction : substitutionTypeBiFunctions) {
+			this.substitutionTypes.add(substitutionTypeBiFunction);
+		}
+		return this;
+	}
+
+	/**
+	 * @param substitutionTypes
+	 * @return <code>this</code> object
+	 */
+	public final CompareDirectories addSubstitutionTypes(final SubstitutionType... substitutionTypes) {
+		for (SubstitutionType substitutionType : substitutionTypes) {
+			this.substitutionTypes.add((p, l) -> substitutionType);
+		}
+		return this;
+	}
+
+	/**
+	 * @param substitutionTypes
+	 * @return <code>this</code> object
+	 */
+	public final CompareDirectories addSubstitutionTypes(final List<SubstitutionType> substitutionTypes) {
+		for (SubstitutionType substitutionType : substitutionTypes) {
+			this.substitutionTypes.add((p, l) -> substitutionType);
+		}
+		return this;
+	}
+
+	/**
+	 * @param workspace
+	 * @param projectSheetNameMap
+	 * @throws IOException
+	 */
+	public void compare(final BEXPair<String> workspace,
+			final Map<String, String> projectSheetNameMap)
+			throws IOException {
 		long startTime = System.currentTimeMillis();
 
-		IGNORE_PROJECTS = ignoreProjects;
-		isTesting = optionalTestingFile.isPresent();
-		String testingFile = optionalTestingFile.orElse("");
+		//		isTesting = optionalTestingFile.isPresent();
+		//		String testingFile = optionalTestingFile.orElse("");
 
-		BEXPair<ASTParser> parser = workspace.map(w -> parserFunction.apply(w, jrePathname));
+		BEXPair<ASTParser> parser = workspace.map(w -> this.parserBiFunction.apply(w, jrePathname));
 
 		String excelReportFilename = String.format("Compare Test%s.xlsx", isTesting ? " (Testing)" : "");
 
-		File excelReportFile = new File("G:/", excelReportFilename);
-
-		// Flatten reporting of directories
-		// Only report if contains files or contains nothing (meaning deepest level)
-		// This way, for example if created a/b/c subfolders, would only report "a/b/c" versus "a", "a/b"
-		// However, if directory a/b/c had no files or directories would still report
-		boolean flattenReportingOfAddedDirectories = true;
+		Path excelReportPath = Paths.get("G:/", excelReportFilename);
 
 		// TODO: add logic to detect type of change
 		//  This will be a common difference, so detect common differences
@@ -164,16 +280,6 @@ public class CompareDirectories {
 
 		// TODO: might sort using Pattern.getNaturalComparator()
 		// (This way the help files are in the correct order numerically, versus lexographically
-
-		BEXListPair<Path> paths = new BEXListPair<>(rootPath.mapThrows(r -> Files.walk(r)
-				// Run in parallel for performance boost
-				.parallel()
-				.filter(CompareDirectories::shouldCheckPath)
-				// Sort so can iterate over and find differences
-				.sorted()
-				.collect(toList())));
-
-		MutableIntBEXPair index = new MutableIntBEXPair();
 
 		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
 			XSSFCellStyle wrapTextCellStyle = workbook.createCellStyle();
@@ -271,7 +377,7 @@ public class CompareDirectories {
 			if (sheet == null) {
 				sheet = workbook.createSheet(sheetName);
 
-				ParsingUtilities.createHeaderRow(sheet, 0, headerColumnNames);
+				ExcelUtilities.createHeaderRow(sheet, 0, headerColumnNames);
 			}
 
 			// TODO: support creating specific project sheets at the front
@@ -280,212 +386,50 @@ public class CompareDirectories {
 			//			XSSFSheet combinedEJBWebSheet = workbook.createSheet(combinedSheetName);
 			//			ParsingUtilities.createHeaderRow(combinedSheet, 0, detailsHeaderColumnNames);
 
-			BEXListPair<ProjectFile> javaFiles = new BEXListPair<>(ArrayList::new);
-
-			// Map from file to list of differences
-			// (file will be the destination file)
-			Map<File, DifferencesResult> diffs = new HashMap<>();
-
 			// TODO: for files in added directories, don't list each file on own line
 			// Instead, list all files as info for the added directory
 			// This way if added a new package with 10 classes, would have 1 line showing the new package, listing the 10 classes
 			// (versus having one line for the new package and 10 extra lines for each of the new classes)
 
-			// Don't look at JSP since not changing them, so shouldn't be different
-			Pattern doNotCompareTextPattern = Pattern.compile("\\.(?:jar|ear|png|jsp|htm)$|Tests-soapui-project.xml$");
-			Matcher doNotCompareTextMatcher = doNotCompareTextPattern.matcher("");
+			CompareDirectoriesResult compareDirectoriesResult = this.findDifferences(rootPath);
 
-			while (index.getLeft() < paths.getLeft().size() && index.getRight() < paths.getRight().size()) {
-				BEXPair<Path> path = paths.get(index);
-				BEXPair<File> file = path.map(Path::toFile);
-				BEXPair<FileType> fileType = file.map(FileType::determineFileType);
-
-				BEXPair<Path> relativePath = new BEXPair<>(side -> rootPath.get(side).relativize(path.get(side)));
-
-				int compare = relativePath.applyAsInt(Path::compareTo);
-				BEXSide side = compare < 0 ? LEFT : RIGHT;
-
-				// Progress output
-				// Check if remaining is 0 or 1
-				// Since both left index and right index could increase together, check 0 and 1 remaining, so don't miss a progress output
-				// (if only checked remainder 0, could have remainder 1 for a long time and not get progress indicator)
-				if ((index.getLeft() + index.getRight()) % 1000 <= 1) {
-					System.out.printf("Checking %s%n", relativePath.get(side));
-				}
-
-				if (compare < 0) {
-					// Left file is before right file
-					// This means left file does not exist in the right directory
-					// (that is, the file was deleted)
-					index.incrementAndGet(LEFT);
-
-					addDifference(sheet, side, relativePath, fileType, FileChangeType.DELETED);
-				} else if (compare > 0) {
-					// Left file is after right file
-					// This means right file does not exist in the left directory
-					// (that is, the file was added)
-					index.incrementAndGet(RIGHT);
-
-					// TODO: refactor to reuse this logic for any extra added files at end (extra added)
-
-					if (shouldReportAdd(file.get(side), fileType.get(side), flattenReportingOfAddedDirectories)) {
-						addDifference(sheet, side, relativePath, fileType, FileChangeType.ADDED);
-					}
-				} else {
-					// Same name
-					index.increment();
-
-					// Verify type matches
-					if (fileType.test(Objects::equals)) {
-						if (fileType.get(side) == FileType.FILE) {
-							// File exists in both folders
-							// TODO: verify contents match
-
-							if (isTesting && !file.get(side).getName().equals(testingFile)) {
-								continue;
-							}
-
-							BEXPair<String> text = path.mapThrows(CompareDirectories::readFileContents);
-
-							if (!text.test(Object::equals)) {
-								// File was modified
-								// TODO: see if there are any actual changes
-								// Ignore space differences
-								// Ignore formatting differences (such as if line overflows to next line)
-								// Have a method to normalize the file before compare
-
-								if (!isTesting) {
-									System.out.printf("Modified '%s' (%s)%n", relativePath.get(side),
-											fileType.get(side));
-								}
-
-								DifferencesResult differencesResult;
-								long differenceCount;
-								long deltas;
-
-								if (doNotCompareTextMatcher.reset(relativePath.get(side).toString()).find()) {
-									// Do not compare text, but still indicate difference
-									differencesResult = null;
-									// Use negates so don't show counts on report (since didn't calculate counts)
-									differenceCount = -1;
-									deltas = -1;
-								} else {
-									// Get differences
-									// (TODO: do something with the differences)
-									differencesResult = getDifferences(relativePath.get(side),
-											new BEXListPair<>(text.map(CompareDirectories::splitLines)),
-											DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION);
-
-									differenceCount = getDifferenceCount(differencesResult);
-
-									// Count only the number of blocks which have differences
-									deltas = getDeltaCount(differencesResult);
-								}
-
-								addDifference(sheet, side, relativePath, fileType, FileChangeType.MODIFIED,
-										differenceCount, deltas);
-
-								if (deltas > 0 && file.get(side).getName().endsWith(".java")) {
-									// If has differences, parse Java code so can split into various methods
-									String project = getProject(relativePath.get(side));
-
-									BEXPair<ProjectFile> projectFile = file.map(f -> new ProjectFile(project, f));
-
-									// Track files so can parse all at once (otherwise need to reset settings, which kills performance)
-									javaFiles.add(projectFile);
-
-									// 8/28/2019 Put both left file and right file in map to help read diff / line information when parsing code
-									file.acceptBoth(f -> diffs.put(f, differencesResult));
-								}
-							}
-						}
-
-						// Note: If directory, doesn't matter that match, only need to compare files
-					} else {
-						// Type differs
-						// TODO: write to report as difference
-						System.err.printf("'%s'\t'%s' (%s)\t'%s' (%s)%n", relativePath.get(side),
-								path.getLeft(), fileType.getLeft(),
-								path.getRight(), fileType.getRight());
-
-						// Show as add and delete
-
-						// Show directory last, so groups directory and any subfolder's files together
-						if (fileType.getLeft() == FileType.DIRECTORY) {
-							addDifference(sheet, RIGHT, relativePath, fileType, FileChangeType.ADDED);
-							addDifference(sheet, LEFT, relativePath, fileType, FileChangeType.DELETED);
-						} else {
-							addDifference(sheet, LEFT, relativePath, fileType, FileChangeType.DELETED);
-							addDifference(sheet, RIGHT, relativePath, fileType, FileChangeType.ADDED);
-						}
-					}
-				}
+			for (PathChangeInfo change : compareDirectoriesResult.getPathChanges()) {
+				addDifference(sheet, change);
 			}
 
-			// Output rest of files
+			BEXListPair<ProjectPath> javaPaths = compareDirectoriesResult.getJavaPaths();
+			Map<Path, DifferencesResult> diffs = compareDirectoriesResult.getJavaPathDiffMap();
 
-			// Any remaining in leftPaths were deleted (since they don't appear in rightPaths)
-			while (index.getLeft() < paths.getLeft().size()) {
-				Path leftPath = paths.getLeft().get(index.getAndIncrement(LEFT));
-				File leftFile = leftPath.toFile();
-				FileType leftType = FileType.determineFileType(leftFile);
-
-				if (!isTesting) {
-					System.out.printf("Extra Deleted: '%s' (%s)%n", leftPath, leftType);
-				}
-
-				Path relativeLeftPath = rootPath.getLeft().relativize(leftPath);
-
-				addDifference(sheet, relativeLeftPath, leftType, FileChangeType.DELETED);
-			}
-
-			// Any remaining in rightPaths were added (since they don't appear in leftPaths)
-			while (index.getRight() < paths.getRight().size()) {
-				Path rightPath = paths.getRight().get(index.getAndIncrement(RIGHT));
-				File rightFile = rightPath.toFile();
-				FileType rightType = FileType.determineFileType(rightFile);
-
-				if (!isTesting) {
-					System.out.printf("Extra Added: '%s' (%s)%n", rightPath, rightType);
-				}
-
-				if (shouldReportAdd(rightFile, rightType, flattenReportingOfAddedDirectories)) {
-					Path relativeRightPath = rootPath.getRight().relativize(rightPath);
-
-					addDifference(sheet, relativeRightPath, rightType, FileChangeType.ADDED);
-				}
-			}
-
-			if (!javaFiles.isLeftEmpty()) {
+			if (!javaPaths.isLeftEmpty()) {
 				// Has Java files that I want to parse
-				BEXPair<String[]> javaPaths = javaFiles.map(f -> f.stream()
-						.map(ProjectFile::getPath)
-						.toArray(String[]::new));
+				//				BEXPair<String[]> javaPaths = javaPaths.map(f -> f.stream()
+				//						.map(ProjectPath::getPathname)
+				//						.toArray(String[]::new));
 
 				System.out.println("Parsing Java code");
-				BEXMapPair<String, CompareDirectoriesResult> results = parse(parser, javaPaths, diffs);
+				BEXMapPair<String, CompareJavaCodeInfo> results = parse(parser, javaPaths, diffs);
 
 				System.out.println("Analyzing Java code");
 
-				// For each pair of files
-				for (int i = 0; i < javaFiles.rightSize(); i++) {
+				// For each pair of paths
+				for (int i = 0; i < javaPaths.rightSize(); i++) {
 
 					if ((i + 1) % 10000 == 0) {
-						System.out.printf("Analyzing Java code: File %d of %d%n", i + 1, javaFiles.rightSize());
+						System.out.printf("Analyzing Java code: Path %d of %d%n", i + 1, javaPaths.rightSize());
 					}
 
-					BEXPair<ProjectFile> javaFile = javaFiles.get(i);
+					BEXPair<ProjectPath> javaPath = javaPaths.get(i);
 
-					String project = javaFile.getRight().getProject();
+					String project = javaPath.getRight().getProject();
 
-					String className = javaFile.getRight().getName();
+					String className = javaPath.getRight().getName();
 					className = className.substring(0, className.length() - ".java".length());
 
 					BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> extendedRanges = new BEXPair<>(
 							TreeRangeMap::create);
 					BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> ranges = new BEXPair<>(TreeRangeMap::create);
 
-					BEXPair<CompareDirectoriesResult> result = results.get(javaFile.map(ProjectFile::getPath));
+					BEXPair<CompareJavaCodeInfo> result = results.get(javaPath.map(ProjectPath::getPathname));
 
 					String packageName = result.getRight().getPackageName();
 
@@ -502,7 +446,7 @@ public class CompareDirectories {
 						if (!ranges.getLeft().subRangeMap(range).asMapOfRanges().isEmpty()) {
 							//											continue;
 							throw new AssertionError(
-									String.format("Range has overlap in %s: %s", javaFile.getLeft(), range));
+									String.format("Range has overlap in %s: %s", javaPath.getLeft(), range));
 						}
 
 						extendedRanges.getLeft().put(extendedRange, detail);
@@ -516,14 +460,11 @@ public class CompareDirectories {
 
 						if (!extendedRanges.getRight().subRangeMap(extendedRange).asMapOfRanges().isEmpty()) {
 							continue;
-							//											throw new AssertionError(String
-							//													.format("Extended range has overlap in %s: %s", file2,
-							//															extendedRange));
 						}
 
 						if (!ranges.getRight().subRangeMap(range).asMapOfRanges().isEmpty()) {
 							throw new AssertionError(
-									String.format("Range has overlap in %s: %s", javaFile.getRight(), range));
+									String.format("Range has overlap in %s: %s", javaPath.getRight(), range));
 						}
 
 						extendedRanges.getRight().put(extendedRange, detail);
@@ -534,7 +475,7 @@ public class CompareDirectories {
 					// For example if moved within same method
 					// What if moved between methods? (treat comments different than actual code?)
 
-					DifferencesResult differencesResult = diffs.get(javaFile.getRight().getFile());
+					DifferencesResult differencesResult = diffs.get(javaPath.getRight().getPath());
 
 					List<DiffUnit> diffBlocks = differencesResult.getDiffBlocks();
 
@@ -556,7 +497,7 @@ public class CompareDirectories {
 						// Also allow substitution
 						boolean checkForCorrespondingCode = false;
 
-						checkForCorrespondingCode |= Utilities.in(type, BasicDiffType.EQUAL,
+						checkForCorrespondingCode |= BEXUtilities.in(type, BasicDiffType.EQUAL,
 								BasicDiffType.NORMALIZE);
 
 						// 11/20/2019 - if substitution, also include these lines
@@ -591,7 +532,7 @@ public class CompareDirectories {
 							// Will then see which to join based on how many lines have the same corresponding code
 							correspondingCodeCounts.add(correspondingCode);
 
-							if (Utilities.in(type, BasicDiffType.EQUAL,
+							if (BEXUtilities.in(type, BasicDiffType.EQUAL,
 									BasicDiffType.NORMALIZE)) {
 								matchingCodeCounts.add(correspondingCode);
 							}
@@ -845,7 +786,7 @@ public class CompareDirectories {
 
 					// Track how many differences and deltas are in each CodeInfo (extended range vs regular range)
 					for (DiffUnit unit : diffBlocks) {
-						if (Utilities.in(unit.getType(), BasicDiffType.EQUAL, BasicDiffType.NORMALIZE,
+						if (BEXUtilities.in(unit.getType(), BasicDiffType.EQUAL, BasicDiffType.NORMALIZE,
 								BasicDiffType.IGNORE)) {
 							continue;
 						}
@@ -920,25 +861,24 @@ public class CompareDirectories {
 
 								if (isTesting) {
 									System.out.println("Unknown difference (here): "
-											+ (edit.getType().isSubstitution() ? System.lineSeparator() : "")
+											+ (edit.isSubstitution() ? System.lineSeparator() : "")
 											+ edit.toString(true));
 								}
 
 								// Add to unknown code change
 								//								checkChange(edit, unknownChange, false, lineChangeType);
 
-								String editTypeTag = String.valueOf(edit.getType().getTag());
+								String editSymbol = String.valueOf(edit.getSymbol());
 
 								if (edit.hasLeftLine() && edit.hasRightLine()) {
 									String lineInfo = edit.getLeftLineNumber() + " -> "
 											+ edit.getRightLineNumber();
 
 									// Add note with line numbers, so can easily find what changed
-									unknownChange.addNote(editTypeTag + " "
-											+ lineInfo);
+									unknownChange.addNote(editSymbol + " " + lineInfo);
 								} else {
 									String lineInfo = edit.getLineNumberString(edit.getFirstSide());
-									unknownChangeLines.put(editTypeTag, lineInfo);
+									unknownChangeLines.put(editSymbol, lineInfo);
 								}
 
 							} else if (change.test(Objects::equals)) {
@@ -948,7 +888,7 @@ public class CompareDirectories {
 
 								if (isInExtendedLeftLines == isInExtendedRightLines) {
 									isInExtendedLines = isInExtendedLeftLines;
-								} else if (edit.getType().isMove()) {
+								} else if (edit.isMove()) {
 									// If move and one sees it as part of extended lines, mark as part of extended lines
 									isInExtendedLines = true;
 								} else {
@@ -1026,12 +966,11 @@ public class CompareDirectories {
 						}
 
 						for (Entry<String, Collection<String>> entry : unknownChangeLines.asMap().entrySet()) {
-							String tag = entry.getKey();
+							String symbol = entry.getKey();
 
 							String lineInfo = entry.getValue().stream().collect(Collectors.joining(", "));
 
-							unknownChange.addNote(tag + " "
-									+ lineInfo);
+							unknownChange.addNote(symbol + " " + lineInfo);
 						}
 					}
 
@@ -1067,13 +1006,14 @@ public class CompareDirectories {
 						BEXPair<Range<Integer>> range = change.getCode()
 								.map(c -> Range.closed(c.getExtendedStartLine(), c.getEndLine()));
 
-						BEXListPair<DiffLine> lines = new BEXListPair<>(side -> differencesResult.getLines(side)
+						BEXListPair<DiffLine> lines = BEXListPair.from(side -> differencesResult.getLines(side)
 								.stream()
 								.filter(l -> range.get(side).contains(l.getNumber()))
 								.collect(toList()));
 
 						// Rerun differences for code in the specific range
-						DifferencesResult rangeDifferencesResult = getDifferences(differencesResult.getRelativePath(),
+						DifferencesResult rangeDifferencesResult = this.getDifferences(
+								differencesResult.getRelativePath(),
 								lines, differencesResult.getNormalizationFunction());
 
 						long differences = getDifferenceCount(rangeDifferencesResult);
@@ -1111,7 +1051,7 @@ public class CompareDirectories {
 							info.add(note);
 						}
 
-						final FileChangeType changeType;
+						final PathChangeType changeType;
 						final CodeInfoWithLineInfo codeInfo;
 
 						if (change.getLeftCode() == null) {
@@ -1120,10 +1060,10 @@ public class CompareDirectories {
 							if (change.getRightCode() == null) {
 								// Unknown code block
 								// TODO: could set based on whether unknown code was added / deleted or a combination
-								changeType = FileChangeType.MODIFIED;
+								changeType = PathChangeType.MODIFIED;
 								codeInfo = null;
 							} else {
-								changeType = FileChangeType.ADDED;
+								changeType = PathChangeType.ADDED;
 								codeInfo = change.getRightCode();
 							}
 						} else {
@@ -1132,7 +1072,7 @@ public class CompareDirectories {
 
 							if (change.getRightCode() == null) {
 								// Deleted code block
-								changeType = FileChangeType.DELETED;
+								changeType = PathChangeType.DELETED;
 								codeInfo = change.getLeftCode();
 
 								if (isTesting) {
@@ -1157,7 +1097,7 @@ public class CompareDirectories {
 								//									}
 								//								}
 							} else {
-								changeType = FileChangeType.MODIFIED;
+								changeType = PathChangeType.MODIFIED;
 								// Get "destination" code block, in case changed (such as method signature change)
 								codeInfo = change.getRightCode();
 
@@ -1170,7 +1110,7 @@ public class CompareDirectories {
 							}
 						}
 
-						change.setChangeType(changeType);
+						change.setPathChangeType(changeType);
 
 						CodeInfoWithSourceInfo codeInfoWithSourceInfo = new CodeInfoWithSourceInfo(project,
 								packageName,
@@ -1201,7 +1141,7 @@ public class CompareDirectories {
 						CodeType codeType = codeInfoWithSourceInfo.getCodeType();
 
 						// Ignore unknown changes (where change.getLeftCode() == null)
-						if (changeType == FileChangeType.MODIFIED && change.getLeftCode() != null) {
+						if (changeType == PathChangeType.MODIFIED && change.getLeftCode() != null) {
 							// Get info for "source" code
 							// If changed modifiers, return value, or, signature indicate on report
 							CodeInfoWithSourceInfo leftCodeInfoWithSourceInfo = new CodeInfoWithSourceInfo(project,
@@ -1283,7 +1223,7 @@ public class CompareDirectories {
 							}
 						}
 
-						if (change.isImpactBlank() && changeType == FileChangeType.ADDED && codeType == CodeType.FIELD
+						if (change.isImpactBlank() && changeType == PathChangeType.ADDED && codeType == CodeType.FIELD
 								&& Objects.equals(returnValue, "long")
 								&& Objects.equals(signature, "serialVersionUID")) {
 							change.setImpact(ImpactType.NONE);
@@ -1294,6 +1234,7 @@ public class CompareDirectories {
 								System.out.println(change.getLineChanges());
 							}
 							boolean isLowImpactChange = change.getLineChanges()
+									.keySet()
 									.stream()
 									.allMatch(DiffType::shouldTreatAsNormalizedEqual);
 
@@ -1323,7 +1264,7 @@ public class CompareDirectories {
 
 						int shortMethodLineCount = 5;
 
-						if (change.isImpactBlank() && changeType == FileChangeType.ADDED
+						if (change.isImpactBlank() && changeType == PathChangeType.ADDED
 								&& codeInfoWithSourceInfo.isMethod()
 								&& Objects.requireNonNull(codeInfo).getLineCount() <= shortMethodLineCount) {
 							change.setImpact(ImpactType.LOW);
@@ -1331,7 +1272,7 @@ public class CompareDirectories {
 									+ " lines");
 						}
 
-						if (change.isImpactBlank() && changeType == FileChangeType.MODIFIED
+						if (change.isImpactBlank() && changeType == PathChangeType.MODIFIED
 								&& codeInfoWithSourceInfo.isMethod()
 								&& codeInfo != null
 								&& codeInfo.getLineCount() <= shortMethodLineCount
@@ -1341,7 +1282,7 @@ public class CompareDirectories {
 									+ " lines");
 						}
 
-						boolean showDeltas = changeType == FileChangeType.MODIFIED && change.getLeftCode() != null
+						boolean showDeltas = changeType == PathChangeType.MODIFIED && change.getLeftCode() != null
 								&& change.getRightCode() != null;
 
 						String differences = (showDeltas ? String.valueOf(change.getModifiedDifferences()) : "");
@@ -1373,10 +1314,10 @@ public class CompareDirectories {
 						if (detailsSheet == null) {
 							detailsSheet = workbook.createSheet(detailsSheetName);
 
-							ParsingUtilities.createHeaderRow(detailsSheet, 0, detailsHeaderColumnNames);
+							ExcelUtilities.createHeaderRow(detailsSheet, 0, detailsHeaderColumnNames);
 						}
 
-						Row row = ParsingUtilities.addRow(detailsSheet, packageName, className,
+						Row row = ExcelUtilities.addRow(detailsSheet, packageName, className,
 								changeType.toString(), codeType.toString(), impactValue, modifiers, returnValue,
 								signature, infoText, differences, deltas);
 
@@ -1417,27 +1358,22 @@ public class CompareDirectories {
 			// Autosize columns
 			// ParsingUtilities.autosizeColumnsFromSheet(sheet, 0, lastColumn);
 
-			sheet.setColumnWidth(projectColumn,
-					33 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(projectColumn, 33 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-			sheet.setColumnWidth(directoryColumn,
-					33 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(directoryColumn, 33 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-			sheet.setColumnWidth(filenameColumn, 21 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(filenameColumn, 21 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-			sheet.setColumnWidth(fileTypeColumn, 12 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-			sheet.setColumnWidth(differencesChangeTypeColumn,
-					10 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-			sheet.setColumnWidth(differencesColumn,
-					15 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-			sheet.setColumnWidth(deltasColumn, 15 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(fileTypeColumn, 12 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(differencesChangeTypeColumn, 10 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(differencesColumn, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(deltasColumn, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-			sheet.setColumnWidth(pathnameColumn,
-					33 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(pathnameColumn, 33 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
 			// Format all the sheets except the first Differences sheet
 			for (Sheet sheet0 : workbook) {
-				if (Utilities.in(sheet0.getSheetName(), sheetName)) {
+				if (BEXUtilities.in(sheet0.getSheetName(), sheetName)) {
 					continue;
 				}
 
@@ -1453,37 +1389,34 @@ public class CompareDirectories {
 				// ParsingUtilities.autosizeColumnsFromSheet(sheet, 0, lastColumn);
 
 				// Format remaining two columns (others are specified below)
-				sheet0.setColumnWidth(classColumn, 21 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				sheet0.setColumnWidth(classColumn, 21 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-				sheet0.setColumnWidth(detailsChangeTypeColumn,
-						10 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				sheet0.setColumnWidth(detailsChangeTypeColumn, 10 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
 				// Allows CONSTRUCTOR to fully display
-				sheet0.setColumnWidth(typeColumn, 14 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				sheet0.setColumnWidth(typeColumn, 14 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-				sheet0.setColumnWidth(modifiersColumn, 12 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				sheet0.setColumnWidth(modifiersColumn, 12 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-				sheet0.setColumnWidth(packageColumn, 21 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				sheet0.setColumnWidth(packageColumn, 21 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-				sheet0.setColumnWidth(returnColumn, 20 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-				sheet0.setColumnWidth(methodColumn, 50 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-				sheet0.setColumnWidth(infoColumn, 95 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				sheet0.setColumnWidth(returnColumn, 20 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				sheet0.setColumnWidth(methodColumn, 50 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				sheet0.setColumnWidth(infoColumn, 95 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-				sheet0.setColumnWidth(detailsDifferencesColumn,
-						15 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-				sheet0.setColumnWidth(detailsDeltasColumn,
-						15 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				sheet0.setColumnWidth(detailsDifferencesColumn, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				sheet0.setColumnWidth(detailsDeltasColumn, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
 				//				sheet0.setColumnWidth(linesColumn, 7 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 			}
 
-			System.out.println("Writing report at: " + excelReportFile);
-			try (FileOutputStream outputStream = new FileOutputStream(excelReportFile)) {
+			System.out.println("Writing report at: " + excelReportPath);
+			try (OutputStream outputStream = Files.newOutputStream(excelReportPath)) {
 				workbook.write(outputStream);
-				System.out.println("Report saved at: " + excelReportFile);
+				System.out.println("Report saved at: " + excelReportPath);
 
 				if (copyChangedFilesDestinationPath != null) {
-					Path source = excelReportFile.toPath();
+					Path source = excelReportPath;
 					Path destination = copyChangedFilesDestinationPath.resolve(excelReportFilename);
 
 					Files.copy(source, destination);
@@ -1526,35 +1459,48 @@ public class CompareDirectories {
 		}
 	}
 
-	private static long getDifferenceCount(final DifferencesResult differencesResult) {
-		return differencesResult.getDiff()
+	private static int getDifferenceCount(final DifferencesResult differencesResult) {
+		return (int) differencesResult.getDiff()
 				.stream()
 				.filter(
-						d -> !Utilities.in(d.getType(), BasicDiffType.EQUAL, BasicDiffType.NORMALIZE,
+						d -> !BEXUtilities.in(d.getType(), BasicDiffType.EQUAL, BasicDiffType.NORMALIZE,
 								BasicDiffType.IGNORE))
 				.count();
 	}
 
-	private static long getDeltaCount(final DifferencesResult differencesResult) {
-		return differencesResult.getDiffBlocks()
+	private static int getDeltaCount(final DifferencesResult differencesResult) {
+		return (int) differencesResult.getDiffBlocks()
 				.stream()
 				.filter(
-						d -> !Utilities.in(d.getType(), BasicDiffType.EQUAL, BasicDiffType.NORMALIZE,
+						d -> !BEXUtilities.in(d.getType(), BasicDiffType.EQUAL, BasicDiffType.NORMALIZE,
 								BasicDiffType.IGNORE))
 				.count();
 	}
 
-	// TODO: support having custom substitutions (pass as parameter)
-	private static DifferencesResult getDifferences(final Path relativePath, final BEXListPair<DiffLine> lines,
+	/**
+	 * Gets the differences
+	 *
+	 * <p><b>NOTE</b>: this method may be overridden to implement your own functionality</p>
+	 * @param relativePath the relative path for file to compare
+	 * @param lines the contents of the file
+	 * @param normalizationFunction the normalization function to use
+	 * @return the DifferencesResult
+	 */
+	public DifferencesResult getDifferences(final Path relativePath, final BEXListPair<DiffLine> lines,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
 		List<DiffEdit> diff = PatienceDiff.diff(lines.getLeft(), lines.getRight(), normalizationFunction,
 				MyersLinearDiff.with(normalizationFunction));
 
+		List<SubstitutionType> substitutionTypes = this.substitutionTypes.stream()
+				.map(s -> s.apply(relativePath, lines))
+				.collect(toList());
+
+		if (!this.excludeLCSMaxSubstitution) {
+			substitutionTypes.add(LCS_MAX_OPERATOR);
+		}
+
 		// Look first for common refactorings, so can group changes together
-		DiffHelper.handleSubstitution(diff, normalizationFunction, JAVA_SEMICOLON, SUBSTITUTION_CONTAINS,
-				new RefactorEnhancedForLoop(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE, JAVA_UNBOXING, JAVA_CAST,
-				JAVA_FINAL_KEYWORD, JAVA_DIAMOND_OPERATOR,
-				SubstitutionType.LCS_MAX_OPERATOR);
+		DiffHelper.handleSubstitution(diff, normalizationFunction, substitutionTypes.toArray(new SubstitutionType[0]));
 
 		// Do separately, so LCS max can find better matches and do only run LCS min on leftovers
 		DiffHelper.handleSubstitution(diff, normalizationFunction, SubstitutionType.LCS_MIN_OPERATOR);
@@ -1598,9 +1544,9 @@ public class CompareDirectories {
 
 		DiffType diffType = edit.getType();
 		change.addDifference(isInExtendedLines);
-		change.addLineChange(edit.getType());
+		change.addLineChange(diffType);
 
-		boolean shouldShowChange = !diffType.shouldTreatAsNormalizedEqual();
+		boolean shouldShowChange = !edit.shouldTreatAsNormalizedEqual();
 
 		if (shouldShowChange) {
 			change.addNote(edit.toString(true));
@@ -1617,7 +1563,7 @@ public class CompareDirectories {
 			System.out.println(edit.toString(true));
 		}
 
-		if (edit.isInsertOrDelete() || edit.getType().isMove()) {
+		if (edit.isInsertOrDelete() || edit.isMove()) {
 			String text = edit.getText().trim();
 
 			if (text.startsWith("//")) {
@@ -1628,35 +1574,46 @@ public class CompareDirectories {
 		}
 	}
 
-	private static boolean shouldReportAdd(final File file, final FileType type,
-			final boolean flattenReportingOfAddedDirectories) {
-		// Report result unless otherwise specified
-		boolean shouldReportResult = true;
-
+	private boolean shouldReportAdd(final Path path, final FileType type) {
 		if (type == FileType.DIRECTORY) {
-			if (flattenReportingOfAddedDirectories) {
+			if (this.flattenReportingOfAddedDirectories) {
 				// Only report if contains files (versus directories) or has no contents (deepest level)
-
-				File[] files = file.listFiles();
-
-				if (files != null && files.length != 0) {
-					// Report result if there are any files in the directory
-					shouldReportResult = Stream.of(files)
-							.anyMatch(File::isFile);
+				// Report result if there are any files in the directory
+				try {
+					if (Files.list(path).anyMatch(x -> true)) {
+						return Files.list(path)
+								.anyMatch(Files::isRegularFile);
+					}
+				} catch (IOException e) {
 				}
 			}
 		}
 
-		return shouldReportResult;
+		// Report result unless otherwise specified
+		return true;
 	}
 
 	/**
 	 * Indicates if the path should be checked for the compare
 	 *
-	 * @param path
-	 * @return
+	 * <p><b>NOTE</b>: this method may be overridden to implement your own functionality</p>
+	 * @param path the path to check
+	 * @return <code>true</code> if the path should be checked as part of the compare
 	 */
-	public static boolean shouldCheckPath(final Path path) {
+	public boolean shouldCheckPath(final Path path) {
+		Path fileNamePath = path.getFileName();
+
+		if (fileNamePath == null) {
+			return false;
+		}
+
+		String filename = fileNamePath.toString();
+
+		// Ignore .class files
+		if (filename.endsWith(".class")) {
+			return false;
+		}
+
 		int pathPartCount = path.getNameCount();
 
 		for (int i = 0; i < pathPartCount; i++) {
@@ -1667,22 +1624,10 @@ public class CompareDirectories {
 				return false;
 			}
 
-			// Ignore build\classes folder
-			if (part.equals("classes") && i > 0 && path.getName(i - 1).toString().equals("build")) {
-				return false;
-			}
-
-			if (IGNORE_PROJECTS.contains(part)) {
+			if (this.ignoreProjects.contains(part)) {
 				return false;
 			}
 		}
-
-		// Ignore .class files
-		if (path.getName(pathPartCount - 1).toString().endsWith(".class")) {
-			return false;
-		}
-
-		//		String pathString = path.toString();
 
 		return true;
 	}
@@ -1735,122 +1680,6 @@ public class CompareDirectories {
 		return filename;
 	}
 
-	private static Row addDifference(final XSSFSheet sheet, final BEXSide side, final BEXPair<Path> path,
-			final BEXPair<FileType> fileType, final FileChangeType changeType) {
-		return addDifference(sheet, path.get(side), fileType.get(side), changeType);
-	}
-
-	private static Row addDifference(final XSSFSheet sheet, final Path path, final FileType fileType,
-			final FileChangeType changeType) {
-		// Pass negative number so don't include count
-		return addDifference(sheet, path, fileType, changeType, -1, -1);
-	}
-
-	/**
-	 *
-	 *
-	 * @param sheet
-	 * @param path
-	 * @param fileType
-	 * @param changeType
-	 * @param differenceCount the number of differences (or negative to not include count)
-	 * @return
-	 */
-	private static Row addDifference(final XSSFSheet sheet, final BEXSide side, final BEXPair<Path> pathPair,
-			final BEXPair<FileType> fileType,
-			final FileChangeType changeType, final long differenceCount, final long deltaCount) {
-		return addDifference(sheet, pathPair.get(side), fileType.get(side), changeType, differenceCount,
-				deltaCount);
-	}
-
-	/**
-	 *
-	 *
-	 * @param sheet
-	 * @param path
-	 * @param fileType
-	 * @param changeType
-	 * @param differenceCount the number of differences (or negative to not include count)
-	 * @return
-	 */
-	private static Row addDifference(final XSSFSheet sheet, final Path path, final FileType fileType,
-			final FileChangeType changeType, final long differenceCount, final long deltaCount) {
-
-		if (isTesting) {
-			System.out.println("Add difference: " + path);
-		}
-
-		String project = getProject(path);
-		String directory = getDirectory(path);
-		String filename = getFilename(path);
-
-		// Get extension
-		String extension;
-		int lastPeriod = filename.lastIndexOf('.');
-
-		if (lastPeriod == -1 || fileType != FileType.FILE) {
-			extension = "";
-		} else {
-			extension = filename.substring(lastPeriod + 1);
-			// Remove extension from filename
-			filename = filename.substring(0, lastPeriod);
-		}
-
-		// Add most values, others added below
-		Row row = ParsingUtilities.addRow(sheet, project, directory, filename, extension, fileType.toString(),
-				changeType.toString());
-
-		row.getCell(DIRECTORY_COLUMN).setCellStyle(WRAP_TEXT_CELL_STYLE);
-		row.getCell(FILENAME_COLUMN).setCellStyle(WRAP_TEXT_CELL_STYLE);
-
-		Cell differencesCell = row.createCell(DIFFERENCES_COLUMN);
-
-		if (differenceCount >= 0) {
-			differencesCell.setCellValue(differenceCount);
-		}
-
-		Cell deltasCell = row.createCell(DELTAS_COLUMN);
-
-		if (deltaCount >= 0) {
-			deltasCell.setCellValue(deltaCount);
-		}
-
-		Cell pathnameCell = row.createCell(PATHNAME_COLUMN);
-
-		pathnameCell.setCellValue(path.toString());
-		pathnameCell.setCellStyle(WRAP_TEXT_CELL_STYLE);
-
-		if (CompareDirectories.copyChangedFilesSourcePath != null
-				&& Utilities.in(changeType, FileChangeType.ADDED, FileChangeType.MODIFIED)) {
-			Path source = copyChangedFilesSourcePath.resolve(path);
-			Path destination = copyChangedFilesDestinationPath.resolve(path);
-
-			if (!Files.isDirectory(destination)) {
-				// Copy file from source to destination
-				try {
-					Path parent = destination.getParent();
-
-					if (parent != null) {
-						Files.createDirectories(parent);
-					}
-					Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING,
-							StandardCopyOption.COPY_ATTRIBUTES);
-					System.out.printf("Copied file%n"
-							+ "\tfrom \"%s\"%n"
-							+ "\tto \"%s\"%n", source, destination);
-				} catch (IOException e) {
-					// Continue, since not end of world if cannot copy file
-					System.err.printf("Could not copy file%n"
-							+ "\t\from \"%s\"%n"
-							+ "\tto \"%s\"%n", source, destination);
-					e.printStackTrace();
-				}
-			}
-		}
-
-		return row;
-	}
-
 	/**
 	 *
 	 *
@@ -1866,43 +1695,62 @@ public class CompareDirectories {
 				.collect(Collectors.toList());
 	}
 
-	private static BEXMapPair<String, CompareDirectoriesResult> parse(final BEXPair<ASTParser> parser,
-			final BEXPair<String[]> javaPaths, final Map<File, DifferencesResult> diffs) {
+	private static BEXMapPair<String, CompareJavaCodeInfo> parse(final BEXPair<ASTParser> parser,
+			final BEXListPair<ProjectPath> javaPaths, final Map<Path, DifferencesResult> diffs) {
 
 		return new BEXMapPair<>(parse(LEFT, parser, javaPaths, diffs), parse(RIGHT, parser, javaPaths, diffs));
 	}
 
-	private static Map<String, CompareDirectoriesResult> parse(final BEXSide side, final BEXPair<ASTParser> parserPair,
-			final BEXPair<String[]> javaPaths, final Map<File, DifferencesResult> diffs) {
-		Map<String, CompareDirectoriesResult> results = new HashMap<>();
+	private static Map<String, CompareJavaCodeInfo> parse(final BEXSide side, final BEXPair<ASTParser> parserPair,
+			final BEXListPair<ProjectPath> javaPaths, final Map<Path, DifferencesResult> diffs) {
+		Map<String, CompareJavaCodeInfo> results = new ConcurrentHashMap<>();
 
 		ASTParser parser = parserPair.get(side);
 
-		parser.createASTs(javaPaths.get(side), null, new String[0],
+		String[] sourcePathnames = javaPaths.get(side).stream().map(ProjectPath::getPathname).toArray(String[]::new);
+
+		// TODO: multi-thread using ExecutorService
+		ExecutorService executorService = Executors.newWorkStealingPool();
+
+		parser.createASTs(sourcePathnames, null, new String[0],
 				new FileASTRequestor() {
 					@Override
-					public void acceptAST(final String sourceFilePath,
+					public void acceptAST(final String sourcePathname,
 							final CompilationUnit cu) {
-						File file = new File(sourceFilePath);
 
-						System.out.println("Parsing " + sourceFilePath);
+						//						System.out.println("Parsing " + sourcePathname);
 
-						CompareDirectoriesVisitor visitor = new CompareDirectoriesVisitor(
-								cu, diffs.get(file).getLines(side));
-						cu.accept(visitor);
+						executorService.execute(() -> {
+							Path path = Paths.get(sourcePathname);
+							CompareDirectoriesVisitor visitor = new CompareDirectoriesVisitor(cu,
+									diffs.get(path).getLines(side));
+							cu.accept(visitor);
 
-						String packageName = "";
+							String packageName = "";
 
-						PackageDeclaration packageDeclaration = cu.getPackage();
+							PackageDeclaration packageDeclaration = cu.getPackage();
 
-						if (packageDeclaration != null) {
-							packageName = packageDeclaration.getName().toString();
-						}
+							if (packageDeclaration != null) {
+								packageName = packageDeclaration.getName().toString();
+							}
 
-						results.put(sourceFilePath,
-								new CompareDirectoriesResult(packageName, visitor.getDetails()));
+							results.put(sourcePathname,
+									new CompareJavaCodeInfo(packageName, visitor.getDetails()));
+						});
 					}
 				}, null);
+
+		// https://www.baeldung.com/java-executor-wait-for-threads
+		// Set to 60 minutes just in case it takes a while
+		executorService.shutdown();
+		try {
+			if (!executorService.awaitTermination(60, TimeUnit.MINUTES)) {
+				executorService.shutdownNow();
+			}
+		} catch (InterruptedException ex) {
+			executorService.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
 
 		return results;
 	}
@@ -1913,5 +1761,330 @@ public class CompareDirectories {
 				.filter(l -> code.contains(l.getNumber()))
 				.filter(l -> l.getText().trim().isEmpty())
 				.count();
+	}
+
+	public CompareDirectoriesResult findDifferences(final BEXPair<Path> rootPath)
+			throws IOException {
+		BEXListPair<Path> paths = new BEXListPair<>(rootPath.mapThrows(r -> Files.walk(r)
+				// Run in parallel for performance boost
+				.parallel()
+				.filter(this::shouldCheckPath)
+				// Sort so can iterate over and find differences
+				.sorted()
+				.collect(toList())));
+
+		List<PathChangeInfo> pathChanges = new Vector<>();
+
+		BEXListPair<ProjectPath> javaPaths = new BEXListPair<>(Vector::new);
+
+		// Map from path to list of differences
+		// (path will be the destination path)
+		Map<Path, DifferencesResult> javaPathDiffMap = new ConcurrentHashMap<>();
+
+		MutableIntBEXPair index = new MutableIntBEXPair();
+
+		ExecutorService executorService = Executors.newWorkStealingPool();
+
+		while (index.getLeft() < paths.getLeft().size() && index.getRight() < paths.getRight().size()) {
+			BEXPair<Path> path = paths.get(index);
+			BEXPair<FileType> fileType = path.map(FileType::determineFileType);
+
+			BEXPair<Path> relativePath = new BEXPair<>(side -> rootPath.get(side).relativize(path.get(side)));
+
+			int compare = relativePath.applyAsInt(Path::compareTo);
+			BEXSide side = compare < 0 ? LEFT : RIGHT;
+
+			// Progress output
+			// Check if remaining is 0 or 1
+			// Since both left index and right index could increase together, check 0 and 1 remaining, so don't miss a progress output
+			// (if only checked remainder 0, could have remainder 1 for a long time and not get progress indicator)
+			if ((index.getLeft() + index.getRight()) % 1000 <= 1) {
+				System.out.printf("Checking %s%n", relativePath.get(side));
+			}
+
+			if (compare < 0) {
+				// Left path is before right path
+				// This means left path does not exist in the right directory
+				// (that is, the path was deleted)
+				index.incrementAndGet(side);
+				executorService.execute(
+						() -> pathChanges.add(createDifference(side, relativePath, fileType, PathChangeType.DELETED)));
+			} else if (compare > 0) {
+				// Left path is after right path
+				// This means right path does not exist in the left directory
+				// (that is, the path was added)
+				index.incrementAndGet(side);
+
+				if (this.shouldReportAdd(path.get(side), fileType.get(side))) {
+					executorService.execute(() -> pathChanges
+							.add(createDifference(side, relativePath, fileType, PathChangeType.ADDED)));
+				}
+			} else {
+				// Same name
+				index.increment();
+
+				// Verify type matches
+				if (fileType.test(Objects::equals)) {
+					if (fileType.get(side) == FileType.FILE) {
+						executorService.execute(() -> this.determineFileChanges(path, relativePath.get(side),
+								pathChanges, javaPaths, javaPathDiffMap));
+
+						// XXX: add back function to test specific path for differences
+						// (implement outside of this, by filtering the paths)
+						//						if (isTesting && !file.get(side).getName().equals(testingFile)) {
+						//							continue;
+						//						}
+
+					}
+
+					// Note: If directory, doesn't matter that match, only need to compare files
+				} else {
+					// Type differs
+					// TODO: write to report as difference
+					System.err.printf("'%s'\t'%s' (%s)\t'%s' (%s)%n", relativePath.get(side),
+							path.getLeft(), fileType.getLeft(),
+							path.getRight(), fileType.getRight());
+
+					// Show as add and delete
+
+					// Show directory last, so groups directory and any subfolder's files together
+					if (fileType.getLeft() == FileType.DIRECTORY) {
+						executorService.execute(() -> {
+							pathChanges.add(createDifference(RIGHT, relativePath, fileType, PathChangeType.ADDED));
+							pathChanges.add(createDifference(LEFT, relativePath, fileType, PathChangeType.DELETED));
+						});
+					} else {
+						executorService.execute(() -> {
+							pathChanges.add(createDifference(LEFT, relativePath, fileType, PathChangeType.DELETED));
+							pathChanges.add(createDifference(RIGHT, relativePath, fileType, PathChangeType.ADDED));
+						});
+					}
+				}
+			}
+		}
+
+		// https://www.baeldung.com/java-executor-wait-for-threads
+		executorService.shutdown();
+		try {
+			if (!executorService.awaitTermination(60, TimeUnit.MINUTES)) {
+				executorService.shutdownNow();
+			}
+		} catch (InterruptedException ex) {
+			executorService.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
+
+		// Sort them, to ensure consistent ordering, even though multi-threaded
+		pathChanges.sort(Comparator.comparing(PathChangeInfo::getRelativePath));
+
+		javaPaths.acceptBoth(
+				l -> l.sort(Comparator.comparing(ProjectPath::getProject).thenComparing(ProjectPath::getPath)));
+
+		// Handle rest of paths
+		// * Any remaining in leftPaths were deleted (since they don't appear in rightPaths)
+		// * Any remaining in rightPaths were added (since they don't appear in leftPaths)
+
+		// Only one side (if any) will have extra paths
+		// (since the above loop wouldn't have exited if they both had extra paths)
+		BEXSide side = index.getLeft() < paths.getLeft().size() ? LEFT : RIGHT;
+		// TODO: support added stuff is on the left side?
+		PathChangeType pathChangeType = side == LEFT ? PathChangeType.DELETED : PathChangeType.ADDED;
+
+		while (index.get(side) < paths.get(side).size()) {
+			Path path = paths.get(side).get(index.getAndIncrement(side));
+			FileType fileType = FileType.determineFileType(path);
+
+			if (!isTesting) {
+				System.out.printf("Extra %s: '%s' (%s)%n", pathChangeType, path, fileType);
+			}
+
+			boolean shouldInclude = pathChangeType == PathChangeType.DELETED || this.shouldReportAdd(path, fileType);
+
+			if (shouldInclude) {
+				Path relativePath = rootPath.getLeft().relativize(path);
+
+				pathChanges.add(createDifference(relativePath, fileType, pathChangeType));
+			}
+		}
+
+		return new CompareDirectoriesResult(pathChanges, javaPaths, javaPathDiffMap);
+	}
+
+	private void determineFileChanges(final BEXPair<Path> path, final Path relativePath,
+			final List<PathChangeInfo> pathChanges, final BEXListPair<ProjectPath> javaPaths,
+			final Map<Path, DifferencesResult> javaPathDiffMap) {
+		// Path exists in both workspaces
+
+		BEXPair<String> text;
+		try {
+			text = path.mapThrows(CompareDirectories::readFileContents);
+		} catch (IOException e) {
+			// If not able to read file, add as difference
+			pathChanges.add(createDifference(relativePath, FileType.FILE, PathChangeType.MODIFIED));
+			return;
+		}
+
+		if (!text.test(Object::equals)) {
+			// File was modified
+			if (!isTesting) {
+				System.out.printf("Modified '%s' (%s)%n", relativePath, FileType.FILE);
+			}
+
+			DifferencesResult differencesResult;
+			int differenceCount;
+			int deltas;
+
+			if (this.skipTextCompare.test(path.getRight())) {
+				// Do not compare text, but still indicate difference
+				differencesResult = null;
+				// Use negates so don't show counts on report (since didn't calculate counts)
+				differenceCount = -1;
+				deltas = -1;
+			} else {
+				// Get differences
+				// (TODO: do something with the differences)
+				differencesResult = this.getDifferences(relativePath,
+						new BEXListPair<>(text.map(CompareDirectories::splitLines)),
+						DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION);
+
+				differenceCount = getDifferenceCount(differencesResult);
+
+				// Count only the number of blocks which have differences
+				deltas = getDeltaCount(differencesResult);
+			}
+
+			pathChanges.add(createDifference(relativePath, FileType.FILE, PathChangeType.MODIFIED,
+					differenceCount, deltas));
+
+			if (deltas > 0 && path.getRight().toString().endsWith(".java")) {
+				// If has differences, parse Java code so can split into various methods
+				String project = getProject(relativePath);
+
+				BEXPair<ProjectPath> projectPath = path.map(f -> new ProjectPath(project, f));
+
+				// Track paths so can parse all at once (otherwise need to reset settings, which kills performance)
+				javaPaths.add(projectPath);
+
+				// 8/28/2019 Put both left path and right path in map to help read diff / line information when parsing code
+				path.acceptBoth(f -> javaPathDiffMap.put(f, differencesResult));
+			}
+		}
+	}
+
+	private static PathChangeInfo createDifference(final BEXSide side, final BEXPair<Path> relativePath,
+			final BEXPair<FileType> fileType, final PathChangeType changeType) {
+		return createDifference(relativePath.get(side), fileType.get(side), changeType);
+	}
+
+	private static PathChangeInfo createDifference(final Path relativePath, final FileType fileType,
+			final PathChangeType changeType) {
+		// Pass negative number so don't include count
+		return createDifference(relativePath, fileType, changeType, -1, -1);
+	}
+
+	/**
+	 *
+	 * @param relativePath
+	 * @param fileType
+	 * @param changeType
+	 * @param differenceCount the number of differences (or negative to not include count)
+	 * @return
+	 */
+	private static PathChangeInfo createDifference(final Path relativePath, final FileType fileType,
+			final PathChangeType changeType, final int differenceCount, final int deltaCount) {
+
+		if (isTesting) {
+			System.out.println("Add difference: " + relativePath);
+		}
+
+		String project = getProject(relativePath);
+		String directory = getDirectory(relativePath);
+		String filename = getFilename(relativePath);
+
+		// Get extension
+		String extension;
+		int lastPeriod = filename.lastIndexOf('.');
+
+		if (lastPeriod == -1 || fileType != FileType.FILE) {
+			extension = "";
+		} else {
+			extension = filename.substring(lastPeriod + 1);
+			// Remove extension from filename
+			filename = filename.substring(0, lastPeriod);
+		}
+
+		return new PathChangeInfo(relativePath, project, directory, filename, extension, fileType, changeType,
+				differenceCount,
+				deltaCount);
+	}
+
+	/**
+	 *
+	 *
+	 * @param sheet
+	 * @return
+	 */
+	private static Row addDifference(final XSSFSheet sheet, final PathChangeInfo change) {
+		if (isTesting) {
+			System.out.println("Add difference: " + change.getRelativePath());
+		}
+
+		// Add most values, others added below
+		Row row = ExcelUtilities.addRow(sheet, change.getProject(), change.getDirectory(),
+				change.getFilenameWithoutExtension(), change.getExtension(), change.getFileType().toString(),
+				change.getPathChangeType().toString());
+
+		row.getCell(DIRECTORY_COLUMN).setCellStyle(WRAP_TEXT_CELL_STYLE);
+		row.getCell(FILENAME_COLUMN).setCellStyle(WRAP_TEXT_CELL_STYLE);
+
+		int differenceCount = change.getDifferenceCount();
+		Cell differencesCell = row.createCell(DIFFERENCES_COLUMN);
+
+		if (differenceCount >= 0) {
+			differencesCell.setCellValue(differenceCount);
+		}
+
+		int deltaCount = change.getDeltaCount();
+		Cell deltasCell = row.createCell(DELTAS_COLUMN);
+
+		if (deltaCount >= 0) {
+			deltasCell.setCellValue(deltaCount);
+		}
+
+		Cell pathnameCell = row.createCell(PATHNAME_COLUMN);
+
+		pathnameCell.setCellValue(change.getRelativePath().toString());
+		pathnameCell.setCellStyle(WRAP_TEXT_CELL_STYLE);
+
+		// TODO: separate out the copying of the changes files to another directory
+		//		if (CompareDirectories.copyChangedFilesSourcePath != null
+		//				&& Utilities.in(change.getFileChangeType(), FileChangeType.ADDED, FileChangeType.MODIFIED)) {
+		//			Path source = copyChangedFilesSourcePath.resolve(path);
+		//			Path destination = copyChangedFilesDestinationPath.resolve(path);
+		//
+		//			if (!Files.isDirectory(destination)) {
+		//				// Copy file from source to destination
+		//				try {
+		//					Path parent = destination.getParent();
+		//
+		//					if (parent != null) {
+		//						Files.createDirectories(parent);
+		//					}
+		//					Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING,
+		//							StandardCopyOption.COPY_ATTRIBUTES);
+		//					System.out.printf("Copied file%n"
+		//							+ "\tfrom \"%s\"%n"
+		//							+ "\tto \"%s\"%n", source, destination);
+		//				} catch (IOException e) {
+		//					// Continue, since not end of world if cannot copy file
+		//					System.err.printf("Could not copy file%n"
+		//							+ "\t\from \"%s\"%n"
+		//							+ "\tto \"%s\"%n", source, destination);
+		//					e.printStackTrace();
+		//				}
+		//			}
+		//		}
+
+		return row;
 	}
 }

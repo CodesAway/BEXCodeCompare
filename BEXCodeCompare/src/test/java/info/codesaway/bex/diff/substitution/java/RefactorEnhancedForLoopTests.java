@@ -18,7 +18,7 @@ import info.codesaway.bex.diff.DiffLine;
 import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 
-public class RefactorEnhancedForLoopTests {
+class RefactorEnhancedForLoopTests {
 	@Test
 	void testIndexToEnhancedForWithLocalVariable() {
 		// TODO Auto-generated method stub

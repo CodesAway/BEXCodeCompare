@@ -13,7 +13,7 @@ import info.codesaway.bex.diff.substitution.RefactoringDiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.util.regex.Matcher;
 
-public class JavaFinalKeywordSubstitution implements JavaSubstitution {
+public final class JavaFinalKeywordSubstitution implements JavaSubstitution {
 	private static final ThreadLocal<Matcher> FINAL_KEYWORD_MATCHER = getThreadLocalMatcher(
 			"\\bfinal\\s");
 

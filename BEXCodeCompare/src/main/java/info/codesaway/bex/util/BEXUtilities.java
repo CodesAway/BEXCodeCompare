@@ -5,8 +5,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
-public class Utilities {
+public final class BEXUtilities {
+	private BEXUtilities() {
+		throw new UnsupportedOperationException();
+	}
+
 	/**
 	 * Indicates whether the specified <code>key</code> exists in the passed <code>elements</code>.
 	 *
@@ -39,5 +44,23 @@ public class Utilities {
 		if (!condition) {
 			throw new IllegalArgumentException(message);
 		}
+	}
+
+	/**
+	 * Returns a predicate that is the negation of the
+	 * supplied predicate.
+	 * @param <T>     the type of arguments to the
+	 *                specified predicate
+	 * @param target  predicate to negate
+	 *
+	 * @return a predicate that negates the results
+	 *         of the supplied predicate
+	 *
+	 * @since 0.3
+	 */
+	// Added Java 11 "not" helper method
+	// https://bugs.openjdk.java.net/browse/JDK-8203428
+	public static <T> Predicate<T> not(final Predicate<? super T> target) {
+		return (Predicate<T>) target.negate();
 	}
 }

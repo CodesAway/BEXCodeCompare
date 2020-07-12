@@ -13,7 +13,7 @@ import info.codesaway.bex.IntBEXPair;
  *
  * <p>Referenced: https://blog.jcoglan.com/2017/09/28/implementing-patience-diff/</p>
  */
-public class PatienceMatch {
+public final class PatienceMatch {
 	private final int leftLineNumber;
 	private final int rightLineNumber;
 

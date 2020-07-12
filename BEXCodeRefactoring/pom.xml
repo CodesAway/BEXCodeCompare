@@ -5,12 +5,19 @@
 	<groupId>info.codesaway</groupId>
 	<artifactId>becr</artifactId>
 	<version>0.3.0</version>
-	<name>Be Enhanced Code Refactoring</name>
-	<description>Refactor Your Code Intelligently</description>
+	<name>Be Enhanced Code Refactoring (BECR)</name>
+	<description>Refactor better using BECR</description>
 	<properties>
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<repository>BEXCodeRefactoring</repository>
 	</properties>
+	<url>https://github.com/CodesAway/${repository}/</url>
+	<organization>
+		<name>CodesAway</name>
+		<url>https://codesaway.info</url>
+	</organization>
 	<dependencies>
 		<dependency>
 			<groupId>info.codesaway</groupId>
@@ -23,17 +30,43 @@
 			<artifactId>org.eclipse.jdt.core</artifactId>
 			<version>3.22.0</version>
 		</dependency>
-		<!-- Used for making Excel report -->
-		<dependency>
-			<groupId>org.apache.poi</groupId>
-			<artifactId>poi-ooxml</artifactId>
-			<version>4.1.2</version>
-		</dependency>
-		<!-- Used for Utility functionality -->
-		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
-			<version>29.0-jre</version>
-		</dependency>
 	</dependencies>
-</project>
+	<build>
+		<plugins>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.1</version>
+			</plugin>
+			<plugin>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.22.2</version>
+			</plugin>
+			<!-- https://spotbugs.readthedocs.io/en/latest/maven.html -->
+			<plugin>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+				<version>4.0.0</version>
+				<dependencies>
+					<!-- overwrite dependency on spotbugs if you want to specify the version 
+						of spotbugs -->
+					<dependency>
+						<groupId>com.github.spotbugs</groupId>
+						<artifactId>spotbugs</artifactId>
+						<version>4.0.3</version>
+					</dependency>
+				</dependencies>
+				<configuration>
+					<effort>Max</effort>
+					<threshold>Low</threshold>
+					<xmlOutput>true</xmlOutput>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build></project>

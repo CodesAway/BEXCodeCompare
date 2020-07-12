@@ -3,19 +3,18 @@ package info.codesaway.bex.diff;
 import static info.codesaway.bex.diff.BasicDiffType.REFACTOR;
 import static info.codesaway.bex.diff.BasicDiffType.REPLACEMENT_BLOCK;
 import static info.codesaway.bex.diff.BasicDiffType.SUBSTITUTE;
-import static info.codesaway.bex.util.Utilities.in;
+import static info.codesaway.bex.util.BEXUtilities.in;
 
 /**
  * Difference type
  */
 public interface DiffType {
 	/**
-	 * Get the tag used to describe the type of change (for example, a '+' for an insert)
+	 * Get the symbol used to describe the type of change (for example, a '+' for an insert)
 	 *
-	 * @return the tag used to describe the type of change
+	 * @return the symbol used to describe the type of change
 	 */
-	// TODO: rename to something better
-	public char getTag();
+	public char getSymbol();
 
 	/**
 	 * Indicate if this DiffType describes a move

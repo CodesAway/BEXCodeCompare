@@ -1,16 +1,15 @@
 package info.codesaway.becr.diff;
 
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
-
-import com.google.common.collect.LinkedHashMultiset;
-import com.google.common.collect.Multiset;
 
 import info.codesaway.becr.parsing.CodeInfoWithLineInfo;
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.diff.DiffType;
 
-public class CompareDirectoriesJoinedDetail {
+public final class CompareDirectoriesJoinedDetail {
 	private final BEXPair<CodeInfoWithLineInfo> code;
 
 	private ImpactType impact;
@@ -20,13 +19,13 @@ public class CompareDirectoriesJoinedDetail {
 	private int commentLinesCount;
 	private int blankLinesCount;
 
-	private final Multiset<DiffType> lineChanges = LinkedHashMultiset.create();
+	private final Map<DiffType, Integer> lineChanges = new LinkedHashMap<>();
 
 	// Used for modified blocks
 	private long modifiedDifferences;
 	private long modifiedDeltas;
 
-	private FileChangeType fileChangeType;
+	private PathChangeType pathChangeType;
 
 	/**
 	 * Track notes, use Set so don't insert duplicate notes
@@ -147,19 +146,25 @@ public class CompareDirectoriesJoinedDetail {
 
 	public void addLineChange(final DiffType lineDiffType) {
 		if (lineDiffType != null) {
-			this.lineChanges.add(lineDiffType);
+			Integer count = this.lineChanges.get(lineDiffType);
+			Integer newCount = count == null ? 1 : count + 1;
+			this.lineChanges.put(lineDiffType, newCount);
 		}
 	}
 
-	public Multiset<DiffType> getLineChanges() {
+	/**
+	 *
+	 * @return a map from the DiffType to the number of times it occurs
+	 */
+	public Map<DiffType, Integer> getLineChanges() {
 		return this.lineChanges;
 	}
 
-	public FileChangeType getChangeType() {
-		return this.fileChangeType;
+	public PathChangeType getPathChangeType() {
+		return this.pathChangeType;
 	}
 
-	public void setChangeType(final FileChangeType fileChangeType) {
-		this.fileChangeType = fileChangeType;
+	public void setPathChangeType(final PathChangeType pathChangeType) {
+		this.pathChangeType = pathChangeType;
 	}
 }

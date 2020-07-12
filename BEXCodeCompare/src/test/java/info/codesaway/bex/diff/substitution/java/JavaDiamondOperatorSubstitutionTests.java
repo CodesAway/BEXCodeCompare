@@ -19,7 +19,7 @@ import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 
-public class JavaDiamondOperatorSubstitutionTests {
+class JavaDiamondOperatorSubstitutionTests {
 	@Test
 	void diamondSubstitutionTest() {
 		String leftText = "		this.jobSteps = new Vector<JobStep>();";

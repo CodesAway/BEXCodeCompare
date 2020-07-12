@@ -1,10 +1,10 @@
 package info.codesaway.bex.diff.patience;
 
-import static info.codesaway.bex.util.Utilities.immutableCopyOf;
+import static info.codesaway.bex.util.BEXUtilities.immutableCopyOf;
 
 import java.util.List;
 
-public class PatienceSliceMatch {
+public final class PatienceSliceMatch {
 	private final PatienceSlice slice;
 	private final List<PatienceMatch> matches;
 

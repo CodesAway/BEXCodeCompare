@@ -12,7 +12,7 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 
-public class MethodSignature implements Comparable<MethodSignature>, CodeInfo {
+public final class MethodSignature implements Comparable<MethodSignature>, CodeInfo {
 	private final EnumSet<MethodSignatureOption> optionsSet;
 
 	// Store classname where method lives

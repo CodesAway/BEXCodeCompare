@@ -5,7 +5,7 @@ import java.util.Objects;
 import info.codesaway.becr.parsing.CodeInfoWithLineInfo;
 import info.codesaway.bex.BEXPairCore;
 
-public class CorrespondingCode implements BEXPairCore<CodeInfoWithLineInfo> {
+public final class CorrespondingCode implements BEXPairCore<CodeInfoWithLineInfo> {
 	private final CodeInfoWithLineInfo left;
 	private final CodeInfoWithLineInfo right;
 

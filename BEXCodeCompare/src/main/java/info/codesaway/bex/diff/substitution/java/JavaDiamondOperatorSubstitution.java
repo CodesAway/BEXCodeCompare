@@ -13,7 +13,7 @@ import info.codesaway.bex.diff.substitution.RefactoringDiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.util.regex.Matcher;
 
-public class JavaDiamondOperatorSubstitution implements JavaSubstitution {
+public final class JavaDiamondOperatorSubstitution implements JavaSubstitution {
 	private static final String TYPE_PART_REGEX = "\\w++(?:\\[\\]|<\\w++>)?+";
 	private static final ThreadLocal<Matcher> DIAMOND_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
 			"(?<head>(?:(?<variable>\\w++) = |return\\s++)"

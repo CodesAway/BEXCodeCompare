@@ -6,7 +6,7 @@ import java.util.Objects;
 
 import org.eclipse.jdt.core.dom.IVariableBinding;
 
-public class FieldInfo implements CodeInfo {
+public final class FieldInfo implements CodeInfo {
 	private final EnumSet<FieldInfoOption> optionsSet;
 
 	private final String modifiers;

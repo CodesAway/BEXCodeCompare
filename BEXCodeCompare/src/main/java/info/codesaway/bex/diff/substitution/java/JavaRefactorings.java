@@ -1,6 +1,6 @@
 package info.codesaway.bex.diff.substitution.java;
 
-public class JavaRefactorings {
+public final class JavaRefactorings {
 	// Java Refactoring (don't put in JavaRefactoring class since SpotBugs complained about cyclic static initializers (IC_INIT_CIRCULARITY)
 	public static final JavaUnboxing JAVA_UNBOXING = new JavaUnboxing();
 	public static final ImportSameClassnameDifferentPackage IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE = new ImportSameClassnameDifferentPackage();

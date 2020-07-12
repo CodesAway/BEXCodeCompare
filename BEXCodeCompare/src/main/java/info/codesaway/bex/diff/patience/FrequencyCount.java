@@ -9,7 +9,7 @@ import info.codesaway.bex.BEXSide;
  *
  * <p>Instances of this class are not safe for use by multiple concurrent threads.</p>
  */
-public class FrequencyCount {
+public final class FrequencyCount {
 	// Referenced: https://blog.jcoglan.com/2017/09/28/implementing-patience-diff/
 
 	/**

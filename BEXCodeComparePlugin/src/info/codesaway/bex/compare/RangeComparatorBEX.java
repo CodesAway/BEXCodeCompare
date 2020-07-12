@@ -13,6 +13,7 @@ import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_DI
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_FINAL_KEYWORD;
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_SEMICOLON;
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_UNBOXING;
+import static info.codesaway.bex.util.BEXUtilities.not;
 import static java.util.stream.Collectors.toList;
 
 import java.util.ArrayList;
@@ -61,7 +62,7 @@ public class RangeComparatorBEX {
 		try {
 			// TODO: how to use monitor?
 			bex.computeDifferences(monitor.newChild(95), updateView);
-			return bex.getDifferences(monitor.newChild(5), factory);
+			return bex.getDifferences(monitor.newChild(5), factory, updateView);
 		} finally {
 			if (pm != null) {
 				pm.done();
@@ -141,7 +142,10 @@ public class RangeComparatorBEX {
 
 		// 7/8/2020 - don't allow replacements for DiffBlock (should yield better diff in Eclipse)
 		// (should be helpful when ignore comments)
-		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, false);
+		// TODO: though, makes ignoring split line differences challenging
+		// TODO: write logic that recognizes split lines even if not in blocks
+		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, true);
+		//		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, false);
 
 		// Handle ignoring blank lines or comments (if option is enabled)
 		if (this.ignoreWhitespace || ignoreComments) {
@@ -246,7 +250,7 @@ public class RangeComparatorBEX {
 			// All changes in block are import statements
 			List<DiffEdit> nonIgnoredDiffEdits = diffBlock.getEdits()
 					.stream()
-					.filter(e -> !e.getType().shouldIgnore())
+					.filter(not(DiffUnit::shouldIgnore))
 					.collect(toList());
 
 			// TODO: if all differences are ignored, indicate block is not important
@@ -332,7 +336,7 @@ public class RangeComparatorBEX {
 	}
 
 	private RangeDifference[] getDifferences(final SubMonitor subMonitor,
-			final AbstractRangeDifferenceFactory factory) {
+			final AbstractRangeDifferenceFactory factory, final boolean includeNoChangeDiff) {
 		try {
 			List<RangeDifference> differences = new ArrayList<>();
 
@@ -364,7 +368,7 @@ public class RangeComparatorBEX {
 				if (rightStart != -1) {
 					int maxRight = diffEdits.stream()
 							.filter(DiffEdit::hasRightLine)
-							.filter(d -> !d.getType().isMove())
+							.filter(not(DiffUnit::isMove))
 							.mapToInt(DiffEdit::getRightLineNumber)
 							.max()
 							.orElse(0) - 1;
@@ -379,7 +383,7 @@ public class RangeComparatorBEX {
 				if (leftStart != -1) {
 					int maxLeft = diffEdits.stream()
 							.filter(DiffEdit::hasLeftLine)
-							.filter(d -> !d.getType().isMove())
+							.filter(not(DiffUnit::isMove))
 							.mapToInt(DiffEdit::getLeftLineNumber)
 							.max()
 							.orElse(0) - 1;
@@ -392,6 +396,12 @@ public class RangeComparatorBEX {
 				}
 
 				CompareResultType compareResultType = this.isChangedMap.get(diffUnit);
+
+				// TODO: trying to work around bug in 3-way where shows
+				if (compareResultType == CompareResultType.NOCHANGE && !includeNoChangeDiff) {
+					continue;
+				}
+
 				if (compareResultType != CompareResultType.EQUAL) {
 					int kind = compareResultType == CompareResultType.CHANGE
 							? RangeDifference.CHANGE

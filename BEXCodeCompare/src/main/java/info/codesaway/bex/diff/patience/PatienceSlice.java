@@ -3,7 +3,7 @@ package info.codesaway.bex.diff.patience;
 import info.codesaway.bex.IntPair;
 import info.codesaway.bex.MutableIntBEXPair;
 
-public class PatienceSlice {
+public final class PatienceSlice {
 	private final MutableIntBEXPair start;
 	private final MutableIntBEXPair end;
 

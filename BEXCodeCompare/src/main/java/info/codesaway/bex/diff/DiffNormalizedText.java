@@ -2,7 +2,7 @@ package info.codesaway.bex.diff;
 
 import java.util.Objects;
 
-public class DiffNormalizedText {
+public final class DiffNormalizedText {
 	private final String leftText;
 	private final String rightText;
 

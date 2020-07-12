@@ -16,19 +16,11 @@ public final class BEXListPair<E> implements BEXPairCore<List<E>> {
 	private final BEXPair<List<E>> pair;
 
 	/**
-	 *
+	 * Creates a new BEXListPair using the results of applying the specified function for both {@link BEXSide#LEFT} and {@link BEXSide#RIGHT}
 	 * @param supplier the supplier used to initialize both the left and right lists (typically a constructor reference such as <code>ArrayList::new</code>)
 	 */
 	public BEXListPair(final Supplier<? extends List<E>> supplier) {
 		this(supplier.get(), supplier.get());
-	}
-
-	/**
-	 * Creates a new BEXListPair using the results of applying the specified function for both {@link BEXSide#LEFT} and {@link BEXSide#RIGHT}
-	 * @param function the function to apply
-	 */
-	public BEXListPair(final Function<BEXSide, List<E>> function) {
-		this(function.apply(BEXSide.LEFT), function.apply(BEXSide.RIGHT));
 	}
 
 	public BEXListPair(final List<E> left, final List<E> right) {
@@ -37,6 +29,16 @@ public final class BEXListPair<E> implements BEXPairCore<List<E>> {
 
 	public BEXListPair(final BEXPair<List<E>> listPair) {
 		this.pair = listPair;
+	}
+
+	/**
+	 * Creates a new BEXListPair using the results of applying the specified function for both {@link BEXSide#LEFT} and {@link BEXSide#RIGHT}
+	 * @param function the function to apply
+	 */
+	// Implementation note: made "from" method instead of constructor due to Java compiler ambiguity
+	// (doesn't show as compile error until consumer code tries to use it, then shows as compile error)
+	public static <E> BEXListPair<E> from(final Function<BEXSide, List<E>> function) {
+		return new BEXListPair<>(function.apply(BEXSide.LEFT), function.apply(BEXSide.RIGHT));
 	}
 
 	/**
@@ -123,5 +125,4 @@ public final class BEXListPair<E> implements BEXPairCore<List<E>> {
 	public <R> BEXPair<R> map(final Function<List<E>, R> function) {
 		return new BEXPair<>(function.apply(this.getLeft()), function.apply(this.getRight()));
 	}
-
 }

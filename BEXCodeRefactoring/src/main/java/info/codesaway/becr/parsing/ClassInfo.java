@@ -5,7 +5,7 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 /**
  * Used for classes, interfaces, enums, and annotations
  */
-public class ClassInfo implements CodeInfo {
+public final class ClassInfo implements CodeInfo {
 	private final String qualifiedName;
 	private final String shortName;
 

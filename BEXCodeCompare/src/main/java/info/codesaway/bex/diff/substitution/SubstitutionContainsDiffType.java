@@ -7,7 +7,7 @@ import java.util.Objects;
  */
 // TODO: give better name
 // Maybe SubstitutionFullyContained
-public class SubstitutionContainsDiffType implements SubstitutionDiffType {
+public final class SubstitutionContainsDiffType implements SubstitutionDiffType {
 	private final String prefix;
 	private final Direction direction;
 	private final String suffix;
@@ -36,7 +36,7 @@ public class SubstitutionContainsDiffType implements SubstitutionDiffType {
 	}
 
 	@Override
-	public char getTag() {
+	public char getSymbol() {
 		// 'S' to indicate a substitution
 		return 'S';
 	}

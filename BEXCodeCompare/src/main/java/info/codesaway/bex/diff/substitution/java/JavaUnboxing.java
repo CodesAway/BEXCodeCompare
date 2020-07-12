@@ -13,7 +13,7 @@ import info.codesaway.bex.diff.substitution.RefactoringDiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.util.regex.Matcher;
 
-public class JavaUnboxing implements JavaSubstitution {
+public final class JavaUnboxing implements JavaSubstitution {
 	private static final ThreadLocal<Matcher> UNBOXING_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
 			"\\.(?<type>boolean|byte|char|double|float|int|long|short)Value\\(\\)"));
 

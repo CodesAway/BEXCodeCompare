@@ -24,7 +24,7 @@ import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.patience.PatienceMatch;
 
-public class DiffHelperTests {
+class DiffHelperTests {
 
 	public static List<Entry<ImmutableIntArray, ImmutableIntArray>> testPatienceSort() {
 		return Arrays.asList(

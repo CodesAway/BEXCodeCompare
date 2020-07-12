@@ -1,6 +1,6 @@
 package info.codesaway.bex.diff;
 
-public class DiffLine {
+public final class DiffLine {
 	private final int number;
 	private final String text;
 

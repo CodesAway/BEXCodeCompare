@@ -15,7 +15,7 @@ import info.codesaway.bex.diff.substitution.RefactoringDiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.util.regex.Matcher;
 
-public class JavaCastSubstitution implements JavaSubstitution {
+public final class JavaCastSubstitution implements JavaSubstitution {
 	private static final String TYPE_REGEX = "(?<type>\\w++(?:<\\w++>)?+)";
 	private static final ThreadLocal<Matcher> CAST_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
 			"(?J)"

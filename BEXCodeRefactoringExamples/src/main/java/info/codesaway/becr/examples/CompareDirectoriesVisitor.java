@@ -24,7 +24,7 @@ import info.codesaway.becr.parsing.MethodSignatureOption;
 import info.codesaway.becr.parsing.ParsingUtilities;
 import info.codesaway.bex.diff.DiffLine;
 
-public class CompareDirectoriesVisitor extends ASTVisitor {
+public final class CompareDirectoriesVisitor extends ASTVisitor {
 
 	private final CompilationUnit compilationUnit;
 

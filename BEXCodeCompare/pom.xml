@@ -7,7 +7,13 @@
 	<version>0.3.0</version>
 	<name>BEX Code Compare</name>
 	<description>Be Enhanced Code Compare</description>
-	<url>https://github.com/CodesAway/BEXCodeCompare/</url>
+	<properties>
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<maven.compiler.target>1.8</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<repository>BEXCodeCompare</repository>
+	</properties>
+	<url>https://github.com/CodesAway/${repository}/</url>
 	<organization>
 		<name>CodesAway</name>
 		<url>https://codesaway.info</url>
@@ -16,7 +22,7 @@
 		<dependency>
 			<groupId>info.codesaway</groupId>
 			<artifactId>regexplus</artifactId>
-			<version>1.0</version>
+			<version>1.1.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.spotbugs</groupId>
@@ -150,16 +156,10 @@
 		</developer>
 	</developers>
 	<scm>
-		<connection>scm:git:git://github.com/CodesAway/RegExPlus.git</connection>
-		<developerConnection>scm:git:ssh://github.com:CodesAway/RegExPlus.git</developerConnection>
-		<url>http://github.com/CodesAway/RegExPlus/tree/master</url>
+		<connection>scm:git:git://github.com/CodesAway/${repository}.git</connection>
+		<developerConnection>scm:git:ssh://github.com:CodesAway/${repository}.git</developerConnection>
+		<url>http://github.com/CodesAway/${repository}/tree/master</url>
 	</scm>
-	<properties>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-	</properties>
-
 	<distributionManagement>
 		<snapshotRepository>
 			<id>ossrh</id>

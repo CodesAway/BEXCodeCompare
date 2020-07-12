@@ -10,7 +10,7 @@ import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 import info.codesaway.util.regex.MatchResult;
 import info.codesaway.util.regex.Matcher;
 
-public class ImportSameClassnameDifferentPackage implements JavaSubstitution {
+public final class ImportSameClassnameDifferentPackage implements JavaSubstitution {
 	@Override
 	public SubstitutionDiffType accept(final DiffEdit left, final DiffEdit right,
 			final Map<DiffEdit, String> normalizedTexts,

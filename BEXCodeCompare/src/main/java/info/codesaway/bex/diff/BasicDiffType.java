@@ -70,21 +70,21 @@ public enum BasicDiffType implements DiffType {
 	 */
 	public static final RefactoringDiffType REFACTOR = new RefactoringDiffTypeValue('R', null, null, null);
 
-	private final char tag;
+	private final char symbol;
 	private final boolean isMove;
 
-	private BasicDiffType(final char tag) {
-		this(tag, false);
+	private BasicDiffType(final char symbol) {
+		this(symbol, false);
 	}
 
-	private BasicDiffType(final char tag, final boolean isMove) {
-		this.tag = tag;
+	private BasicDiffType(final char symbol, final boolean isMove) {
+		this.symbol = symbol;
 		this.isMove = isMove;
 	}
 
 	@Override
-	public char getTag() {
-		return this.tag;
+	public char getSymbol() {
+		return this.symbol;
 	}
 
 	@Override
@@ -95,6 +95,11 @@ public enum BasicDiffType implements DiffType {
 	@Override
 	public boolean isSubstitution() {
 		return false;
+	}
+
+	@Override
+	public boolean shouldTreatAsNormalizedEqual() {
+		return this == NORMALIZE || this == EQUAL;
 	}
 
 	@Override

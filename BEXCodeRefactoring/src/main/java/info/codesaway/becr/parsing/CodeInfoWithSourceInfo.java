@@ -5,7 +5,7 @@ import java.util.Objects;
 
 import info.codesaway.util.regex.Pattern;
 
-public class CodeInfoWithSourceInfo implements Comparable<CodeInfoWithSourceInfo>, CodeInfo {
+public final class CodeInfoWithSourceInfo implements Comparable<CodeInfoWithSourceInfo>, CodeInfo {
 
 	private final String project;
 	private final String packageName;

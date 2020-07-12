@@ -1,5 +1,5 @@
 package info.codesaway.becr.diff;
 
-public enum FileChangeType {
+public enum PathChangeType {
 	ADDED, DELETED, MODIFIED
 }

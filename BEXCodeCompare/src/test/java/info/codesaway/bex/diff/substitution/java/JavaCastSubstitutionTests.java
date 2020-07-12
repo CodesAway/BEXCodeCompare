@@ -19,7 +19,7 @@ import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 
-public class JavaCastSubstitutionTests {
+class JavaCastSubstitutionTests {
 	@Test
 	void javaCastWithGenericsTest() {
 		String leftText = "Parm parm = (Parm) this.getParm();";

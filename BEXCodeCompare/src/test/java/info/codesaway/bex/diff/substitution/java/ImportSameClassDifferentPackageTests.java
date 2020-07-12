@@ -16,7 +16,7 @@ import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffLine;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 
-public class ImportSameClassDifferentPackageTests {
+class ImportSameClassDifferentPackageTests {
 	@Test
 	void testImportSameClassDifferencePackage() {
 		String leftText = "import something.MyClass;";

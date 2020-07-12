@@ -20,7 +20,7 @@ import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffLine;
 import info.codesaway.bex.diff.DiffNormalizedText;
 
-public class PatienceDiff extends AbstractDiffAlgorithm {
+public final class PatienceDiff extends AbstractDiffAlgorithm {
 	private final BiFunction<List<DiffLine>, List<DiffLine>, List<DiffEdit>> fallbackDiffAlgorithm;
 
 	private PatienceDiff(final List<DiffLine> leftLines, final List<DiffLine> rightLines,

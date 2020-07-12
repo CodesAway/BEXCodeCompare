@@ -32,7 +32,6 @@ import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.compare.BEXChangeInfo;
 import info.codesaway.bex.diff.DiffChange;
 import info.codesaway.bex.diff.DiffEdit;
-import info.codesaway.bex.diff.DiffType;
 import info.codesaway.eclipse.compare.contentmergeviewer.TextMergeViewer;
 
 /**
@@ -362,10 +361,9 @@ public class BEXView extends ViewPart {
 			}
 
 			for (DiffEdit changeEdit : change.getEdits()) {
-				DiffType diffType = changeEdit.getType();
-				char tag = diffType.shouldIgnore() ? ' ' : diffType.getTag();
+				char symbol = changeEdit.shouldIgnore() ? ' ' : changeEdit.getSymbol();
 
-				if (diffType.isSubstitution() && shouldShowBothSidesOfSubstitution) {
+				if (changeEdit.isSubstitution() && shouldShowBothSidesOfSubstitution) {
 					// TODO: maybe give option to have like this, but this is information overload
 					// Put the left / right substitution each on their own line
 					TreeParent substitutionParent = new TreeParent(changeEdit.toString(), changeEdit);
@@ -379,7 +377,7 @@ public class BEXView extends ViewPart {
 
 					changeParent.addChild(substitutionParent);
 				} else {
-					TreeObject changeLeaf = new TreeObject(changeEdit.toString(tag), changeEdit);
+					TreeObject changeLeaf = new TreeObject(changeEdit.toString(symbol), changeEdit);
 					changeParent.addChild(changeLeaf);
 				}
 			}

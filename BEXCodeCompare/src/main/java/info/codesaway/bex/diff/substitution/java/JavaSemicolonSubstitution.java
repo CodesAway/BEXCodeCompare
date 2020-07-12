@@ -9,7 +9,7 @@ import info.codesaway.bex.diff.DiffNormalizedText;
 import info.codesaway.bex.diff.substitution.RefactoringDiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 
-public class JavaSemicolonSubstitution implements JavaSubstitution {
+public final class JavaSemicolonSubstitution implements JavaSubstitution {
 	@Override
 	public RefactoringDiffType accept(final DiffEdit left, final DiffEdit right,
 			final Map<DiffEdit, String> normalizedTexts,

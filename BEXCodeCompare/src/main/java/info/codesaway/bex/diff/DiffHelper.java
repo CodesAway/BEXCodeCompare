@@ -1,7 +1,7 @@
 package info.codesaway.bex.diff;
 
 import static info.codesaway.bex.diff.BasicDiffType.REPLACEMENT_BLOCK;
-import static info.codesaway.bex.util.Utilities.firstNonNull;
+import static info.codesaway.bex.util.BEXUtilities.firstNonNull;
 import static info.codesaway.util.regex.Pattern.getThreadLocalMatcher;
 import static java.util.stream.Collectors.toMap;
 
@@ -42,7 +42,7 @@ import info.codesaway.util.regex.MatchResult;
 import info.codesaway.util.regex.Matcher;
 
 // TODO: write unit tests to confirm everything works as expected
-public class DiffHelper {
+public final class DiffHelper {
 	private DiffHelper() {
 		throw new UnsupportedOperationException();
 	}
@@ -608,7 +608,7 @@ public class DiffHelper {
 						throw new AssertionError("DiffType is not a substitution");
 					}
 
-					//					if (diffType.getTag() == 'S') {
+					//					if (diffType.getSymbol() == 'S') {
 					//						System.out.println(diffType + "\t" + substitutionType.getClass());
 					//						System.out.println("L: " + left);
 					//						System.out.println("R: " + right);
@@ -894,10 +894,10 @@ public class DiffHelper {
 
 				// TODO: is this move logic correct??
 				// (plan to use it for all substitutions)
-			} else if (rightDiffEdit.getType().isMove()) {
+			} else if (rightDiffEdit.isMove()) {
 				results.add(rightDiffEdit);
 				rightIndex++;
-			} else if (leftDiffEdit.getType().isMove()) {
+			} else if (leftDiffEdit.isMove()) {
 				results.add(leftDiffEdit);
 				leftIndex++;
 			} else if (rightDiffEdit.hasLeftLine()
@@ -1016,7 +1016,7 @@ public class DiffHelper {
 	}
 
 	private static boolean canBePartOfReplacement(final DiffEdit diffEdit) {
-		return diffEdit.isInsertOrDelete() || diffEdit.getType().isSubstitution();
+		return diffEdit.isInsertOrDelete() || diffEdit.isSubstitution();
 	}
 
 	private static boolean hasConsecutiveLines(final DiffEdit diffEdit, final DiffEdit nextDiffEdit,
@@ -1050,7 +1050,7 @@ public class DiffHelper {
 			// Only consider if substitution / replacement block
 			// (if already equal / normalized equal, nothing to do
 			// (if insert / delete, nothing to do)
-			if (!(block instanceof DiffBlock) || !block.getType().isSubstitution()) {
+			if (!(block instanceof DiffBlock) || !block.isSubstitution()) {
 				continue;
 			}
 
@@ -1063,7 +1063,7 @@ public class DiffHelper {
 			//			System.out.println("Maybe split lines?");
 			boolean hasEntry = false;
 			for (DiffEdit diffEdit : block.getEdits()) {
-				if (diffEdit.getType().shouldTreatAsNormalizedEqual()) {
+				if (diffEdit.shouldTreatAsNormalizedEqual()) {
 					continue;
 				}
 

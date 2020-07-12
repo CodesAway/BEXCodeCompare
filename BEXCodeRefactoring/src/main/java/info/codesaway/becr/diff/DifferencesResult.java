@@ -11,7 +11,7 @@ import info.codesaway.bex.diff.DiffLine;
 import info.codesaway.bex.diff.DiffNormalizedText;
 import info.codesaway.bex.diff.DiffUnit;
 
-public class DifferencesResult {
+public final class DifferencesResult {
 	private final Path relativePath;
 	private final BEXListPair<DiffLine> lines;
 	private final BiFunction<String, String, DiffNormalizedText> normalizationFunction;

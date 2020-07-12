@@ -18,7 +18,7 @@ import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.bex.diff.substitution.RefactoringType;
 import info.codesaway.util.regex.Matcher;
 
-public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringType {
+public final class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringType {
 	private static final String ITERABLE_REGEX = "(?<iterable>(?:\\w++\\.)??\\w++|\\w++\\.get\\w++\\(\\))";
 
 	private static final ThreadLocal<Matcher> ENHANCED_FOR_LOOP_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
