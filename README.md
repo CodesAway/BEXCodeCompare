@@ -39,12 +39,12 @@ The library has no dependency on Eclipse and can be used in commercial or privat
 ### Stable
 * **Name**: BEX Code Compare
 * **Location**: https://codesaway.info/eclipse
-* **Version**: 0.2.0
+* **Version**: 0.3.0
 
 ### Beta
 * **Name**: BEX Code Compare
 * **Location**: https://codesaway.info/eclipse-beta
-* **Version**: 0.2.0
+* **Version**: 0.3.0
 
 <a name="what"></a>
 ## What is BEX Code Compare?
