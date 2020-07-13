@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **NOTE**: Initially, the version number for BEX Code Compare and the Eclipse plugin will be in sync. At some point, they will diverge, which will be indicated in the below change log. When they diverage, the BEX Code Compare version number will be what takes precedence, since this will also be the version for the Maven artifact. The Eclipse plugin changelog will always indicate which version of BEX Code Compare is used.
 
 ## [Unreleased]
+
+## [0.3.0] - 2020-07-012
 ### Added
 * BEX Library adds some useful Pair classes to handle left / right pairs which are the same type (some cool Java 8 stuff is made available)
   * **package**: info.codesaway.bex
