@@ -19,13 +19,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -65,11 +67,7 @@ import com.google.common.collect.Range;
 import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;
 
-import info.codesaway.becr.diff.CompareDirectoriesJoinedDetail;
-import info.codesaway.becr.diff.CompareDirectoriesResult;
-import info.codesaway.becr.diff.CompareJavaCodeInfo;
 import info.codesaway.becr.diff.CorrespondingCode;
-import info.codesaway.becr.diff.DifferencesResult;
 import info.codesaway.becr.diff.FileType;
 import info.codesaway.becr.diff.ImpactType;
 import info.codesaway.becr.diff.PathChangeInfo;
@@ -117,14 +115,6 @@ public class CompareDirectories {
 
 	private Path copyChangedFilesSourcePath;
 
-	private int DIRECTORY_COLUMN;
-	private int FILENAME_COLUMN;
-	private int DIFFERENCES_COLUMN;
-	private int DELTAS_COLUMN;
-	private int PATHNAME_COLUMN;
-
-	private XSSFCellStyle WRAP_TEXT_CELL_STYLE;
-
 	private static final Splitter lineSplitter = Splitter.onPattern("\r?+\n|\r");
 
 	// Read from JAVA_HOME environment variable
@@ -150,7 +140,7 @@ public class CompareDirectories {
 
 	private boolean shouldShowDisplayMessages = false;
 
-	private Path excelReportPath;
+	private Comparator<Path> pathComparator = Comparator.naturalOrder();
 
 	public CompareDirectories() {
 		this.addSubstitutionTypes(JAVA_SEMICOLON, SUBSTITUTION_CONTAINS, IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
@@ -214,15 +204,6 @@ public class CompareDirectories {
 	}
 
 	/**
-	 * @param excelReportPath
-	 * @return <code>this</code> object
-	 */
-	public CompareDirectories excelReportPath(final Path excelReportPath) {
-		this.excelReportPath = excelReportPath;
-		return this;
-	}
-
-	/**
 	 * @param substitutionTypeSuppliers
 	 * @return <code>this</code> object
 	 */
@@ -271,12 +252,19 @@ public class CompareDirectories {
 	}
 
 	/**
+	 * @param pathComparator
+	 * @return <code>this</code> object
+	 */
+	public final CompareDirectories pathComparator(final Comparator<Path> pathComparator) {
+		this.pathComparator = pathComparator;
+		return this;
+	}
+
+	/**
 	 * @param workspace
-	 * @param projectSheetNameMap
 	 * @throws IOException
 	 */
-	public void compare(final BEXPair<String> workspace,
-			final Map<String, String> projectSheetNameMap)
+	public CompareDirectoriesResult compare(final BEXPair<String> workspace)
 			throws IOException {
 		long startTime = System.currentTimeMillis();
 
@@ -296,9 +284,446 @@ public class CompareDirectories {
 		// (leave null if shouldn't copy files)
 		this.copyChangedFilesSourcePath = this.copyChangedFilesDestinationPath != null ? rootPath.getRight() : null;
 
-		// TODO: might sort using Pattern.getNaturalComparator()
-		// (This way the help files are in the correct order numerically, versus lexographically
+		// TODO: for files in added directories, don't list each file on own line
+		// Instead, list all files as info for the added directory
+		// This way if added a new package with 10 classes, would have 1 line showing the new package, listing the 10 classes
+		// (versus having one line for the new package and 10 extra lines for each of the new classes)
 
+		CompareDirectoriesDifferencesResult compareDirectoriesDifferencesResult = this.findDifferences(rootPath);
+
+		BEXListPair<ProjectPath> javaPaths = compareDirectoriesDifferencesResult.getJavaPaths();
+
+		if (javaPaths.isLeftEmpty()) {
+			long endTime = System.currentTimeMillis();
+			this.printf("It took %d seconds.", (endTime - startTime) / 1000);
+
+			return new CompareDirectoriesResult(compareDirectoriesDifferencesResult);
+		}
+
+		Map<Path, DifferencesResult> diffs = compareDirectoriesDifferencesResult.getJavaPathDiffMap();
+
+		Map<ProjectPath, List<CompareDirectoriesJoinedDetail>> javaChanges = new LinkedHashMap<>();
+		Map<ProjectPath, CompareJavaCodeInfo> javaParseResults = new LinkedHashMap<>();
+
+		// Has Java files that I want to parse
+		//				BEXPair<String[]> javaPaths = javaPaths.map(f -> f.stream()
+		//						.map(ProjectPath::getPathname)
+		//						.toArray(String[]::new));
+
+		this.println("Parsing Java code");
+		BEXMapPair<String, CompareJavaCodeInfo> parseResults = parse(parser, javaPaths, diffs);
+
+		this.println("Analyzing Java code");
+
+		// For each pair of paths
+		for (int i = 0; i < javaPaths.rightSize(); i++) {
+			if ((i + 1) % 10000 == 0) {
+				this.printf("Analyzing Java code: Path %d of %d%n", i + 1, javaPaths.rightSize());
+			}
+
+			// TODO: put this info into method, so can change behavior?
+
+			BEXPair<ProjectPath> javaPath = javaPaths.get(i);
+
+			BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> extendedRanges = new BEXPair<>(
+					TreeRangeMap::create);
+			BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> ranges = new BEXPair<>(TreeRangeMap::create);
+
+			BEXPair<CompareJavaCodeInfo> parseResult = parseResults.get(javaPath.map(ProjectPath::getPathname));
+			javaPath.acceptWithSide((p, side) -> javaParseResults.put(p, parseResult.get(side)));
+
+			parseResult.acceptWithSide((r, side) -> {
+				for (CodeInfoWithLineInfo detail : r.getDetails()) {
+					Range<Integer> extendedRange = Range.closed(detail.getExtendedStartLine(),
+							detail.getEndLine());
+					Range<Integer> range = Range.closed(detail.getStartLine(), detail.getEndLine());
+
+					// Has class defined within a method
+					if (!extendedRanges.get(side).subRangeMap(extendedRange).asMapOfRanges().isEmpty()) {
+						continue;
+					}
+
+					if (!ranges.get(side).subRangeMap(range).asMapOfRanges().isEmpty()) {
+						//											continue;
+						throw new AssertionError(
+								String.format("Range has overlap in %s: %s", javaPath.get(side), range));
+					}
+
+					extendedRanges.get(side).put(extendedRange, detail);
+					ranges.get(side).put(range, detail);
+				}
+			});
+
+			// TODO: how to handle moved lines?
+			// For example if moved within same method
+			// What if moved between methods? (treat comments different than actual code?)
+
+			DifferencesResult differencesResult = diffs.get(javaPath.getRight().getPath());
+
+			CorrespondingCodeResult correspondingCodeResult = this.determineCorrespondingCode(differencesResult,
+					parseResult, ranges);
+
+			List<CompareDirectoriesJoinedDetail> changes = this.determineChanges(parseResult, differencesResult,
+					correspondingCodeResult, extendedRanges, ranges);
+			javaPath.acceptBoth(p -> javaChanges.put(p, changes));
+		}
+
+		long endTime = System.currentTimeMillis();
+		this.printf("It took %d seconds.", (endTime - startTime) / 1000);
+
+		return new CompareDirectoriesResult(compareDirectoriesDifferencesResult, javaPaths, javaParseResults,
+				javaChanges);
+	}
+
+	private List<CompareDirectoriesJoinedDetail> determineChanges(
+			final BEXPair<CompareJavaCodeInfo> parseResult, final DifferencesResult differencesResult,
+			final CorrespondingCodeResult correspondingCodeResult,
+			final BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> extendedRanges,
+			final BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> ranges) {
+		List<CompareDirectoriesJoinedDetail> changes = new ArrayList<>();
+
+		List<CodeInfoWithLineInfo> deletedBlocks = correspondingCodeResult.getDeletedBlocks();
+
+		// Add Unknown change
+		// (show first, before other changes, since these likely should be investigated to improve my code's logic)
+		CompareDirectoriesJoinedDetail unknownChange = new CompareDirectoriesJoinedDetail(null, null);
+		changes.add(unknownChange);
+
+		BiMap<CodeInfoWithLineInfo, CodeInfoWithLineInfo> inverseMapCodeBlocks = correspondingCodeResult
+				.getCodeBlocksMap()
+				.inverse();
+
+		// From from changed code to joint change
+		BEXMapPair<CodeInfoWithLineInfo, CompareDirectoriesJoinedDetail> changesMapPair = new BEXMapPair<>(
+				HashMap::new);
+
+		int indexDeletedBlock = 0;
+		// Note: uses null to represent there are no more deleted blocks
+		CodeInfoWithLineInfo deletedBlock = indexDeletedBlock < deletedBlocks.size()
+				? deletedBlocks.get(indexDeletedBlock)
+				: null;
+
+		// Iterate over "destination" code, since will have modified / added code
+		// TODO: (then add in deleted code where it fits)
+		for (CodeInfoWithLineInfo rightCode : parseResult.getRight().getDetails()) {
+			// leftCode may be null, which means that the code was added
+			CodeInfoWithLineInfo leftCode = inverseMapCodeBlocks.get(rightCode);
+
+			// 8/23/2019 changed from 'if' to 'while' to handle multiple deleted blocks in a row
+			while (deletedBlock != null && leftCode != null
+					&& deletedBlock.getStartLine() < leftCode.getStartLine()) {
+				// The deleted block comes before the next modified block
+				// Add the deleted block
+
+				if (this.isTesting) {
+					this.printf("Added deleted block %s before %s%n", deletedBlock, rightCode);
+				}
+
+				addChange(changes, changesMapPair, deletedBlock, null);
+
+				indexDeletedBlock++;
+				deletedBlock = indexDeletedBlock < deletedBlocks.size()
+						? deletedBlocks.get(indexDeletedBlock)
+						: null;
+			}
+
+			addChange(changes, changesMapPair, leftCode, rightCode);
+		}
+
+		// Add any remaining deleted blocks
+		for (; indexDeletedBlock < deletedBlocks.size(); indexDeletedBlock++) {
+			deletedBlock = deletedBlocks.get(indexDeletedBlock);
+
+			addChange(changes, changesMapPair, deletedBlock, null);
+		}
+
+		// For each delta, determine where the changes are
+
+		// TODO: how to handle moved lines?
+		// How to handle if moved lines are in different methods?
+
+		// Track how many differences and deltas are in each CodeInfo (extended range vs regular range)
+		for (DiffUnit unit : differencesResult.getDiffBlocks()) {
+			if (BEXUtilities.in(unit.getType(), BasicDiffType.EQUAL, BasicDiffType.NORMALIZE,
+					BasicDiffType.IGNORE)) {
+				continue;
+			}
+
+			ListMultimap<String, String> unknownChangeLines = MultimapBuilder.treeKeys()
+					.arrayListValues()
+					.build();
+
+			for (DiffEdit edit : unit.getEdits()) {
+				// Determine which change block corresponds to this edit
+				// TODO: how to handle if in different ones (such as moved lines or lines seen in different blocks?)
+
+				CodeInfoWithLineInfo leftCode = null;
+				CodeInfoWithLineInfo rightCode = null;
+
+				boolean isInExtendedLeftLines = false;
+				boolean isInExtendedRightLines = false;
+
+				if (edit.hasLeftLine()) {
+					int line = edit.getLeftLineNumber();
+					leftCode = ranges.getLeft().get(line);
+
+					if (leftCode == null) {
+						leftCode = extendedRanges.getLeft().get(line);
+
+						if (leftCode != null) {
+							isInExtendedLeftLines = true;
+						}
+					}
+				}
+
+				if (edit.hasRightLine()) {
+					int line = edit.getRightLineNumber();
+					rightCode = ranges.getRight().get(line);
+
+					if (rightCode == null) {
+						rightCode = extendedRanges.getRight().get(line);
+
+						if (rightCode != null) {
+							isInExtendedRightLines = true;
+						}
+					}
+				}
+
+				BEXPair<CompareDirectoriesJoinedDetail> change = changesMapPair.get(leftCode, rightCode);
+
+				// XXX: continue here
+				// Handle refactoring and ability to group changes together
+				// For example, changing for loop from indexed to enhanced for loop
+				// Renaming local variable
+				// Other common refactoring
+				// In this case, the code in normalized equal, since it has the same functionality
+
+				//							LineChangeType lineChangeType = getJavaLineChangeType(edit);
+
+				//							if (isTesting && lineChangeType == LineChangeType.UNKNOWN && change1 != null
+				//									&& change2 != null) {
+				//								// For modified methods, output testing info
+				//
+				//								println("getJavaLineChangeType: "
+				//										+ (edit.getType().isSubstitution() ? System.lineSeparator() : "")
+				//										+ edit.toString(true));
+				//							}
+
+				// TODO: indicate if the change is a commented out line
+
+				if (change.testAndBoth(Objects::isNull)) {
+					// Skip blank lines not associated to a code block
+					if (edit.getLeftText().trim().isEmpty() && edit.getRightText().trim().isEmpty()) {
+						continue;
+					}
+
+					if (this.isTesting) {
+						this.println("Unknown difference (here): "
+								+ (edit.isSubstitution() ? System.lineSeparator() : "")
+								+ edit.toString(true));
+					}
+
+					// Add to unknown code change
+					//								checkChange(edit, unknownChange, false, lineChangeType);
+
+					String editSymbol = String.valueOf(edit.getSymbol());
+
+					if (edit.hasLeftLine() && edit.hasRightLine()) {
+						String lineInfo = edit.getLeftLineNumber() + " -> "
+								+ edit.getRightLineNumber();
+
+						// Add note with line numbers, so can easily find what changed
+						unknownChange.addNote(editSymbol + " " + lineInfo);
+					} else {
+						String lineInfo = edit.getLineNumberString(edit.getFirstSide());
+						unknownChangeLines.put(editSymbol, lineInfo);
+					}
+
+				} else if (change.test(Objects::equals)) {
+					// Same change
+
+					boolean isInExtendedLines;
+
+					if (isInExtendedLeftLines == isInExtendedRightLines) {
+						isInExtendedLines = isInExtendedLeftLines;
+					} else if (edit.isMove()) {
+						// If move and one sees it as part of extended lines, mark as part of extended lines
+						isInExtendedLines = true;
+					} else {
+						// Changed method signature and was able to find substitution with commented out code
+						// In this case, just presume that the substitutino is not in the extended lines, since one of them is not in the extended area
+						isInExtendedLines = false;
+						//														println(codeInfo + "\t" + bothCodeInfo);
+						//														throw new AssertionError(
+						//																"Difference is in both extended lines and regular lines: "
+						//																		+ edit);
+					}
+
+					this.checkChange(edit, change.getLeft(), isInExtendedLines);
+				} else if (change.getRight() == null) {
+					// Deleted code
+					this.checkChange(edit, change.getLeft(), isInExtendedLeftLines);
+				} else if (change.getLeft() == null) {
+					// Added code
+					this.checkChange(edit, change.getRight(), isInExtendedRightLines);
+				} else {
+					boolean handleLeftChange = true;
+					boolean handleRightChange = true;
+
+					// TODO: Handle commented out code
+					// (indicate where comment out or uncomment code)
+					//								if (lineChangeType == LineChangeType.COMMENTED_OUT) {
+					//									// "Destination" commented out code
+					//									// Don't need to handle change 2
+					//									handleChange2 = false;
+					//
+					//									if (isTesting) {
+					//										println("Commented out line: " + edit);
+					//									}
+					//								} else if (lineChangeType == LineChangeType.UNCOMMENTED) {
+					//									// "Source" has code commented out
+					//									// Don't need to handle change 1
+					//									handleChange1 = false;
+					//
+					//									if (isTesting) {
+					//										println("Uncommented line: " + edit);
+					//									}
+					//								}
+
+					// Modified code, but in different blocks
+					// TODO: how to handle?
+
+					// For now, just track the diff in each independent change block
+					if (handleLeftChange) {
+						this.checkChange(edit, change.getLeft(), isInExtendedLeftLines);
+					}
+
+					if (handleRightChange) {
+						this.checkChange(edit, change.getRight(), isInExtendedRightLines);
+					}
+
+					if (this.isTesting && handleLeftChange && handleRightChange) {
+						try {
+							Thread.sleep(50);
+						} catch (InterruptedException e) {
+						}
+						this.errPrintln("DiffEdit spans multiple change blocks:");
+						this.errPrintln(edit.toString(true));
+						this.errPrintf("Handle left  change? %s: %s%n", handleLeftChange, change.getLeft());
+						this.errPrintf("Handle right change? %s: %s%n", handleRightChange,
+								change.getRight());
+						try {
+							Thread.sleep(50);
+						} catch (InterruptedException e) {
+						}
+					}
+					//								throw new AssertionError(
+					//										"Unsure how to handle diff:" + System.lineSeparator() + edit.toString(true));
+				}
+			}
+
+			for (Map.Entry<String, Collection<String>> entry : unknownChangeLines.asMap().entrySet()) {
+				String symbol = entry.getKey();
+
+				String lineInfo = entry.getValue().stream().collect(Collectors.joining(", "));
+
+				unknownChange.addNote(symbol + " " + lineInfo);
+			}
+		}
+
+		for (Iterator<CompareDirectoriesJoinedDetail> iterator = changes.iterator(); iterator.hasNext();) {
+			CompareDirectoriesJoinedDetail change = iterator.next();
+
+			if (change.getExtendedDifferenceCount() == 0 && change.getDifferenceCount() == 0) {
+				// There was no change
+
+				iterator.remove();
+				continue;
+			}
+		}
+
+		// For each modified item, compare the "source" and "destination" code
+		for (CompareDirectoriesJoinedDetail change : changes) {
+			//						if (change.getExtendedDifferenceCount() == 0 && change.getDifferenceCount() == 0) {
+			//							// There was no change
+			//							continue;
+			//						}
+
+			if (change.getLeftCode() == null || change.getRightCode() == null) {
+				// ADDED, DELETED, or UNKNOWN code
+				continue;
+			}
+
+			// Modified code
+
+			// Do compare of the actual code range and get differences / deltas
+			// If no deltas, set difference counts to 0, so won't show on report
+
+			// TODO: Otherwise, use difference counts on details report??
+			BEXPair<Range<Integer>> range = change.getCode()
+					.map(c -> Range.closed(c.getExtendedStartLine(), c.getEndLine()));
+
+			BEXListPair<DiffLine> lines = BEXListPair.from(side -> differencesResult.getLines(side)
+					.stream()
+					.filter(l -> range.get(side).contains(l.getNumber()))
+					.collect(toList()));
+
+			// Rerun differences for code in the specific range
+			DifferencesResult rangeDifferencesResult = this.getDifferences(
+					differencesResult.getRelativePath(),
+					lines, differencesResult.getNormalizationFunction());
+
+			long differences = getDifferenceCount(rangeDifferencesResult);
+			long deltas = getDeltaCount(rangeDifferencesResult);
+
+			if (this.isTesting) {
+				this.printf("Diff: %s\t%s\t%s%n", change, differences, deltas);
+			}
+
+			if (deltas == 0) {
+				// Ignore differences
+				change.resetCounts();
+			} else {
+				change.setModifiedDifferences(differences);
+				change.setModifiedDeltas(deltas);
+			}
+		}
+
+		return changes;
+	}
+
+	// Used when generating Excel report (to share field values)
+	// TODO: find better way to do this
+	private static enum DifferencesExcelColumn {
+		PROJECT_COLUMN("Project"), DIRECTORY_COLUMN("Directory"), FILENAME_COLUMN("Filename"), EXTENSION_COLUMN("Ext"),
+		FILE_TYPE_COLUMN("File Type"), CHANGE_COLUMN("Change"), DIFFERENCES_COLUMN("Differences"),
+		DELTAS_COLUMN("Deltas"), PATHNAME_COLUMN("Pathname");
+
+		private final String headerName;
+
+		private DifferencesExcelColumn(final String headerName) {
+			this.headerName = headerName;
+		}
+
+		public String getHeaderName() {
+			return this.headerName;
+		}
+	}
+
+	private static int PROJECT_COLUMN = DifferencesExcelColumn.PROJECT_COLUMN.ordinal();
+	private static int DIRECTORY_COLUMN = DifferencesExcelColumn.DIRECTORY_COLUMN.ordinal();
+	private static int FILENAME_COLUMN = DifferencesExcelColumn.FILENAME_COLUMN.ordinal();
+	private static int FILE_TYPE_COLUMN = DifferencesExcelColumn.FILE_TYPE_COLUMN.ordinal();
+	private static int CHANGE_COLUMN = DifferencesExcelColumn.CHANGE_COLUMN.ordinal();
+	private static int DIFFERENCES_COLUMN = DifferencesExcelColumn.DIFFERENCES_COLUMN.ordinal();
+	private static int DELTAS_COLUMN = DifferencesExcelColumn.DELTAS_COLUMN.ordinal();
+	private static int PATHNAME_COLUMN = DifferencesExcelColumn.PATHNAME_COLUMN.ordinal();
+
+	private XSSFCellStyle WRAP_TEXT_CELL_STYLE;
+
+	public XSSFWorkbook generateExcelReport(final Path excelReportPath,
+			final Map<String, String> projectSheetNameMap,
+			final CompareDirectoriesResult compareDirectoriesResult) throws IOException {
 		// TODO: refactor so split excel report creation from comparison
 		// This way, compare would return the results of the compare, regardless if an excel report was generated or not
 		// This allows, for example, creating a custom report
@@ -313,42 +738,7 @@ public class CompareDirectories {
 			hyperlinkFont.setColor(IndexedColors.BLUE.getIndex());
 			hyperlinkCellStyle.setFont(hyperlinkFont);
 
-			List<String> headerColumnNames = new ArrayList<>();
-
-			int projectColumn = headerColumnNames.size();
-			headerColumnNames.add("Project");
-
-			// Initialize column numbers and names
-			int directoryColumn = headerColumnNames.size();
-			headerColumnNames.add("Directory");
-			this.DIRECTORY_COLUMN = directoryColumn;
-
-			int filenameColumn = headerColumnNames.size();
-			headerColumnNames.add("Filename");
-			this.FILENAME_COLUMN = filenameColumn;
-
-			//			int extensionColumn = headerColumnNames.size();
-			headerColumnNames.add("Ext");
-
-			int fileTypeColumn = headerColumnNames.size();
-			headerColumnNames.add("File Type");
-
-			int differencesChangeTypeColumn = headerColumnNames.size();
-			headerColumnNames.add("Change");
-
-			int differencesColumn = headerColumnNames.size();
-			headerColumnNames.add("Differences");
-			this.DIFFERENCES_COLUMN = differencesColumn;
-
-			int deltasColumn = headerColumnNames.size();
-			headerColumnNames.add("Deltas");
-			this.DELTAS_COLUMN = deltasColumn;
-
-			int pathnameColumn = headerColumnNames.size();
-			headerColumnNames.add("Pathname");
-			this.PATHNAME_COLUMN = pathnameColumn;
-
-			int lastColumn = headerColumnNames.size() - 1;
+			int lastColumn = DifferencesExcelColumn.values().length - 1;
 
 			// Details header columns
 			List<String> detailsHeaderColumnNames = new ArrayList<>();
@@ -391,15 +781,11 @@ public class CompareDirectories {
 
 			// Create sheets
 			String sheetName = "Differences";
-
-			XSSFSheet sheet = workbook.getSheet(sheetName);
-
-			// First time using sheet
-			if (sheet == null) {
-				sheet = workbook.createSheet(sheetName);
-
-				ExcelUtilities.createHeaderRow(sheet, 0, headerColumnNames);
-			}
+			XSSFSheet sheet = workbook.createSheet(sheetName);
+			List<String> headerNames = Arrays.stream(DifferencesExcelColumn.values())
+					.map(DifferencesExcelColumn::getHeaderName)
+					.collect(toList());
+			ExcelUtilities.createHeaderRow(sheet, 0, headerNames);
 
 			// TODO: support creating specific project sheets at the front
 			// (so to show them in a certain order versus alphabetical)
@@ -407,697 +793,322 @@ public class CompareDirectories {
 			//			XSSFSheet combinedEJBWebSheet = workbook.createSheet(combinedSheetName);
 			//			ParsingUtilities.createHeaderRow(combinedSheet, 0, detailsHeaderColumnNames);
 
-			// TODO: for files in added directories, don't list each file on own line
-			// Instead, list all files as info for the added directory
-			// This way if added a new package with 10 classes, would have 1 line showing the new package, listing the 10 classes
-			// (versus having one line for the new package and 10 extra lines for each of the new classes)
-
-			CompareDirectoriesResult compareDirectoriesResult = this.findDifferences(rootPath);
-
-			for (PathChangeInfo change : compareDirectoriesResult.getPathChanges()) {
+			for (PathChangeInfo change : compareDirectoriesResult.getCompareDirectoriesDifferencesResult()
+					.getPathChanges()) {
 				this.addDifference(sheet, change);
 			}
 
-			BEXListPair<ProjectPath> javaPaths = compareDirectoriesResult.getJavaPaths();
-			Map<Path, DifferencesResult> diffs = compareDirectoriesResult.getJavaPathDiffMap();
+			for (ProjectPath javaPath : compareDirectoriesResult.getJavaPaths().getRight()) {
+				List<CompareDirectoriesJoinedDetail> javaChanges = compareDirectoriesResult.getJavaChanges()
+						.get(javaPath);
+				CompareJavaCodeInfo javaParseResults = compareDirectoriesResult.getJavaParseResults().get(javaPath);
 
-			if (!javaPaths.isLeftEmpty()) {
-				// Has Java files that I want to parse
-				//				BEXPair<String[]> javaPaths = javaPaths.map(f -> f.stream()
-				//						.map(ProjectPath::getPathname)
-				//						.toArray(String[]::new));
+				// For each change, output to spreadsheet
+				for (CompareDirectoriesJoinedDetail change : javaChanges) {
+					//										println(
+					//												change.getCodeInfo() + "\t" + change.getExtendedDifferenceCount() + "\t"
+					//														+ change.getDifferenceCount());
 
-				this.println("Parsing Java code");
-				BEXMapPair<String, CompareJavaCodeInfo> parseResults = parse(parser, javaPaths, diffs);
-
-				this.println("Analyzing Java code");
-
-				// For each pair of paths
-				for (int i = 0; i < javaPaths.rightSize(); i++) {
-
-					if ((i + 1) % 10000 == 0) {
-						this.printf("Analyzing Java code: Path %d of %d%n", i + 1, javaPaths.rightSize());
+					if (change.getExtendedDifferenceCount() == 0 && change.getDifferenceCount() == 0) {
+						// There was no change
+						change.setImpact(ImpactType.NONE);
+						continue;
 					}
 
-					BEXPair<ProjectPath> javaPath = javaPaths.get(i);
+					StringJoiner info = new StringJoiner(System.lineSeparator());
 
-					String project = javaPath.getRight().getProject();
+					for (String note : change.getNotes()) {
+						info.add(note);
+					}
 
-					String className = javaPath.getRight().getName();
+					final PathChangeType changeType;
+					final CodeInfoWithLineInfo codeInfo;
+
+					if (change.getLeftCode() == null) {
+						// Added or unknown code block
+
+						if (change.getRightCode() == null) {
+							// Unknown code block
+							// TODO: could set based on whether unknown code was added / deleted or a combination
+							changeType = PathChangeType.MODIFIED;
+							codeInfo = null;
+						} else {
+							changeType = PathChangeType.ADDED;
+							codeInfo = change.getRightCode();
+						}
+					} else {
+						// Modified or deleted code block
+						assert change.getLeftCode() != null;
+
+						if (change.getRightCode() == null) {
+							// Deleted code block
+							changeType = PathChangeType.DELETED;
+							codeInfo = change.getLeftCode();
+
+							if (this.isTesting) {
+								this.println("Deleted change: " + change + "\t"
+										+ change.getLineChanges().entrySet());
+							}
+
+							//								int commentedOutLinesCount = change.getLineChanges()
+							//										.count(LineChangeType.COMMENTED_OUT);
+
+							//								if (commentedOutLinesCount > 0) {
+							//									// Add 1 since inclusive on both sides
+							//									int totalBodyLines = change.getCode1().getEndLine()
+							//											- change.getCode1().getStartLine() + 1;
+							//
+							//									if (commentedOutLinesCount == totalBodyLines) {
+							//										info.add("Commented out entire body");
+							//									} else {
+							//										info.add("Commented out part of body");
+							//									}
+							//								}
+						} else {
+							changeType = PathChangeType.MODIFIED;
+							// Get "destination" code block, in case changed (such as method signature change)
+							codeInfo = change.getRightCode();
+
+							if (this.isTesting) {
+								this.println("Modified change: " + change + "\t"
+										+ change.getLineChanges().entrySet());
+							}
+						}
+					}
+
+					change.setPathChangeType(changeType);
+
+					String project = javaPath.getProject();
+					String packageName = javaParseResults.getPackageName();
+
+					String className = javaPath.getName();
 					className = className.substring(0, className.length() - ".java".length());
 
-					BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> extendedRanges = new BEXPair<>(
-							TreeRangeMap::create);
-					BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> ranges = new BEXPair<>(TreeRangeMap::create);
+					CodeInfoWithSourceInfo codeInfoWithSourceInfo = new CodeInfoWithSourceInfo(project,
+							packageName,
+							// Don't need to specify source pathname (last parameter), since not used for CompareDirectories
+							className, codeInfo == null ? null : codeInfo.getCodeInfo(), "", null);
 
-					BEXPair<CompareJavaCodeInfo> parseResult = parseResults.get(javaPath.map(ProjectPath::getPathname));
+					// Will be null if not method
 
-					String packageName = parseResult.getRight().getPackageName();
+					String modifiers = codeInfoWithSourceInfo.getModifiers();
 
-					parseResult.acceptWithSide((r, side) -> {
-						for (CodeInfoWithLineInfo detail : r.getDetails()) {
-							Range<Integer> extendedRange = Range.closed(detail.getExtendedStartLine(),
-									detail.getEndLine());
-							Range<Integer> range = Range.closed(detail.getStartLine(), detail.getEndLine());
+					String returnValue = getReturnValue(codeInfoWithSourceInfo);
+					String signature = getSignature(codeInfoWithSourceInfo);
 
-							// Has class defined within a method
-							if (!extendedRanges.get(side).subRangeMap(extendedRange).asMapOfRanges().isEmpty()) {
-								continue;
-							}
-
-							if (!ranges.get(side).subRangeMap(range).asMapOfRanges().isEmpty()) {
-								//											continue;
-								throw new AssertionError(
-										String.format("Range has overlap in %s: %s", javaPath.get(side), range));
-							}
-
-							extendedRanges.get(side).put(extendedRange, detail);
-							ranges.get(side).put(range, detail);
-						}
-					});
-
-					// TODO: how to handle moved lines?
-					// For example if moved within same method
-					// What if moved between methods? (treat comments different than actual code?)
-
-					DifferencesResult differencesResult = diffs.get(javaPath.getRight().getPath());
-
-					CorrespondingCodeResult correspondingCodeResult = this.determineCorrespondingCode(differencesResult,
-							parseResult, ranges);
-
-					List<CodeInfoWithLineInfo> deletedBlocks = correspondingCodeResult.getDeletedBlocks();
-
-					List<CompareDirectoriesJoinedDetail> changes = new ArrayList<>();
-
-					// Add Unknown change
-					// (show first, before other changes, since these likely should be investigated to improve my code's logic)
-					CompareDirectoriesJoinedDetail unknownChange = new CompareDirectoriesJoinedDetail(null, null);
-					changes.add(unknownChange);
-
-					BiMap<CodeInfoWithLineInfo, CodeInfoWithLineInfo> inverseMapCodeBlocks = correspondingCodeResult
-							.getCodeBlocksMap()
-							.inverse();
-
-					// From from changed code to joint change
-					BEXMapPair<CodeInfoWithLineInfo, CompareDirectoriesJoinedDetail> changesMapPair = new BEXMapPair<>(
-							HashMap::new);
-
-					int indexDeletedBlock = 0;
-					// Note: uses null to represent there are no more deleted blocks
-					CodeInfoWithLineInfo deletedBlock = indexDeletedBlock < deletedBlocks.size()
-							? deletedBlocks.get(indexDeletedBlock)
-							: null;
-
-					// Iterate over "destination" code, since will have modified / added code
-					// TODO: (then add in deleted code where it fits)
-					for (CodeInfoWithLineInfo rightCode : parseResult.getRight().getDetails()) {
-						// leftCode may be null, which means that the code was added
-						CodeInfoWithLineInfo leftCode = inverseMapCodeBlocks.get(rightCode);
-
-						// 8/23/2019 changed from 'if' to 'while' to handle multiple deleted blocks in a row
-						while (deletedBlock != null && leftCode != null
-								&& deletedBlock.getStartLine() < leftCode.getStartLine()) {
-							// The deleted block comes before the next modified block
-							// Add the deleted block
-
-							if (this.isTesting) {
-								this.printf("Added deleted block %s before %s%n", deletedBlock, rightCode);
-							}
-
-							addChange(changes, changesMapPair, deletedBlock, null);
-
-							indexDeletedBlock++;
-							deletedBlock = indexDeletedBlock < deletedBlocks.size()
-									? deletedBlocks.get(indexDeletedBlock)
-									: null;
-						}
-
-						addChange(changes, changesMapPair, leftCode, rightCode);
+					if (codeInfoWithSourceInfo.isMethod()) {
+						MethodSignature methodSignature = codeInfoWithSourceInfo
+								.getMethodSignature();
+						returnValue = methodSignature.getReturnValue();
+						signature = methodSignature.getSignature();
+					} else if (codeInfoWithSourceInfo.isField()) {
+						FieldInfo fieldInfo = codeInfoWithSourceInfo.getFieldInfo();
+						returnValue = fieldInfo.getType();
+						signature = fieldInfo.getName();
+					} else {
+						returnValue = null;
+						signature = null;
 					}
 
-					// Add any remaining deleted blocks
-					for (; indexDeletedBlock < deletedBlocks.size(); indexDeletedBlock++) {
-						deletedBlock = deletedBlocks.get(indexDeletedBlock);
-
-						addChange(changes, changesMapPair, deletedBlock, null);
-					}
-
-					// For each delta, determine where the changes are
-
-					// TODO: how to handle moved lines?
-					// How to handle if moved lines are in different methods?
-
-					// Track how many differences and deltas are in each CodeInfo (extended range vs regular range)
-					for (DiffUnit unit : differencesResult.getDiffBlocks()) {
-						if (BEXUtilities.in(unit.getType(), BasicDiffType.EQUAL, BasicDiffType.NORMALIZE,
-								BasicDiffType.IGNORE)) {
-							continue;
-						}
-
-						ListMultimap<String, String> unknownChangeLines = MultimapBuilder.treeKeys()
-								.arrayListValues()
-								.build();
-
-						for (DiffEdit edit : unit.getEdits()) {
-							// Determine which change block corresponds to this edit
-							// TODO: how to handle if in different ones (such as moved lines or lines seen in different blocks?)
-
-							CodeInfoWithLineInfo leftCode = null;
-							CodeInfoWithLineInfo rightCode = null;
-
-							boolean isInExtendedLeftLines = false;
-							boolean isInExtendedRightLines = false;
-
-							if (edit.hasLeftLine()) {
-								int line = edit.getLeftLineNumber();
-								leftCode = ranges.getLeft().get(line);
-
-								if (leftCode == null) {
-									leftCode = extendedRanges.getLeft().get(line);
-
-									if (leftCode != null) {
-										isInExtendedLeftLines = true;
-									}
-								}
-							}
-
-							if (edit.hasRightLine()) {
-								int line = edit.getRightLineNumber();
-								rightCode = ranges.getRight().get(line);
-
-								if (rightCode == null) {
-									rightCode = extendedRanges.getRight().get(line);
-
-									if (rightCode != null) {
-										isInExtendedRightLines = true;
-									}
-								}
-							}
-
-							BEXPair<CompareDirectoriesJoinedDetail> change = changesMapPair.get(leftCode, rightCode);
-
-							// XXX: continue here
-							// Handle refactoring and ability to group changes together
-							// For example, changing for loop from indexed to enhanced for loop
-							// Renaming local variable
-							// Other common refactoring
-							// In this case, the code in normalized equal, since it has the same functionality
-
-							//							LineChangeType lineChangeType = getJavaLineChangeType(edit);
-
-							//							if (isTesting && lineChangeType == LineChangeType.UNKNOWN && change1 != null
-							//									&& change2 != null) {
-							//								// For modified methods, output testing info
-							//
-							//								println("getJavaLineChangeType: "
-							//										+ (edit.getType().isSubstitution() ? System.lineSeparator() : "")
-							//										+ edit.toString(true));
-							//							}
-
-							// TODO: indicate if the change is a commented out line
-
-							if (change.testAndBoth(Objects::isNull)) {
-								// Skip blank lines not associated to a code block
-								if (edit.getLeftText().trim().isEmpty() && edit.getRightText().trim().isEmpty()) {
-									continue;
-								}
-
-								if (this.isTesting) {
-									this.println("Unknown difference (here): "
-											+ (edit.isSubstitution() ? System.lineSeparator() : "")
-											+ edit.toString(true));
-								}
-
-								// Add to unknown code change
-								//								checkChange(edit, unknownChange, false, lineChangeType);
-
-								String editSymbol = String.valueOf(edit.getSymbol());
-
-								if (edit.hasLeftLine() && edit.hasRightLine()) {
-									String lineInfo = edit.getLeftLineNumber() + " -> "
-											+ edit.getRightLineNumber();
-
-									// Add note with line numbers, so can easily find what changed
-									unknownChange.addNote(editSymbol + " " + lineInfo);
-								} else {
-									String lineInfo = edit.getLineNumberString(edit.getFirstSide());
-									unknownChangeLines.put(editSymbol, lineInfo);
-								}
-
-							} else if (change.test(Objects::equals)) {
-								// Same change
-
-								boolean isInExtendedLines;
-
-								if (isInExtendedLeftLines == isInExtendedRightLines) {
-									isInExtendedLines = isInExtendedLeftLines;
-								} else if (edit.isMove()) {
-									// If move and one sees it as part of extended lines, mark as part of extended lines
-									isInExtendedLines = true;
-								} else {
-									// Changed method signature and was able to find substitution with commented out code
-									// In this case, just presume that the substitutino is not in the extended lines, since one of them is not in the extended area
-									isInExtendedLines = false;
-									//														println(codeInfo + "\t" + bothCodeInfo);
-									//														throw new AssertionError(
-									//																"Difference is in both extended lines and regular lines: "
-									//																		+ edit);
-								}
-
-								this.checkChange(edit, change.getLeft(), isInExtendedLines);
-							} else if (change.getRight() == null) {
-								// Deleted code
-								this.checkChange(edit, change.getLeft(), isInExtendedLeftLines);
-							} else if (change.getLeft() == null) {
-								// Added code
-								this.checkChange(edit, change.getRight(), isInExtendedRightLines);
-							} else {
-								boolean handleLeftChange = true;
-								boolean handleRightChange = true;
-
-								// TODO: Handle commented out code
-								// (indicate where comment out or uncomment code)
-								//								if (lineChangeType == LineChangeType.COMMENTED_OUT) {
-								//									// "Destination" commented out code
-								//									// Don't need to handle change 2
-								//									handleChange2 = false;
-								//
-								//									if (isTesting) {
-								//										println("Commented out line: " + edit);
-								//									}
-								//								} else if (lineChangeType == LineChangeType.UNCOMMENTED) {
-								//									// "Source" has code commented out
-								//									// Don't need to handle change 1
-								//									handleChange1 = false;
-								//
-								//									if (isTesting) {
-								//										println("Uncommented line: " + edit);
-								//									}
-								//								}
-
-								// Modified code, but in different blocks
-								// TODO: how to handle?
-
-								// For now, just track the diff in each independent change block
-								if (handleLeftChange) {
-									this.checkChange(edit, change.getLeft(), isInExtendedLeftLines);
-								}
-
-								if (handleRightChange) {
-									this.checkChange(edit, change.getRight(), isInExtendedRightLines);
-								}
-
-								if (this.isTesting && handleLeftChange && handleRightChange) {
-									try {
-										Thread.sleep(50);
-									} catch (InterruptedException e) {
-									}
-									this.errPrintln("DiffEdit spans multiple change blocks:");
-									this.errPrintln(edit.toString(true));
-									this.errPrintf("Handle left  change? %s: %s%n", handleLeftChange, change.getLeft());
-									this.errPrintf("Handle right change? %s: %s%n", handleRightChange,
-											change.getRight());
-									try {
-										Thread.sleep(50);
-									} catch (InterruptedException e) {
-									}
-								}
-								//								throw new AssertionError(
-								//										"Unsure how to handle diff:" + System.lineSeparator() + edit.toString(true));
-							}
-						}
-
-						for (Entry<String, Collection<String>> entry : unknownChangeLines.asMap().entrySet()) {
-							String symbol = entry.getKey();
-
-							String lineInfo = entry.getValue().stream().collect(Collectors.joining(", "));
-
-							unknownChange.addNote(symbol + " " + lineInfo);
-						}
-					}
-
-					for (Iterator<CompareDirectoriesJoinedDetail> iterator = changes.iterator(); iterator.hasNext();) {
-						CompareDirectoriesJoinedDetail change = iterator.next();
-
-						if (change.getExtendedDifferenceCount() == 0 && change.getDifferenceCount() == 0) {
-							// There was no change
-
-							iterator.remove();
-							continue;
-						}
-					}
-
-					// For each modified item, compare the "source" and "destination" code
-					for (CompareDirectoriesJoinedDetail change : changes) {
-						//						if (change.getExtendedDifferenceCount() == 0 && change.getDifferenceCount() == 0) {
-						//							// There was no change
-						//							continue;
-						//						}
-
-						if (change.getLeftCode() == null || change.getRightCode() == null) {
-							// ADDED, DELETED, or UNKNOWN code
-							continue;
-						}
-
-						// Modified code
-
-						// Do compare of the actual code range and get differences / deltas
-						// If no deltas, set difference counts to 0, so won't show on report
-
-						// TODO: Otherwise, use difference counts on details report??
-						BEXPair<Range<Integer>> range = change.getCode()
-								.map(c -> Range.closed(c.getExtendedStartLine(), c.getEndLine()));
-
-						BEXListPair<DiffLine> lines = BEXListPair.from(side -> differencesResult.getLines(side)
-								.stream()
-								.filter(l -> range.get(side).contains(l.getNumber()))
-								.collect(toList()));
-
-						// Rerun differences for code in the specific range
-						DifferencesResult rangeDifferencesResult = this.getDifferences(
-								differencesResult.getRelativePath(),
-								lines, differencesResult.getNormalizationFunction());
-
-						long differences = getDifferenceCount(rangeDifferencesResult);
-						long deltas = getDeltaCount(rangeDifferencesResult);
-
-						if (this.isTesting) {
-							this.printf("Diff: %s\t%s\t%s%n", change, differences, deltas);
-						}
-
-						if (deltas == 0) {
-							// Ignore differences
-							change.resetCounts();
-						} else {
-							change.setModifiedDifferences(differences);
-							change.setModifiedDeltas(deltas);
-						}
-					}
-
-					// For each change, output to spreadsheet
-
-					for (CompareDirectoriesJoinedDetail change : changes) {
-						//										println(
-						//												change.getCodeInfo() + "\t" + change.getExtendedDifferenceCount() + "\t"
-						//														+ change.getDifferenceCount());
-
-						if (change.getExtendedDifferenceCount() == 0 && change.getDifferenceCount() == 0) {
-							// There was no change
-							change.setImpact(ImpactType.NONE);
-							continue;
-						}
-
-						StringJoiner info = new StringJoiner(System.lineSeparator());
-
-						for (String note : change.getNotes()) {
-							info.add(note);
-						}
-
-						final PathChangeType changeType;
-						final CodeInfoWithLineInfo codeInfo;
-
-						if (change.getLeftCode() == null) {
-							// Added or unknown code block
-
-							if (change.getRightCode() == null) {
-								// Unknown code block
-								// TODO: could set based on whether unknown code was added / deleted or a combination
-								changeType = PathChangeType.MODIFIED;
-								codeInfo = null;
-							} else {
-								changeType = PathChangeType.ADDED;
-								codeInfo = change.getRightCode();
-							}
-						} else {
-							// Modified or deleted code block
-							assert change.getLeftCode() != null;
-
-							if (change.getRightCode() == null) {
-								// Deleted code block
-								changeType = PathChangeType.DELETED;
-								codeInfo = change.getLeftCode();
-
-								if (this.isTesting) {
-									this.println("Deleted change: " + change + "\t"
-											+ change.getLineChanges().entrySet());
-								}
-
-								//								int commentedOutLinesCount = change.getLineChanges()
-								//										.count(LineChangeType.COMMENTED_OUT);
-
-								//								if (commentedOutLinesCount > 0) {
-								//									// Add 1 since inclusive on both sides
-								//									int totalBodyLines = change.getCode1().getEndLine()
-								//											- change.getCode1().getStartLine() + 1;
-								//
-								//									if (commentedOutLinesCount == totalBodyLines) {
-								//										info.add("Commented out entire body");
-								//									} else {
-								//										info.add("Commented out part of body");
-								//									}
-								//								}
-							} else {
-								changeType = PathChangeType.MODIFIED;
-								// Get "destination" code block, in case changed (such as method signature change)
-								codeInfo = change.getRightCode();
-
-								if (this.isTesting) {
-									this.println("Modified change: " + change + "\t"
-											+ change.getLineChanges().entrySet());
-								}
-							}
-						}
-
-						change.setPathChangeType(changeType);
-
-						CodeInfoWithSourceInfo codeInfoWithSourceInfo = new CodeInfoWithSourceInfo(project,
+					CodeType codeType = codeInfoWithSourceInfo.getCodeType();
+
+					// Ignore unknown changes (where change.getLeftCode() == null)
+					if (changeType == PathChangeType.MODIFIED && change.getLeftCode() != null) {
+						// Get info for "source" code
+						// If changed modifiers, return value, or, signature indicate on report
+						CodeInfoWithSourceInfo leftCodeInfoWithSourceInfo = new CodeInfoWithSourceInfo(project,
 								packageName,
 								// Don't need to specify source pathname (last parameter), since not used for CompareDirectories
-								className, codeInfo == null ? null : codeInfo.getCodeInfo(), "", null);
+								className, change.getLeftCode().getCodeInfo(), "", null);
 
-						// Will be null if not method
+						String leftModifiers = leftCodeInfoWithSourceInfo.getModifiers();
+						boolean hasModifiersChanged = !Objects.equals(leftModifiers, modifiers);
 
-						String modifiers = codeInfoWithSourceInfo.getModifiers();
+						String leftReturnValue = getReturnValue(leftCodeInfoWithSourceInfo);
+						boolean hasReturnValueChanged = !Objects.equals(leftReturnValue, returnValue);
 
-						String returnValue = getReturnValue(codeInfoWithSourceInfo);
-						String signature = getSignature(codeInfoWithSourceInfo);
+						String leftSignature = getSignature(leftCodeInfoWithSourceInfo);
+						boolean hasSignatureChanged = !Objects.equals(leftSignature, signature);
 
-						if (codeInfoWithSourceInfo.isMethod()) {
-							MethodSignature methodSignature = codeInfoWithSourceInfo
-									.getMethodSignature();
-							returnValue = methodSignature.getReturnValue();
-							signature = methodSignature.getSignature();
-						} else if (codeInfoWithSourceInfo.isField()) {
-							FieldInfo fieldInfo = codeInfoWithSourceInfo.getFieldInfo();
-							returnValue = fieldInfo.getType();
-							signature = fieldInfo.getName();
-						} else {
-							returnValue = null;
-							signature = null;
-						}
+						if (hasModifiersChanged || hasReturnValueChanged || hasSignatureChanged) {
+							info.add("Refactored");
 
-						CodeType codeType = codeInfoWithSourceInfo.getCodeType();
+							if (hasModifiersChanged) {
+								info.add(leftModifiers + " -> "
+										+ modifiers);
+							}
 
-						// Ignore unknown changes (where change.getLeftCode() == null)
-						if (changeType == PathChangeType.MODIFIED && change.getLeftCode() != null) {
-							// Get info for "source" code
-							// If changed modifiers, return value, or, signature indicate on report
-							CodeInfoWithSourceInfo leftCodeInfoWithSourceInfo = new CodeInfoWithSourceInfo(project,
-									packageName,
-									// Don't need to specify source pathname (last parameter), since not used for CompareDirectories
-									className, change.getLeftCode().getCodeInfo(), "", null);
+							if (hasReturnValueChanged) {
+								info.add(leftReturnValue + " -> "
+										+ returnValue);
+							}
 
-							String leftModifiers = leftCodeInfoWithSourceInfo.getModifiers();
-							boolean hasModifiersChanged = !Objects.equals(leftModifiers, modifiers);
-
-							String leftReturnValue = getReturnValue(leftCodeInfoWithSourceInfo);
-							boolean hasReturnValueChanged = !Objects.equals(leftReturnValue, returnValue);
-
-							String leftSignature = getSignature(leftCodeInfoWithSourceInfo);
-							boolean hasSignatureChanged = !Objects.equals(leftSignature, signature);
-
-							if (hasModifiersChanged || hasReturnValueChanged || hasSignatureChanged) {
-								info.add("Refactored");
-
-								if (hasModifiersChanged) {
-									info.add(leftModifiers + " -> "
-											+ modifiers);
-								}
-
-								if (hasReturnValueChanged) {
-									info.add(leftReturnValue + " -> "
-											+ returnValue);
-								}
-
-								if (hasSignatureChanged) {
-									info.add(leftSignature + " -> "
-											+ signature);
-								}
+							if (hasSignatureChanged) {
+								info.add(leftSignature + " -> "
+										+ signature);
 							}
 						}
+					}
 
-						if (change.getDifferenceCount() == 0) {
-							info.add("Has no change in actual body");
-						}
+					if (change.getDifferenceCount() == 0) {
+						info.add("Has no change in actual body");
+					}
 
-						if (change.getExtendedDifferenceCount() != 0) {
-							info.add("Has change before " + codeType.toString().toLowerCase());
-						}
+					if (change.getExtendedDifferenceCount() != 0) {
+						info.add("Has change before " + codeType.toString().toLowerCase(Locale.ENGLISH));
+					}
 
-						boolean allComments = change
-								.getCommentLinesCount() == change.getExtendedDifferenceCount()
-										+ change.getDifferenceCount();
+					boolean allComments = change
+							.getCommentLinesCount() == change.getExtendedDifferenceCount()
+									+ change.getDifferenceCount();
 
-						if (allComments) {
-							info.add("All changed lines are comments");
+					if (allComments) {
+						info.add("All changed lines are comments");
 
-							if (change.isImpactBlank()) {
-								change.setImpact(ImpactType.NONE);
-							}
-						}
-
-						boolean allBlankLines = change.getBlankLinesCount() == change.getExtendedDifferenceCount()
-								+ change.getDifferenceCount();
-
-						if (allBlankLines) {
-							info.add("All changed lines are blank lines");
-
-							if (change.isImpactBlank()) {
-								change.setImpact(ImpactType.NONE);
-							}
-						}
-
-						boolean allCommentsOrBlankLines = change.getBlankLinesCount() != 0
-								&& change.getCommentLinesCount() != 0
-								&& change.getCommentLinesCount()
-										+ change.getBlankLinesCount() == change.getExtendedDifferenceCount()
-												+ change.getDifferenceCount();
-
-						if (allCommentsOrBlankLines) {
-							info.add("All changed lines are comments or blank lines");
-
-							if (change.isImpactBlank()) {
-								change.setImpact(ImpactType.NONE);
-							}
-						}
-
-						if (change.isImpactBlank() && changeType == PathChangeType.ADDED && codeType == CodeType.FIELD
-								&& Objects.equals(returnValue, "long")
-								&& Objects.equals(signature, "serialVersionUID")) {
+						if (change.isImpactBlank()) {
 							change.setImpact(ImpactType.NONE);
 						}
-
-						if (change.isImpactBlank() && !change.getLineChanges().isEmpty()) {
-							if (this.isTesting) {
-								this.println(change.getLineChanges());
-							}
-							boolean isLowImpactChange = change.getLineChanges()
-									.keySet()
-									.stream()
-									.allMatch(DiffType::shouldTreatAsNormalizedEqual);
-
-							if (isLowImpactChange) {
-								change.setImpact(ImpactType.LOW);
-								info.add("Max impact of changed lines is low");
-							}
-						}
-
-						//						if (change.isImpactBlank()) {
-						//							ImpactType maxImpactType = change.getLineChanges()
-						//									.stream()
-						//									.map(c -> c.getImpactType())
-						//									.max(Comparator.comparing(ImpactType::getImpact))
-						//									.orElse(ImpactType.UNKNOWN);
-						//
-						//							if (maxImpactType == ImpactType.NONE) {
-						//								change.setImpact(ImpactType.NONE);
-						//
-						//								info.add("None of the line changes have any impact");
-						//							} else if (maxImpactType == ImpactType.LOW) {
-						//								change.setImpact(ImpactType.LOW);
-						//
-						//								info.add("Max impact of changed lines is low");
-						//							}
-						//						}
-
-						int shortMethodLineCount = 5;
-
-						if (change.isImpactBlank() && changeType == PathChangeType.ADDED
-								&& codeInfoWithSourceInfo.isMethod()
-								&& Objects.requireNonNull(codeInfo).getLineCount() <= shortMethodLineCount) {
-							change.setImpact(ImpactType.LOW);
-							info.add("Short method with " + codeInfo.getLineCount()
-									+ " lines");
-						}
-
-						if (change.isImpactBlank() && changeType == PathChangeType.MODIFIED
-								&& codeInfoWithSourceInfo.isMethod()
-								&& codeInfo != null
-								&& codeInfo.getLineCount() <= shortMethodLineCount
-								&& change.getLeftCode().getLineCount() <= shortMethodLineCount) {
-							change.setImpact(ImpactType.LOW);
-							info.add("Short method with " + codeInfo.getLineCount()
-									+ " lines");
-						}
-
-						boolean showDeltas = changeType == PathChangeType.MODIFIED && change.getLeftCode() != null
-								&& change.getRightCode() != null;
-
-						String differences = (showDeltas ? String.valueOf(change.getModifiedDifferences()) : "");
-						String deltas = (showDeltas ? String.valueOf(change.getModifiedDeltas()) : "");
-
-						ImpactType impact = change.getImpact();
-						String impactValue = (impact == null ? null : impact.toString());
-
-						String infoText = info.toString();
-
-						if (!infoText.isEmpty() && (infoText.charAt(0) == '+' || infoText.charAt(0) == '-')) {
-							// Make Excel happy, so doesn't think cell is a formula and complain
-							infoText = "'" + infoText;
-						}
-
-						// TODO: Combine EJB and WebProjects together (unless Excel is fussy)
-						String detailsSheetName = project;
-						//						String detailsSheetName = "Details";
-
-						String projectSpecificDetailsSheetName = projectSheetNameMap.get(project);
-
-						if (projectSpecificDetailsSheetName != null) {
-							detailsSheetName = projectSpecificDetailsSheetName;
-						}
-
-						XSSFSheet detailsSheet = workbook.getSheet(detailsSheetName);
-
-						// First time using sheet
-						if (detailsSheet == null) {
-							detailsSheet = workbook.createSheet(detailsSheetName);
-
-							ExcelUtilities.createHeaderRow(detailsSheet, 0, detailsHeaderColumnNames);
-						}
-
-						Row row = ExcelUtilities.addRow(detailsSheet, packageName, className,
-								changeType.toString(), codeType.toString(), impactValue, modifiers, returnValue,
-								signature, infoText, differences, deltas);
-
-						// Wrap text for method and info column
-						row.getCell(packageColumn).setCellStyle(wrapTextCellStyle);
-						row.getCell(classColumn).setCellStyle(wrapTextCellStyle);
-
-						if (modifiers != null) {
-							row.getCell(modifiersColumn).setCellStyle(wrapTextCellStyle);
-						}
-
-						if (returnValue != null) {
-							row.getCell(returnColumn).setCellStyle(wrapTextCellStyle);
-
-						}
-
-						if (signature != null) {
-							row.getCell(methodColumn).setCellStyle(wrapTextCellStyle);
-						}
-
-						row.getCell(infoColumn).setCellStyle(wrapTextCellStyle);
 					}
+
+					boolean allBlankLines = change.getBlankLinesCount() == change.getExtendedDifferenceCount()
+							+ change.getDifferenceCount();
+
+					if (allBlankLines) {
+						info.add("All changed lines are blank lines");
+
+						if (change.isImpactBlank()) {
+							change.setImpact(ImpactType.NONE);
+						}
+					}
+
+					boolean allCommentsOrBlankLines = change.getBlankLinesCount() != 0
+							&& change.getCommentLinesCount() != 0
+							&& change.getCommentLinesCount()
+									+ change.getBlankLinesCount() == change.getExtendedDifferenceCount()
+											+ change.getDifferenceCount();
+
+					if (allCommentsOrBlankLines) {
+						info.add("All changed lines are comments or blank lines");
+
+						if (change.isImpactBlank()) {
+							change.setImpact(ImpactType.NONE);
+						}
+					}
+
+					if (change.isImpactBlank() && changeType == PathChangeType.ADDED && codeType == CodeType.FIELD
+							&& Objects.equals(returnValue, "long")
+							&& Objects.equals(signature, "serialVersionUID")) {
+						change.setImpact(ImpactType.NONE);
+					}
+
+					if (change.isImpactBlank() && !change.getLineChanges().isEmpty()) {
+						if (this.isTesting) {
+							this.println(change.getLineChanges());
+						}
+						boolean isLowImpactChange = change.getLineChanges()
+								.keySet()
+								.stream()
+								.allMatch(DiffType::shouldTreatAsNormalizedEqual);
+
+						if (isLowImpactChange) {
+							change.setImpact(ImpactType.LOW);
+							info.add("Max impact of changed lines is low");
+						}
+					}
+
+					//						if (change.isImpactBlank()) {
+					//							ImpactType maxImpactType = change.getLineChanges()
+					//									.stream()
+					//									.map(c -> c.getImpactType())
+					//									.max(Comparator.comparing(ImpactType::getImpact))
+					//									.orElse(ImpactType.UNKNOWN);
+					//
+					//							if (maxImpactType == ImpactType.NONE) {
+					//								change.setImpact(ImpactType.NONE);
+					//
+					//								info.add("None of the line changes have any impact");
+					//							} else if (maxImpactType == ImpactType.LOW) {
+					//								change.setImpact(ImpactType.LOW);
+					//
+					//								info.add("Max impact of changed lines is low");
+					//							}
+					//						}
+
+					int shortMethodLineCount = 5;
+
+					if (change.isImpactBlank() && changeType == PathChangeType.ADDED
+							&& codeInfoWithSourceInfo.isMethod()
+							&& Objects.requireNonNull(codeInfo).getLineCount() <= shortMethodLineCount) {
+						change.setImpact(ImpactType.LOW);
+						info.add("Short method with " + codeInfo.getLineCount() + " lines");
+					}
+
+					if (change.isImpactBlank() && changeType == PathChangeType.MODIFIED
+							&& codeInfoWithSourceInfo.isMethod()
+							&& codeInfo != null
+							&& codeInfo.getLineCount() <= shortMethodLineCount
+							&& change.getLeftCode().getLineCount() <= shortMethodLineCount) {
+						change.setImpact(ImpactType.LOW);
+						info.add("Short method with " + codeInfo.getLineCount() + " lines");
+					}
+
+					boolean showDeltas = changeType == PathChangeType.MODIFIED && change.getLeftCode() != null
+							&& change.getRightCode() != null;
+
+					String differences = (showDeltas ? String.valueOf(change.getModifiedDifferences()) : "");
+					String deltas = (showDeltas ? String.valueOf(change.getModifiedDeltas()) : "");
+
+					ImpactType impact = change.getImpact();
+					String impactValue = (impact == null ? null : impact.toString());
+
+					String infoText = info.toString();
+
+					if (!infoText.isEmpty() && (infoText.charAt(0) == '+' || infoText.charAt(0) == '-')) {
+						// Make Excel happy, so doesn't think cell is a formula and complain
+						infoText = "'" + infoText;
+					}
+
+					// TODO: Combine EJB and WebProjects together (unless Excel is fussy)
+					String detailsSheetName = project;
+					//						String detailsSheetName = "Details";
+
+					String projectSpecificDetailsSheetName = projectSheetNameMap.get(project);
+
+					if (projectSpecificDetailsSheetName != null) {
+						detailsSheetName = projectSpecificDetailsSheetName;
+					}
+
+					XSSFSheet detailsSheet = workbook.getSheet(detailsSheetName);
+
+					// First time using sheet
+					if (detailsSheet == null) {
+						detailsSheet = workbook.createSheet(detailsSheetName);
+
+						ExcelUtilities.createHeaderRow(detailsSheet, 0, detailsHeaderColumnNames);
+					}
+
+					Row row = ExcelUtilities.addRow(detailsSheet, packageName, className,
+							changeType.toString(), codeType.toString(), impactValue, modifiers, returnValue,
+							signature, infoText, differences, deltas);
+
+					// Wrap text for method and info column
+					row.getCell(packageColumn).setCellStyle(wrapTextCellStyle);
+					row.getCell(classColumn).setCellStyle(wrapTextCellStyle);
+
+					if (modifiers != null) {
+						row.getCell(modifiersColumn).setCellStyle(wrapTextCellStyle);
+					}
+
+					if (returnValue != null) {
+						row.getCell(returnColumn).setCellStyle(wrapTextCellStyle);
+
+					}
+
+					if (signature != null) {
+						row.getCell(methodColumn).setCellStyle(wrapTextCellStyle);
+					}
+
+					row.getCell(infoColumn).setCellStyle(wrapTextCellStyle);
 				}
 			}
 
@@ -1116,77 +1127,74 @@ public class CompareDirectories {
 			// Autosize columns
 			// ParsingUtilities.autosizeColumnsFromSheet(sheet, 0, lastColumn);
 
-			sheet.setColumnWidth(projectColumn, 33 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(PROJECT_COLUMN, 33 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-			sheet.setColumnWidth(directoryColumn, 33 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(DIRECTORY_COLUMN, 33 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-			sheet.setColumnWidth(filenameColumn, 21 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(FILENAME_COLUMN, 21 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-			sheet.setColumnWidth(fileTypeColumn, 12 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-			sheet.setColumnWidth(differencesChangeTypeColumn, 10 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-			sheet.setColumnWidth(differencesColumn, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-			sheet.setColumnWidth(deltasColumn, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(FILE_TYPE_COLUMN, 12 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(CHANGE_COLUMN, 10 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(DIFFERENCES_COLUMN, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(DELTAS_COLUMN, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-			sheet.setColumnWidth(pathnameColumn, 33 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+			sheet.setColumnWidth(PATHNAME_COLUMN, 33 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-			// Format all the sheets except the first Differences sheet
-			for (Sheet sheet0 : workbook) {
-				if (BEXUtilities.in(sheet0.getSheetName(), sheetName)) {
+			// Format all the details sheets (skip the Differences sheet)
+			for (Sheet detailsSheet : workbook) {
+				if (BEXUtilities.in(detailsSheet.getSheetName(), sheetName)) {
 					continue;
 				}
 
 				// Add filtering
 				// (start on first row, so exclude title row)
-				sheet0.setAutoFilter(new CellRangeAddress(0, sheet0.getLastRowNum(), 0, lastDetailsColumn));
+				detailsSheet.setAutoFilter(new CellRangeAddress(0, detailsSheet.getLastRowNum(), 0, lastDetailsColumn));
 
 				// Freeze header row
-				sheet0.createFreezePane(0, 1);
+				detailsSheet.createFreezePane(0, 1);
 
 				// Don't autosize columns due to issue processing so many rows
 				// Autosize columns
 				// ParsingUtilities.autosizeColumnsFromSheet(sheet, 0, lastColumn);
 
 				// Format remaining two columns (others are specified below)
-				sheet0.setColumnWidth(classColumn, 21 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				detailsSheet.setColumnWidth(classColumn, 21 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-				sheet0.setColumnWidth(detailsChangeTypeColumn, 10 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				detailsSheet.setColumnWidth(detailsChangeTypeColumn, 10 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
 				// Allows CONSTRUCTOR to fully display
-				sheet0.setColumnWidth(typeColumn, 14 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				detailsSheet.setColumnWidth(typeColumn, 14 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-				sheet0.setColumnWidth(modifiersColumn, 12 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				detailsSheet.setColumnWidth(modifiersColumn, 12 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-				sheet0.setColumnWidth(packageColumn, 21 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				detailsSheet.setColumnWidth(packageColumn, 21 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-				sheet0.setColumnWidth(returnColumn, 20 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-				sheet0.setColumnWidth(methodColumn, 50 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-				sheet0.setColumnWidth(infoColumn, 95 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				detailsSheet.setColumnWidth(returnColumn, 20 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				detailsSheet.setColumnWidth(methodColumn, 50 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				detailsSheet.setColumnWidth(infoColumn, 95 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
-				sheet0.setColumnWidth(detailsDifferencesColumn, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
-				sheet0.setColumnWidth(detailsDeltasColumn, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				detailsSheet.setColumnWidth(detailsDifferencesColumn, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
+				detailsSheet.setColumnWidth(detailsDeltasColumn, 15 * EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 
 				//				sheet0.setColumnWidth(linesColumn, 7 * ParsingUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER);
 			}
 
-			if (this.excelReportPath != null) {
-				this.println("Writing report at: " + this.excelReportPath);
-				try (OutputStream outputStream = Files.newOutputStream(this.excelReportPath)) {
-					workbook.write(outputStream);
-					this.println("Report saved at: " + this.excelReportPath);
+			this.println("Writing report at: " + excelReportPath);
+			try (OutputStream outputStream = Files.newOutputStream(excelReportPath)) {
+				workbook.write(outputStream);
+				this.println("Report saved at: " + excelReportPath);
 
-					if (this.copyChangedFilesDestinationPath != null) {
-						Path destination = this.copyChangedFilesDestinationPath
-								.resolve(this.excelReportPath.getFileName());
+				if (this.copyChangedFilesDestinationPath != null) {
+					Path destination = this.copyChangedFilesDestinationPath
+							.resolve(excelReportPath.getFileName());
 
-						Files.copy(this.excelReportPath, destination);
-						this.println("Saved a copy of the report to: " + destination);
-					}
+					Files.copy(excelReportPath, destination);
+					this.println("Saved a copy of the report to: " + destination);
 				}
 			}
-		}
 
-		long endTime = System.currentTimeMillis();
-		this.printf("It took %d seconds.", (endTime - startTime) / 1000);
+			return workbook;
+		}
 	}
 
 	private void println() {
@@ -1812,14 +1820,14 @@ public class CompareDirectories {
 				.count();
 	}
 
-	private CompareDirectoriesResult findDifferences(final BEXPair<Path> rootPath)
+	private CompareDirectoriesDifferencesResult findDifferences(final BEXPair<Path> rootPath)
 			throws IOException {
 		BEXListPair<Path> paths = new BEXListPair<>(rootPath.mapThrows(r -> Files.walk(r)
 				// Run in parallel for performance boost
 				.parallel()
 				.filter(this::shouldCheckPath)
 				// Sort so can iterate over and find differences
-				.sorted()
+				.sorted(this.pathComparator)
 				.collect(toList())));
 
 		List<PathChangeInfo> pathChanges = new Vector<>();
@@ -1927,10 +1935,8 @@ public class CompareDirectories {
 		}
 
 		// Sort them, to ensure consistent ordering, even though multi-threaded
-		pathChanges.sort(Comparator.comparing(PathChangeInfo::getRelativePath));
-
-		javaPaths.acceptBoth(
-				l -> l.sort(Comparator.comparing(ProjectPath::getProject).thenComparing(ProjectPath::getPath)));
+		pathChanges.sort(Comparator.comparing(PathChangeInfo::getRelativePath, this.pathComparator));
+		javaPaths.acceptBoth(l -> l.sort(Comparator.comparing(ProjectPath::getPath, this.pathComparator)));
 
 		// Handle rest of paths
 		// * Any remaining in leftPaths were deleted (since they don't appear in rightPaths)
@@ -1959,7 +1965,7 @@ public class CompareDirectories {
 			}
 		}
 
-		return new CompareDirectoriesResult(pathChanges, javaPaths, javaPathDiffMap);
+		return new CompareDirectoriesDifferencesResult(pathChanges, javaPaths, javaPathDiffMap);
 	}
 
 	private void determineFileChanges(final BEXPair<Path> path, final Path relativePath,
@@ -2085,24 +2091,24 @@ public class CompareDirectories {
 				change.getFilenameWithoutExtension(), change.getExtension(), change.getFileType().toString(),
 				change.getPathChangeType().toString());
 
-		row.getCell(this.DIRECTORY_COLUMN).setCellStyle(this.WRAP_TEXT_CELL_STYLE);
-		row.getCell(this.FILENAME_COLUMN).setCellStyle(this.WRAP_TEXT_CELL_STYLE);
+		row.getCell(CompareDirectories.DIRECTORY_COLUMN).setCellStyle(this.WRAP_TEXT_CELL_STYLE);
+		row.getCell(CompareDirectories.FILENAME_COLUMN).setCellStyle(this.WRAP_TEXT_CELL_STYLE);
 
 		int differenceCount = change.getDifferenceCount();
-		Cell differencesCell = row.createCell(this.DIFFERENCES_COLUMN);
+		Cell differencesCell = row.createCell(CompareDirectories.DIFFERENCES_COLUMN);
 
 		if (differenceCount >= 0) {
 			differencesCell.setCellValue(differenceCount);
 		}
 
 		int deltaCount = change.getDeltaCount();
-		Cell deltasCell = row.createCell(this.DELTAS_COLUMN);
+		Cell deltasCell = row.createCell(CompareDirectories.DELTAS_COLUMN);
 
 		if (deltaCount >= 0) {
 			deltasCell.setCellValue(deltaCount);
 		}
 
-		Cell pathnameCell = row.createCell(this.PATHNAME_COLUMN);
+		Cell pathnameCell = row.createCell(CompareDirectories.PATHNAME_COLUMN);
 
 		pathnameCell.setCellValue(change.getRelativePath().toString());
 		pathnameCell.setCellStyle(this.WRAP_TEXT_CELL_STYLE);

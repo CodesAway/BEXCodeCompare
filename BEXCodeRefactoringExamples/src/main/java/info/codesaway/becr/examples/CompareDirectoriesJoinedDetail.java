@@ -1,10 +1,12 @@
-package info.codesaway.becr.diff;
+package info.codesaway.becr.examples;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import info.codesaway.becr.diff.ImpactType;
+import info.codesaway.becr.diff.PathChangeType;
 import info.codesaway.becr.parsing.CodeInfoWithLineInfo;
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.diff.DiffType;
