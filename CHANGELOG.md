@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] - 2020-07-12
 ### Added
-* BEX Library adds some useful Pair classes to handle left / right pairs which are the same type (some cool Java 8 stuff is made available)
+* BEX Library adds some useful Pair classes to handle left / right pairs which are the same type 
+  * This helped simplify lots of the compare code, since there was code that did stuff on the left side and the same stuff on the right side; now, by using these BEX Pair classes, it simplified the code the remove the redundancy
+  * Some cool Java 8 stuff is made available
   * **package**: info.codesaway.bex
   * BEXListPair
   * BEXMapPair
