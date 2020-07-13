@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.0] - 2020-07-012
+## [0.3.0] - 2020-07-12
 ### Added
 * BEX Library adds some useful Pair classes to handle left / right pairs which are the same type (some cool Java 8 stuff is made available)
   * **package**: info.codesaway.bex
