@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Renamed DiffType.getTag() to DiffType.getSymbol()
 
 ### Fixed
-* Some odd behavior related to 3-way compares with repository
+* Some odd behavior related to 3-way compares with repository (closes #22)
 
 ## [0.2.0] - 2020-07-04
 ### Added
