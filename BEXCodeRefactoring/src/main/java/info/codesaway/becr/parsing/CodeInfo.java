@@ -53,7 +53,7 @@ public interface CodeInfo {
 	/**
 	 * Indicates whether the code info should be checked
 	 *
-	 * <p><b>NOTE</b>: It is up to the client to decide how to use this</b>; it acts as just an indicator
+	 * <p><b>NOTE</b>: It is up to the client to decide how to use this; it acts as just an indicator
 	 * For example, this can be used to allow storing all code info and then filtering based on this flag.</p>
 	 *
 	 * @return <code>true</code> if this CodeInfo should be checked

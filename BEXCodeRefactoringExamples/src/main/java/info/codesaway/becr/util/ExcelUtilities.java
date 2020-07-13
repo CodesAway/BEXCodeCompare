@@ -187,7 +187,7 @@ public final class ExcelUtilities {
 	/**
 	 * Gets the excel column number from the column name
 	 *
-	 * @param column column name
+	 * @param columnName column name
 	 * @return excel column number (1 for column A, 26 for column Z, 27 for column AA)
 	 */
 	public static int getExcelColumnNumber(final String columnName) {

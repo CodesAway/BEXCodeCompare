@@ -15,6 +15,7 @@ import static java.util.stream.Collectors.toList;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -1690,7 +1691,7 @@ public class CompareDirectories {
 	}
 
 	private static String readFileContents(final Path path) throws IOException {
-		return new String(Files.readAllBytes(path));
+		return new String(Files.readAllBytes(path), Charset.defaultCharset());
 	}
 
 	/**

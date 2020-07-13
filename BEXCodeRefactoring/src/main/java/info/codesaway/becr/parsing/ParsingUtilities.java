@@ -33,7 +33,7 @@ public final class ParsingUtilities {
 	}
 
 	/**
-	 * Gets the line number for the specified position in <code>compilationUnit</oced>
+	 * Gets the line number for the specified position in <code>compilationUnit</code>
 	 *
 	 * @param compilationUnit
 	 * @param position
