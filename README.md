@@ -50,12 +50,18 @@ The library has no dependency on Eclipse and can be used in commercial or privat
 ## What is BEX Code Compare?
 BEX Code Compare is **B**e **E**nhanced **ϽC** Code Compare
 
+<a name="becr"></a>
+## What is BECR?
+BECR, pronounced Beccer, is **B**e **E**nhanced **C**ode **R**efactoring
+
 <a name="how"></a>
 ## How does it work?
 
 First we use Patience sort / Myers diff (similar to how GitHub does a compare). Then, we take the resulting diff and do some post diff processing to group the differences into groups of changes.
 
 Along the way, BEX identifies important versus non important changes (such as a line being split across multiple lines if ignoring whitespace differences). It then shows an Eclipse view with the changes.
+
+BECR uses BEX and Eclipe's JDT to parse Java code and provide parsing and refactoring functionality. There are examples available to show how BECR could be used.
 
 <a name="install"></a>
 ## Installation
