@@ -2,7 +2,7 @@ package info.codesaway.bex.diff.patience;
 
 import java.util.Comparator;
 
-import info.codesaway.bex.diff.IntLeftRightPair;
+import info.codesaway.bex.IntBEXPair;
 
 /**
  * Class to represent the matched lines Patience diff algorithm
@@ -13,7 +13,7 @@ import info.codesaway.bex.diff.IntLeftRightPair;
  *
  * <p>Referenced: https://blog.jcoglan.com/2017/09/28/implementing-patience-diff/</p>
  */
-public class PatienceMatch {
+public final class PatienceMatch {
 	private final int leftLineNumber;
 	private final int rightLineNumber;
 
@@ -31,8 +31,8 @@ public class PatienceMatch {
 		this.rightLineNumber = rightLineNumber;
 	}
 
-	public IntLeftRightPair getLineNumber() {
-		return IntLeftRightPair.of(this.leftLineNumber, this.rightLineNumber);
+	public IntBEXPair getLineNumber() {
+		return IntBEXPair.of(this.leftLineNumber, this.rightLineNumber);
 	}
 
 	public int getLeftLineNumber() {

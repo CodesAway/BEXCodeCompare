@@ -8,14 +8,14 @@ import static info.codesaway.util.regex.Pattern.getThreadLocalMatcher;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffNormalizedText;
-import info.codesaway.bex.diff.DiffSide;
 import info.codesaway.bex.diff.substitution.RefactoringDiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.util.regex.Matcher;
 
-public class JavaCastSubstitution implements JavaSubstitution {
+public final class JavaCastSubstitution implements JavaSubstitution {
 	private static final String TYPE_REGEX = "(?<type>\\w++(?:<\\w++>)?+)";
 	private static final ThreadLocal<Matcher> CAST_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
 			"(?J)"
@@ -37,15 +37,15 @@ public class JavaCastSubstitution implements JavaSubstitution {
 
 		//		System.out.println("CAST? " + castMatcher.reset(normalizedLeft).find() + "\t" + normalizedLeft);
 
-		DiffSide side;
+		BEXSide side;
 		String expectedText;
 		String originalText;
 		if (castMatcher.reset(normalizedLeft).find()) {
-			side = DiffSide.RIGHT;
+			side = BEXSide.RIGHT;
 			expectedText = normalizedRight;
 			originalText = normalizedLeft;
 		} else if (castMatcher.reset(normalizedRight).find()) {
-			side = DiffSide.LEFT;
+			side = BEXSide.LEFT;
 			expectedText = normalizedLeft;
 			originalText = normalizedRight;
 		} else {

@@ -1,6 +1,6 @@
 package info.codesaway.bex.diff;
 
-import static info.codesaway.bex.util.Utilities.immutableCopyOf;
+import static info.codesaway.bex.util.BEXUtilities.immutableCopyOf;
 import static java.util.stream.Collectors.toList;
 
 import java.util.List;
@@ -9,7 +9,7 @@ import java.util.List;
  * Class representing a change (such as a refactoring), which affects multiple DiffUnit (such as DiffEdit or DiffBlock)
  * which may or may not be consecutive lines
  */
-public class DiffChange<T> implements DiffUnit {
+public final class DiffChange<T> implements DiffUnit {
 	private final DiffType diffType;
 	private final List<DiffUnit> changes;
 	private final T info;
@@ -40,7 +40,7 @@ public class DiffChange<T> implements DiffUnit {
 	@Override
 	public List<DiffEdit> getEdits() {
 		return this.changes.stream()
-				.flatMap(c -> c.getEdits().stream())
+				.flatMap(DiffUnit::stream)
 				.collect(toList());
 	}
 

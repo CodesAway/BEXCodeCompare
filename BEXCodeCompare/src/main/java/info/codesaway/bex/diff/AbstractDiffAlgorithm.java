@@ -1,7 +1,7 @@
 package info.codesaway.bex.diff;
 
-import static info.codesaway.bex.util.Utilities.firstNonNull;
-import static info.codesaway.bex.util.Utilities.immutableCopyOf;
+import static info.codesaway.bex.util.BEXUtilities.firstNonNull;
+import static info.codesaway.bex.util.BEXUtilities.immutableCopyOf;
 
 import java.util.List;
 import java.util.Objects;

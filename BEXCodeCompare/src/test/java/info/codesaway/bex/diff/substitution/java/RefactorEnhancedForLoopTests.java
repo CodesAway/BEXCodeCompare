@@ -11,14 +11,14 @@ import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
 
+import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffLine;
-import info.codesaway.bex.diff.DiffSide;
 import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 
-public class RefactorEnhancedForLoopTests {
+class RefactorEnhancedForLoopTests {
 	@Test
 	void testIndexToEnhancedForWithLocalVariable() {
 		// TODO Auto-generated method stub
@@ -36,7 +36,7 @@ public class RefactorEnhancedForLoopTests {
 		DiffHelper.handleSubstitution(diff, DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION,
 				new RefactorEnhancedForLoop());
 
-		DiffType expectedType = new RefactoringDiffTypeValue('R', DiffSide.LEFT, "enhanced for", "myList", true);
+		DiffType expectedType = new RefactoringDiffTypeValue('R', BEXSide.LEFT, "enhanced for", "myList", true);
 
 		assertThat(diff)
 				.extracting(DiffEdit::getType)
@@ -80,7 +80,7 @@ public class RefactorEnhancedForLoopTests {
 		DiffHelper.handleSubstitution(diff, DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION,
 				new RefactorEnhancedForLoop());
 
-		DiffType expectedType = new RefactoringDiffTypeValue('R', DiffSide.LEFT, "enhanced for", iterableName, true);
+		DiffType expectedType = new RefactoringDiffTypeValue('R', BEXSide.LEFT, "enhanced for", iterableName, true);
 
 		assertThat(diff)
 				.extracting(DiffEdit::getType)

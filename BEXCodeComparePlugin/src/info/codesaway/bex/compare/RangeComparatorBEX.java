@@ -1,16 +1,3 @@
-/*******************************************************************************
- * Copyright (c) 2006, 2011 IBM Corporation and others.
- *
- * This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License 2.0
- * which accompanies this distribution, and is available at
- * https://www.eclipse.org/legal/epl-2.0/
- *
- * SPDX-License-Identifier: EPL-2.0
- *
- * Contributors:
- *     IBM Corporation - initial API and implementation
- *******************************************************************************/
 package info.codesaway.bex.compare;
 
 import static info.codesaway.bex.diff.BasicDiffType.DELETE;
@@ -26,6 +13,7 @@ import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_DI
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_FINAL_KEYWORD;
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_SEMICOLON;
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_UNBOXING;
+import static info.codesaway.bex.util.BEXUtilities.not;
 import static java.util.stream.Collectors.toList;
 
 import java.util.ArrayList;
@@ -74,7 +62,7 @@ public class RangeComparatorBEX {
 		try {
 			// TODO: how to use monitor?
 			bex.computeDifferences(monitor.newChild(95), updateView);
-			return bex.getDifferences(monitor.newChild(5), factory);
+			return bex.getDifferences(monitor.newChild(5), factory, updateView);
 		} finally {
 			if (pm != null) {
 				pm.done();
@@ -127,6 +115,16 @@ public class RangeComparatorBEX {
 
 		boolean shouldUseEnhancedCompare = Activator.shouldUseEnhancedCompare();
 
+		// TODO: when and how should comments be ignored?
+		// This inserting / deleting comments can be ignored
+		// However, commenting out / uncommenting code I think is more important
+		// Or, if the line was changed but was commented out before and after think can ignore
+		// TODO: how to detect if line is comments (simple case is line starts with '//')
+		// Block comments are more challenging
+		// Might need to run full file check to identify lines which are comments
+		// Can use logic from CASTLE Searching to identify commented out code versus regular code
+		boolean ignoreComments = Activator.ignoreComments();
+
 		if (shouldUseEnhancedCompare) {
 			// Look first for common refactorings, so can group changes together
 			DiffHelper.handleSubstitution(diff, normalizationFunction, JAVA_SEMICOLON, SUBSTITUTION_CONTAINS,
@@ -142,37 +140,66 @@ public class RangeComparatorBEX {
 		// Do separately, so LCS max can find better matches and do only run LCS min on leftovers
 		DiffHelper.handleSubstitution(diff, normalizationFunction, SubstitutionType.LCS_MIN_OPERATOR);
 
+		// 7/8/2020 - don't allow replacements for DiffBlock (should yield better diff in Eclipse)
+		// (should be helpful when ignore comments)
+		// TODO: though, makes ignoring split line differences challenging
+		// TODO: write logic that recognizes split lines even if not in blocks
 		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, true);
+		//		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, false);
 
-		// Ignore whitespace
-		for (int i = 0; i < diffBlocks.size(); i++) {
-			DiffUnit diffBlock = diffBlocks.get(i);
-			List<DiffEdit> diffEdits = diffBlock.getEdits();
-			// Null unless need to edit, then will be initialized with copy of diffEdits
-			List<DiffEdit> edits = null;
+		// Handle ignoring blank lines or comments (if option is enabled)
+		if (this.ignoreWhitespace || ignoreComments) {
+			for (int i = 0; i < diffBlocks.size(); i++) {
+				DiffUnit diffBlock = diffBlocks.get(i);
+				List<DiffEdit> diffEdits = diffBlock.getEdits();
+				// Null unless need to edit, then will be initialized with copy of diffEdits
+				List<DiffEdit> edits = null;
 
-			for (int j = 0; j < diffEdits.size(); j++) {
-				DiffEdit diffEdit = diffEdits.get(j);
+				for (int j = 0; j < diffEdits.size(); j++) {
+					DiffEdit diffEdit = diffEdits.get(j);
+					String leftTextTrimmed = diffEdit.getLeftText().trim();
+					String rightTexTrimmed = diffEdit.getRightText().trim();
 
-				if (diffEdit.isInsertOrDelete()
-						&& diffEdit.getLeftText().trim().isEmpty()
-						&& diffEdit.getRightText().trim().isEmpty()) {
+					boolean shouldIgnoreDiff = this.ignoreWhitespace
+							&& diffEdit.isInsertOrDelete()
+							&& leftTextTrimmed.isEmpty()
+							&& rightTexTrimmed.isEmpty();
 
-					if (edits == null) {
-						// Take a copy, so can change it
-						edits = new ArrayList<>(diffEdits);
+					if (!shouldIgnoreDiff && ignoreComments) {
+						// Check if both sides are comments
+						boolean isLineComment = true;
+
+						// TODO: add support for recognizing block comments as well
+						if (diffEdit.hasLeftLine()) {
+							isLineComment &= leftTextTrimmed.startsWith("//");
+						}
+
+						if (diffEdit.hasRightLine()) {
+							isLineComment &= rightTexTrimmed.startsWith("//");
+						}
+
+						if (isLineComment) {
+							shouldIgnoreDiff = true;
+						}
 					}
 
-					edits.set(j, new DiffEdit(IGNORE, diffEdit.getLeftLine(), diffEdit.getRightLine()));
-				}
-			}
+					if (shouldIgnoreDiff) {
+						if (edits == null) {
+							// Take a copy, so can change it
+							edits = new ArrayList<>(diffEdits);
+						}
 
-			if (edits != null) {
-				diffBlocks.set(i, new DiffBlock(diffBlock.getType(), edits));
+						edits.set(j, new DiffEdit(IGNORE, diffEdit.getLeftLine(), diffEdit.getRightLine()));
+					}
+				}
+
+				if (edits != null) {
+					diffBlocks.set(i, new DiffBlock(diffBlock.getType(), edits));
+				}
 			}
 		}
 
-		if (shouldUseEnhancedCompare) {
+		if (shouldUseEnhancedCompare && this.ignoreWhitespace) {
 			DiffHelper.handleSplitLines(diffBlocks, normalizationFunction);
 		}
 
@@ -221,9 +248,16 @@ public class RangeComparatorBEX {
 			}
 
 			// All changes in block are import statements
-			boolean isOnlyImportChange = diffBlock.getEdits()
+			List<DiffEdit> nonIgnoredDiffEdits = diffBlock.getEdits()
 					.stream()
-					.filter(e -> !e.getType().shouldIgnore())
+					.filter(not(DiffUnit::shouldIgnore))
+					.collect(toList());
+
+			// TODO: if all differences are ignored, indicate block is not important
+			// (should block not show as a change?)
+
+			boolean isOnlyImportChange = !nonIgnoredDiffEdits.isEmpty() && nonIgnoredDiffEdits
+					.stream()
 					.allMatch(e -> DiffHelper.IMPORT_MATCHER.get().reset(e.getText()).find());
 
 			if (isOnlyImportChange) {
@@ -237,6 +271,8 @@ public class RangeComparatorBEX {
 
 			if (!shouldUseEnhancedCompare) {
 				hasChange = true;
+			} else if (nonIgnoredDiffEdits.isEmpty()) {
+				hasChange = false;
 			} else {
 				hasChange = true;
 
@@ -300,7 +336,7 @@ public class RangeComparatorBEX {
 	}
 
 	private RangeDifference[] getDifferences(final SubMonitor subMonitor,
-			final AbstractRangeDifferenceFactory factory) {
+			final AbstractRangeDifferenceFactory factory, final boolean includeNoChangeDiff) {
 		try {
 			List<RangeDifference> differences = new ArrayList<>();
 
@@ -332,7 +368,7 @@ public class RangeComparatorBEX {
 				if (rightStart != -1) {
 					int maxRight = diffEdits.stream()
 							.filter(DiffEdit::hasRightLine)
-							.filter(d -> !d.getType().isMove())
+							.filter(not(DiffUnit::isMove))
 							.mapToInt(DiffEdit::getRightLineNumber)
 							.max()
 							.orElse(0) - 1;
@@ -347,7 +383,7 @@ public class RangeComparatorBEX {
 				if (leftStart != -1) {
 					int maxLeft = diffEdits.stream()
 							.filter(DiffEdit::hasLeftLine)
-							.filter(d -> !d.getType().isMove())
+							.filter(not(DiffUnit::isMove))
 							.mapToInt(DiffEdit::getLeftLineNumber)
 							.max()
 							.orElse(0) - 1;
@@ -360,6 +396,12 @@ public class RangeComparatorBEX {
 				}
 
 				CompareResultType compareResultType = this.isChangedMap.get(diffUnit);
+
+				// TODO: trying to work around bug in 3-way where shows
+				if (compareResultType == CompareResultType.NOCHANGE && !includeNoChangeDiff) {
+					continue;
+				}
+
 				if (compareResultType != CompareResultType.EQUAL) {
 					int kind = compareResultType == CompareResultType.CHANGE
 							? RangeDifference.CHANGE

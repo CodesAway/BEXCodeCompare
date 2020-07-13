@@ -9,7 +9,7 @@ import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffNormalizedText;
 import info.codesaway.util.lcs.LcsString;
 
-public class LcsSubstitutionType implements SubstitutionType {
+public final class LcsSubstitutionType implements SubstitutionType {
 	private final double threshold;
 	private final int lcsMaxLineLength;
 	private final IntBinaryOperator operator;

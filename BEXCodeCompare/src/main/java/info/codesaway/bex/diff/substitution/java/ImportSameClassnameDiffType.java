@@ -2,7 +2,7 @@ package info.codesaway.bex.diff.substitution.java;
 
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 
-public class ImportSameClassnameDiffType implements SubstitutionDiffType {
+public final class ImportSameClassnameDiffType implements SubstitutionDiffType {
 	private final String className;
 	private final String leftImport;
 	private final String rightImport;
@@ -21,7 +21,7 @@ public class ImportSameClassnameDiffType implements SubstitutionDiffType {
 	}
 
 	@Override
-	public char getTag() {
+	public char getSymbol() {
 		return 'i';
 	}
 

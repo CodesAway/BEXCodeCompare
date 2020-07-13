@@ -9,16 +9,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffNormalizedText;
-import info.codesaway.bex.diff.DiffSide;
 import info.codesaway.bex.diff.substitution.RefactoringDiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.bex.diff.substitution.RefactoringType;
 import info.codesaway.util.regex.Matcher;
 
-public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringType {
+public final class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringType {
 	private static final String ITERABLE_REGEX = "(?<iterable>(?:\\w++\\.)??\\w++|\\w++\\.get\\w++\\(\\))";
 
 	private static final ThreadLocal<Matcher> ENHANCED_FOR_LOOP_MATCHER = getThreadLocalMatcher(enhanceRegexWhitespace(
@@ -56,14 +56,14 @@ public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringTyp
 		Matcher enhancedForLoopMatcher = ENHANCED_FOR_LOOP_MATCHER.get();
 		Matcher regularForLoopMatcher = REGULAR_FOR_LOOP_MATCHER.get();
 
-		DiffSide side;
+		BEXSide side;
 		// TODO: switch from matches to find to handle named loop and line comments at end?
 		if (enhancedForLoopMatcher.reset(normalizedRight).matches()
 				&& regularForLoopMatcher.reset(normalizedLeft).matches()) {
-			side = DiffSide.RIGHT;
+			side = BEXSide.RIGHT;
 		} else if (enhancedForLoopMatcher.reset(normalizedLeft).matches()
 				&& regularForLoopMatcher.reset(normalizedRight).matches()) {
-			side = DiffSide.LEFT;
+			side = BEXSide.LEFT;
 		} else {
 			// Check if this is a substitution part of the for loop (changing)
 			for (State state : this.states.values()) {
@@ -115,18 +115,18 @@ public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringTyp
 	}
 
 	@Override
-	public RefactoringDiffType acceptSingleSide(final DiffSide diffSide, final DiffEdit diffEdit,
+	public RefactoringDiffType acceptSingleSide(final BEXSide side, final DiffEdit diffEdit,
 			final Map<DiffEdit, String> normalizedTexts,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
 		if (this.lastState == null) {
 			return null;
-		} else if (this.lastState.side == diffSide) {
+		} else if (this.lastState.side == side) {
 			// We're expecting the deleted line to be on the indexed for loop side
 			// (so the other side of the refactored enhanced side)
 			return null;
 		}
 
-		String expectedText = DiffHelper.normalize(diffSide,
+		String expectedText = DiffHelper.normalize(side,
 				this.lastState.elementType + " " + this.lastState.elementName + " = "
 						+ this.lastState.searchText + ";",
 				normalizationFunction);
@@ -149,7 +149,7 @@ public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringTyp
 
 	// Store state information so can track the changes
 	private static class State {
-		private final DiffSide side;
+		private final BEXSide side;
 		private final String elementType;
 		private final String elementName;
 		//		private final String iterableName;
@@ -159,7 +159,7 @@ public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringTyp
 		private final String replacementText;
 		private final RefactoringDiffType diffType;
 
-		private State(final DiffSide side, final String elementType, final String elementName,
+		private State(final BEXSide side, final String elementType, final String elementName,
 				final String iterableName, final String indexName, final IterableKind iterableKind) {
 			this.side = side;
 			this.elementType = elementType;
@@ -198,7 +198,7 @@ public class RefactorEnhancedForLoop implements JavaSubstitution, RefactoringTyp
 		boolean accept(final String left, final String right) {
 			String expectedText;
 			String originalText;
-			if (this.side == DiffSide.LEFT) {
+			if (this.side == BEXSide.LEFT) {
 				expectedText = left;
 				originalText = right;
 			} else {

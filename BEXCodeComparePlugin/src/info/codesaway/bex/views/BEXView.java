@@ -24,12 +24,14 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.part.DrillDownAdapter;
 import org.eclipse.ui.part.ViewPart;
 
+import info.codesaway.bex.Activator;
+import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.compare.BEXChangeInfo;
 import info.codesaway.bex.diff.DiffChange;
 import info.codesaway.bex.diff.DiffEdit;
-import info.codesaway.bex.diff.DiffType;
 import info.codesaway.eclipse.compare.contentmergeviewer.TextMergeViewer;
 
 /**
@@ -65,7 +67,7 @@ public class BEXView extends ViewPart {
 	IWorkbench workbench;
 
 	private TreeViewer viewer;
-	//	private DrillDownAdapter drillDownAdapter;
+	private DrillDownAdapter drillDownAdapter;
 	//	private Action action1;
 	//	private Action action2;
 	private Action doubleClickAction;
@@ -73,6 +75,7 @@ public class BEXView extends ViewPart {
 	private ViewContentProvider viewContentProvider;
 
 	private TextMergeViewer mergeViewer;
+	private List<DiffChange<BEXChangeInfo>> changes;
 
 	class TreeObject implements IAdaptable {
 		private final String name;
@@ -115,7 +118,11 @@ public class BEXView extends ViewPart {
 		private final List<TreeObject> children;
 
 		public TreeParent(final String name) {
-			super(name, null);
+			this(name, null);
+		}
+
+		public TreeParent(final String name, final DiffEdit diffEdit) {
+			super(name, diffEdit);
 			this.children = new ArrayList<>();
 		}
 
@@ -153,6 +160,7 @@ public class BEXView extends ViewPart {
 	}
 
 	class ViewContentProvider implements ITreeContentProvider {
+		// TODO: see about lazy initializing
 		private final TreeParent invisibleRoot = new TreeParent("");
 
 		@Override
@@ -208,11 +216,16 @@ public class BEXView extends ViewPart {
 	@Override
 	public void createPartControl(final Composite parent) {
 		this.viewer = new TreeViewer(parent, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
-		//		this.drillDownAdapter = new DrillDownAdapter(this.viewer);
+		this.drillDownAdapter = new DrillDownAdapter(this.viewer);
 
 		this.viewContentProvider = new ViewContentProvider();
+		// TODO: look into virtual or lazy loaded TreeViewer
 		this.viewer.setContentProvider(this.viewContentProvider);
 		this.viewer.setInput(this.getViewSite());
+		// TODO: look into styling text
+		// This way, when showing both lines of substitution, can bold the differences
+		// https://stackoverflow.com/questions/26211705/java-swt-treeviewer-with-one-column-that-needs-to-be-styledtext
+		// https://stackoverflow.com/questions/26173834/highlight-particular-string-in-swt-tree-node
 		this.viewer.setLabelProvider(new ViewLabelProvider());
 		// https://www.vogella.com/tutorials/EclipseJFaceTree/article.html
 		this.viewer.getTree().setFont(JFaceResources.getTextFont());
@@ -262,7 +275,7 @@ public class BEXView extends ViewPart {
 		//		manager.add(this.action1);
 		//		manager.add(this.action2);
 		//		manager.add(new Separator());
-		//		this.drillDownAdapter.addNavigationActions(manager);
+		this.drillDownAdapter.addNavigationActions(manager);
 	}
 
 	private void makeActions() {
@@ -328,10 +341,16 @@ public class BEXView extends ViewPart {
 	}
 
 	private void setChanges(final List<DiffChange<BEXChangeInfo>> changes) {
+		// TODO: takes a few seconds to run for big changes
+		// Move most of this to background thread, except for UI parts
+		this.changes = changes;
+
 		TreeParent invisibleRoot = this.viewContentProvider.invisibleRoot;
 		invisibleRoot.clear();
 
 		List<TreeParent> expandedElements = new ArrayList<>();
+
+		boolean shouldShowBothSidesOfSubstitution = Activator.shouldShowBothSidesOfSubstitution();
 
 		for (DiffChange<BEXChangeInfo> change : changes) {
 			TreeParent changeParent = new TreeParent(change.toString());
@@ -342,25 +361,25 @@ public class BEXView extends ViewPart {
 			}
 
 			for (DiffEdit changeEdit : change.getEdits()) {
-				DiffType diffType = changeEdit.getType();
-				char tag = diffType.shouldIgnore() ? ' ' : diffType.getTag();
+				char symbol = changeEdit.shouldIgnore() ? ' ' : changeEdit.getSymbol();
 
-				//				if (diffType.isSubstitution()) {
-				//					// TODO: maybe give option to have like this, but this is information overload
-				//					// Put the left / right substitution each on their own line
-				//					TreeParent substitutionParent = new TreeParent(diffType.toString());
-				//
-				//					TreeObject leftChangeLeaf = new TreeObject(changeEdit.toString(DiffSide.LEFT), changeEdit);
-				//					TreeObject rightChangeLeaf = new TreeObject(changeEdit.toString(DiffSide.RIGHT), changeEdit);
-				//					substitutionParent.addChild(leftChangeLeaf);
-				//					substitutionParent.addChild(rightChangeLeaf);
-				//					expandedElements.add(substitutionParent);
-				//
-				//					changeParent.addChild(substitutionParent);
-				//				} else {
-				TreeObject changeLeaf = new TreeObject(changeEdit.toString(tag), changeEdit);
-				changeParent.addChild(changeLeaf);
-				//				}
+				if (changeEdit.isSubstitution() && shouldShowBothSidesOfSubstitution) {
+					// TODO: maybe give option to have like this, but this is information overload
+					// Put the left / right substitution each on their own line
+					TreeParent substitutionParent = new TreeParent(changeEdit.toString(), changeEdit);
+
+					// TODO: add extra spacing (is there a better way to do this?)
+					TreeObject leftChangeLeaf = new TreeObject("  " + changeEdit.toString(BEXSide.LEFT), changeEdit);
+					TreeObject rightChangeLeaf = new TreeObject("  " + changeEdit.toString(BEXSide.RIGHT), changeEdit);
+					substitutionParent.addChild(leftChangeLeaf);
+					substitutionParent.addChild(rightChangeLeaf);
+					//					expandedElements.add(substitutionParent);
+
+					changeParent.addChild(substitutionParent);
+				} else {
+					TreeObject changeLeaf = new TreeObject(changeEdit.toString(symbol), changeEdit);
+					changeParent.addChild(changeLeaf);
+				}
 			}
 
 			// Have two levels of parents (second level shows the block)
@@ -377,6 +396,12 @@ public class BEXView extends ViewPart {
 
 		this.viewer.refresh();
 		this.viewer.setExpandedElements(expandedElements.toArray());
+	}
+
+	public void refreshChanges() {
+		if (this.changes != null) {
+			show(this.changes);
+		}
 	}
 
 	public static void show(final List<DiffChange<BEXChangeInfo>> changes) {
@@ -407,6 +432,7 @@ public class BEXView extends ViewPart {
 		if (textMergeViewer == null) {
 			this.viewContentProvider.invisibleRoot.clear();
 			this.viewer.refresh();
+			this.changes = null;
 		}
 	}
 

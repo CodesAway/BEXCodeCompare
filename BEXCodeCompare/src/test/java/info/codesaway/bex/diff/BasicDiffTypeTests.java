@@ -16,7 +16,7 @@ class BasicDiffTypeTests {
 	@Test
 	void testIgnoreShouldIgnore() {
 		assertThat(IGNORE)
-				.extracting(DiffType::shouldIgnore, DiffType::getTag)
+				.extracting(DiffType::shouldIgnore, DiffType::getSymbol)
 				.containsExactly(true, 'X');
 	}
 
@@ -24,7 +24,7 @@ class BasicDiffTypeTests {
 	void testSubstituteIsSubstitution() {
 		assertThat(SUBSTITUTE)
 				.isInstanceOf(SubstitutionDiffType.class)
-				.extracting(DiffType::isSubstitution, DiffType::getTag)
+				.extracting(DiffType::isSubstitution, DiffType::getSymbol)
 				.containsExactly(true, 'S');
 	}
 
@@ -32,7 +32,7 @@ class BasicDiffTypeTests {
 	void testReplacementIsSubstitution() {
 		assertThat(REPLACEMENT_BLOCK)
 				.isInstanceOf(SubstitutionDiffType.class)
-				.extracting(DiffType::isSubstitution, DiffType::getTag)
+				.extracting(DiffType::isSubstitution, DiffType::getSymbol)
 				.containsExactly(true, 'R');
 	}
 
@@ -40,7 +40,7 @@ class BasicDiffTypeTests {
 	void testRefactorIsSubstitution() {
 		assertThat(REFACTOR)
 				.isInstanceOf(RefactoringDiffType.class)
-				.extracting(DiffType::isSubstitution, DiffType::getTag)
+				.extracting(DiffType::isSubstitution, DiffType::getSymbol)
 				.containsExactly(true, 'R');
 	}
 }

@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-public class JavaRefactoringTests {
+class JavaRefactoringTests {
 	@Test
 	public void testNotEqualsWithSpecialHandling() {
 		String text1 = "Book Case";

@@ -2,6 +2,8 @@ package info.codesaway.bex.diff;
 
 import java.util.Optional;
 
+import info.codesaway.bex.BEXSide;
+
 public final class DiffWithIndex {
 	private final DiffEdit diffEdit;
 	private final int index;
@@ -19,12 +21,12 @@ public final class DiffWithIndex {
 		return this.index;
 	}
 
-	public DiffSide getFirstSide() {
+	public BEXSide getFirstSide() {
 		return this.diffEdit.getFirstSide();
 	}
 
-	public Optional<DiffLine> getLine(final DiffSide diffSide) {
-		return this.diffEdit.getLine(diffSide);
+	public Optional<DiffLine> getLine(final BEXSide side) {
+		return this.diffEdit.getLine(side);
 	}
 
 	public boolean hasLeftLine() {

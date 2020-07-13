@@ -6,14 +6,14 @@ import static info.codesaway.util.regex.Pattern.getThreadLocalMatcher;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffNormalizedText;
-import info.codesaway.bex.diff.DiffSide;
 import info.codesaway.bex.diff.substitution.RefactoringDiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.util.regex.Matcher;
 
-public class JavaFinalKeywordSubstitution implements JavaSubstitution {
+public final class JavaFinalKeywordSubstitution implements JavaSubstitution {
 	private static final ThreadLocal<Matcher> FINAL_KEYWORD_MATCHER = getThreadLocalMatcher(
 			"\\bfinal\\s");
 
@@ -30,7 +30,7 @@ public class JavaFinalKeywordSubstitution implements JavaSubstitution {
 		// (wouldn't correctly handle if string text or comment contained something that would match the refactoring)
 		// However, this would require parsing the source code
 
-		DiffSide side = normalizedLeft.length() > normalizedRight.length() ? DiffSide.LEFT : DiffSide.RIGHT;
+		BEXSide side = normalizedLeft.length() > normalizedRight.length() ? BEXSide.LEFT : BEXSide.RIGHT;
 
 		// Use null character to allow special handling near the matches
 		// Java text file shouldn't contain null characters

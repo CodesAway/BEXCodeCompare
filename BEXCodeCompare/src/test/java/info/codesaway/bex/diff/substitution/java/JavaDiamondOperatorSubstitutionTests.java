@@ -11,15 +11,15 @@ import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableMap;
 
+import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffLine;
-import info.codesaway.bex.diff.DiffSide;
 import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 
-public class JavaDiamondOperatorSubstitutionTests {
+class JavaDiamondOperatorSubstitutionTests {
 	@Test
 	void diamondSubstitutionTest() {
 		String leftText = "		this.jobSteps = new Vector<JobStep>();";
@@ -47,7 +47,7 @@ public class JavaDiamondOperatorSubstitutionTests {
 		DiffEdit right = new DiffEdit(DELETE, new DiffLine(1, rightText), null);
 		Map<DiffEdit, String> map = ImmutableMap.of(left, leftText, right, rightText);
 
-		DiffType expectedType = new RefactoringDiffTypeValue('R', DiffSide.RIGHT, "diamond operator", type, true);
+		DiffType expectedType = new RefactoringDiffTypeValue('R', BEXSide.RIGHT, "diamond operator", type, true);
 		SubstitutionDiffType diffType = JAVA_DIAMOND_OPERATOR.accept(left, right, map,
 				DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION);
 

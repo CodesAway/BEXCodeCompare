@@ -8,10 +8,11 @@ import info.codesaway.bex.diff.DiffNormalizedText;
 import info.codesaway.bex.diff.substitution.SubstitutionContainsDiffType.Direction;
 
 // TODO: give better name
-public class SubstitutionContainsSubstitutionType implements SubstitutionType {
+public final class SubstitutionContainsSubstitutionType implements SubstitutionType {
 	@Override
 	public SubstitutionDiffType accept(final DiffEdit left, final DiffEdit right,
-			final Map<DiffEdit, String> normalizedTexts, BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+			final Map<DiffEdit, String> normalizedTexts,
+			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
 		String normalizedLeft = normalizedTexts.get(left);
 		String normalizedRight = normalizedTexts.get(right);
 

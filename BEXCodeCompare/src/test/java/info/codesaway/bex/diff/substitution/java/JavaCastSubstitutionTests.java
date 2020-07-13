@@ -11,15 +11,15 @@ import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableMap;
 
+import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffLine;
-import info.codesaway.bex.diff.DiffSide;
 import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 
-public class JavaCastSubstitutionTests {
+class JavaCastSubstitutionTests {
 	@Test
 	void javaCastWithGenericsTest() {
 		String leftText = "Parm parm = (Parm) this.getParm();";
@@ -46,7 +46,7 @@ public class JavaCastSubstitutionTests {
 		DiffEdit right = new DiffEdit(DELETE, new DiffLine(1, rightText), null);
 		Map<DiffEdit, String> map = ImmutableMap.of(left, leftText, right, rightText);
 
-		DiffType expectedType = new RefactoringDiffTypeValue('R', DiffSide.RIGHT, "cast", type, true);
+		DiffType expectedType = new RefactoringDiffTypeValue('R', BEXSide.RIGHT, "cast", type, true);
 		SubstitutionDiffType diffType = JAVA_CAST.accept(left, right, map,
 				DiffHelper.NO_NORMALIZATION_FUNCTION);
 

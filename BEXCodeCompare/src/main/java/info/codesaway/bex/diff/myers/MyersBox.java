@@ -1,6 +1,6 @@
 package info.codesaway.bex.diff.myers;
 
-public class MyersBox {
+public final class MyersBox {
 	// Box class from https://blog.jcoglan.com/2017/04/25/myers-diff-in-linear-space-implementation/
 	private final MyersPoint topLeft;
 	private final MyersPoint bottomRight;

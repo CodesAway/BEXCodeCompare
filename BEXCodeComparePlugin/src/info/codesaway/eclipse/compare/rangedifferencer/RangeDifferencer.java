@@ -266,6 +266,7 @@ public final class RangeDifferencer {
 			}
 
 			// Will this meet the needs to populate BEX View?
+			// TODO: see if there's a way to not need to rerun the differences
 			findDifferences(factory, pm, left, right, isMirrored, true);
 
 			// remove sentinel

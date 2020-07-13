@@ -1,6 +1,6 @@
 package info.codesaway.bex.diff.myers;
 
-public class MyersSnake {
+public final class MyersSnake {
 	// Stores two points of info
 	// Original source passes around as 2x2 array
 	// https://blog.jcoglan.com/2017/04/25/myers-diff-in-linear-space-implementation/
