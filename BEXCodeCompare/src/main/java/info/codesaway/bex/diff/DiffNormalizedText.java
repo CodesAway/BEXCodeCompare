@@ -3,20 +3,20 @@ package info.codesaway.bex.diff;
 import java.util.Objects;
 
 public final class DiffNormalizedText {
-	private final String leftText;
-	private final String rightText;
+	private final String left;
+	private final String right;
 
-	public DiffNormalizedText(final String leftText, final String rightText) {
-		this.leftText = leftText;
-		this.rightText = rightText;
+	public DiffNormalizedText(final String left, final String right) {
+		this.left = left;
+		this.right = right;
 	}
 
-	public String getLeftText() {
-		return this.leftText;
+	public String getLeft() {
+		return this.left;
 	}
 
-	public String getRightText() {
-		return this.rightText;
+	public String getRight() {
+		return this.right;
 	}
 
 	/**
@@ -25,6 +25,6 @@ public final class DiffNormalizedText {
 	 * @return
 	 */
 	public boolean hasEqualText() {
-		return Objects.equals(this.leftText, this.rightText);
+		return Objects.equals(this.getLeft(), this.getRight());
 	}
 }

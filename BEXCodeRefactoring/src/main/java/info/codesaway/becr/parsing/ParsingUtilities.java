@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -16,6 +17,7 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.FileASTRequestor;
 import org.eclipse.jdt.core.dom.IBinding;
 
 import info.codesaway.bex.util.BEXUtilities;
@@ -206,6 +208,20 @@ public final class ParsingUtilities {
 		classpath.removeIf(c -> Files.notExists(Paths.get(c)));
 
 		return classpath;
+	}
+
+	public static void createASTs(final ASTParser parser, final List<Path> paths,
+			final BiConsumer<String, CompilationUnit> acceptAST) {
+		String[] javaPaths = paths.stream()
+				.map(Path::toString)
+				.toArray(String[]::new);
+
+		parser.createASTs(javaPaths, null, new String[0], new FileASTRequestor() {
+			@Override
+			public void acceptAST(final String sourceFilePath, final CompilationUnit cu) {
+				acceptAST.accept(sourceFilePath, cu);
+			}
+		}, null);
 	}
 
 	public static String joining(final Collection<?> collection, final String delimiter) {

@@ -1,5 +1,8 @@
 package info.codesaway.bex;
 
+import static info.codesaway.bex.BEXSide.LEFT;
+import static info.codesaway.bex.BEXSide.RIGHT;
+
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
@@ -16,6 +19,7 @@ import info.codesaway.bex.util.FunctionThrows;
  *
  * <p>Instances of this class are immutable if generic class type is also immutable</p>
  * @param <T> the type of pair
+ * @since 0.3
  */
 public interface BEXPairCore<T> {
 	/**
@@ -36,7 +40,7 @@ public interface BEXPairCore<T> {
 	 * @return the value on the specified side
 	 */
 	public default T get(final BEXSide side) {
-		return side == BEXSide.LEFT ? this.getLeft() : this.getRight();
+		return side == LEFT ? this.getLeft() : this.getRight();
 	}
 
 	/**
@@ -44,10 +48,20 @@ public interface BEXPairCore<T> {
 	 *
 	 * @param function the mapping function
 	 * @return a BEXPair consisting of this BEXPairCore's values mapped using the specified function
-	 * @since 0.3
 	 */
 	public default <R> BEXPair<R> map(final Function<T, R> function) {
 		return new BEXPair<>(function.apply(this.getLeft()), function.apply(this.getRight()));
+	}
+
+	/**
+	 * Map each value in this BEXPairCore using the specified BiFunction, passing the side as the second argument
+	 *
+	 * @param function the mapping BiFunction
+	 * @return a BEXPair consisting of this BEXPairCore's values mapped using the specified function
+	 * @since 0.4
+	 */
+	public default <R> BEXPair<R> mapWithSide(final BiFunction<T, BEXSide, R> function) {
+		return new BEXPair<>(function.apply(this.getLeft(), LEFT), function.apply(this.getRight(), RIGHT));
 	}
 
 	/**
@@ -61,11 +75,21 @@ public interface BEXPairCore<T> {
 	}
 
 	/**
+	 * Returns a BEXPair with left and right values swapped
+	 *
+	 * <pre>new BEXPair&lt;&gt;({@link #getRight()}, {@link #getLeft()})</pre>
+	 * @return BEXPair with left and right values swapped
+	 * @since 0.4
+	 */
+	public default BEXPair<T> mirror() {
+		return new BEXPair<>(this.getRight(), this.getLeft());
+	}
+
+	/**
 	 * Map each value in this BEXPairCore using the specified int function
 	 *
 	 * @param function the mapping function
 	 * @return an IntBEXPair consisting of this BEXPairCore's values mapped to an int using the specified function
-	 * @since 0.3
 	 */
 	public default IntBEXPair mapToInt(final ToIntFunction<T> function) {
 		return IntBEXPair.of(function.applyAsInt(this.getLeft()), function.applyAsInt(this.getRight()));
@@ -86,7 +110,6 @@ public interface BEXPairCore<T> {
 	
 	 * @param function the ToIntBiFunction to apply
 	 * @return the result of applying the ToIntBiFunction
-	 * @since 0.3
 	 */
 	public default int applyAsInt(final ToIntBiFunction<T, T> function) {
 		return function.applyAsInt(this.getLeft(), this.getRight());
@@ -97,7 +120,6 @@ public interface BEXPairCore<T> {
 	
 	 * @param predicate the BiPredicate to apply
 	 * @return <code>true</code> if the predicate matches when applying the arugments; otherwise, <code>false</code>
-	 * @since 0.3
 	 */
 	public default boolean test(final BiPredicate<T, T> predicate) {
 		return predicate.test(this.getLeft(), this.getRight());
@@ -111,7 +133,6 @@ public interface BEXPairCore<T> {
 	 *
 	 * @param predicate the Predicate to apply
 	 * @return <code>true</code> if the predicate matches {@link #getLeft()} <b>AND</b> {@link #getRight()}
-	 * @since 0.3
 	 */
 	public default boolean testAndBoth(final Predicate<T> predicate) {
 		return predicate.test(this.getLeft()) && predicate.test(this.getRight());
@@ -125,10 +146,85 @@ public interface BEXPairCore<T> {
 	 *
 	 * @param predicate the Predicate to test
 	 * @return <code>true</code> if the predicate matches {@link #getLeft()} <b>OR</b> {@link #getRight()}
-	 * @since 0.3
 	 */
 	public default boolean testOrBoth(final Predicate<T> predicate) {
 		return predicate.test(this.getLeft()) || predicate.test(this.getRight());
+	}
+
+	/**
+	 * Evaluates the specified Predicate against {@link #getLeft()} then {@link #getRight()}
+	 * to determine which side, if any, first satisfies the Predicate
+	 *
+	 * @param predicate the Predicate to test
+	 * @return the side which first satisfier the Predicate, or <code>null</code> if neither side will satisfy the predicate
+	 * @since 0.4
+	 */
+	public default BEXSide testLeftMirror(final Predicate<T> predicate) {
+		if (predicate.test(this.getLeft())) {
+			return LEFT;
+		} else if (predicate.test(this.getRight())) {
+			return RIGHT;
+		} else {
+			return null;
+		}
+	}
+
+	/**
+	 * Evaluates the specified Predicate against {@link #getRight()} then {@link #getLeft()}
+	 * to determine which side, if any, first satisfies the Predicate
+	 *
+	 * @param predicate the Predicate to test
+	 * @return the side which first satisfier the Predicate, or <code>null</code> if neither side will satisfy the predicate
+	 * @since 0.4
+	 */
+	public default BEXSide testRightMirror(final Predicate<T> predicate) {
+		if (predicate.test(this.getRight())) {
+			return RIGHT;
+		} else if (predicate.test(this.getLeft())) {
+			return LEFT;
+		} else {
+			return null;
+		}
+	}
+
+	/**
+	 * Evaluates the specified BiPredicate against (left, right) then (right, left)
+	 * to determine which side, if any, first satisfies the Predicate
+	 *
+	 * @param predicate the BiPredicate to test
+	 * @return {@link BEXSide#LEFT} if (left, right) satisfies the BiPredicate,
+	 * 		{@link BEXSide#RIGHT} if (right, left) satisfies the BiPredicate,
+	 * 		or <code>null</code> if neither satisfy the BiPredicate
+	 * @since 0.4
+	 */
+	public default BEXSide testLeftRightMirror(final BiPredicate<T, T> predicate) {
+		if (predicate.test(this.getLeft(), this.getRight())) {
+			return LEFT;
+		} else if (predicate.test(this.getRight(), this.getLeft())) {
+			return RIGHT;
+		} else {
+			return null;
+		}
+	}
+
+	/**
+	 * Evaluates the specified BiPredicate against (right, left) then (left, right)
+	 * to determine which side, if any, first satisfies the Predicate
+	 *
+	 * @param predicate the BiPredicate to test
+	 * @return {@link BEXSide#RIGHT} if (right, left) satisfies the BiPredicate,
+	 * 		{@link BEXSide#LEFT} if (left, right) satisfies the BiPredicate,
+	 * 		or <code>null</code> if neither satisfy the BiPredicate
+	 * @since 0.4
+	 */
+	public default BEXSide testRightLeftMirror(final BiPredicate<T, T> predicate) {
+		if (predicate.test(this.getRight(), this.getLeft())) {
+			return RIGHT;
+		} else if (predicate.test(this.getLeft(), this.getRight())) {
+			return LEFT;
+		} else {
+			return null;
+		}
 	}
 
 	/**
@@ -145,8 +241,8 @@ public interface BEXPairCore<T> {
 	 * @param consumer the BiConsumer to accept
 	 */
 	public default void acceptWithSide(final BiConsumer<T, BEXSide> consumer) {
-		consumer.accept(this.getLeft(), BEXSide.LEFT);
-		consumer.accept(this.getRight(), BEXSide.RIGHT);
+		consumer.accept(this.getLeft(), LEFT);
+		consumer.accept(this.getRight(), RIGHT);
 	}
 
 	/**
@@ -156,7 +252,6 @@ public interface BEXPairCore<T> {
 	*
 	* @param format the format string
 	* @return the formatted string
-	* @since 0.3
 	*/
 	public default String toString(final String format) {
 		return String.format(format, this.getLeft(), this.getRight());

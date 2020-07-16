@@ -15,6 +15,16 @@ public final class BEXPair<T> implements BEXPairCore<T> {
 	private final T right;
 
 	/**
+	 * Creates a new BEXPair using the specified values
+	 * @param left the left value
+	 * @param right the right value
+	 */
+	public BEXPair(final T left, final T right) {
+		this.left = left;
+		this.right = right;
+	}
+
+	/**
 	 * Creates a new BEXPair using the results of applying the specified function for both {@link BEXSide#LEFT} and {@link BEXSide#RIGHT}
 	 * @param function the function to apply
 	 * @since 0.3
@@ -30,16 +40,6 @@ public final class BEXPair<T> implements BEXPairCore<T> {
 	 */
 	public BEXPair(final Supplier<T> supplier) {
 		this(supplier.get(), supplier.get());
-	}
-
-	/**
-	 * Creates a new BEXPair using the specified values
-	 * @param left the left value
-	 * @param right the right value
-	 */
-	public BEXPair(final T left, final T right) {
-		this.left = left;
-		this.right = right;
 	}
 
 	/**

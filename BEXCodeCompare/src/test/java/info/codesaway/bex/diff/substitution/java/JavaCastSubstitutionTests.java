@@ -1,20 +1,12 @@
 package info.codesaway.bex.diff.substitution.java;
 
-import static info.codesaway.bex.diff.BasicDiffType.DELETE;
-import static info.codesaway.bex.diff.BasicDiffType.INSERT;
+import static info.codesaway.bex.diff.TestUtilities.acceptSubstitutionType;
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_CAST;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Map;
-
 import org.junit.jupiter.api.Test;
 
-import com.google.common.collect.ImmutableMap;
-
 import info.codesaway.bex.BEXSide;
-import info.codesaway.bex.diff.DiffEdit;
-import info.codesaway.bex.diff.DiffHelper;
-import info.codesaway.bex.diff.DiffLine;
 import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
@@ -42,13 +34,9 @@ class JavaCastSubstitutionTests {
 	}
 
 	private void testHelper(final String leftText, final String rightText, final String type) {
-		DiffEdit left = new DiffEdit(INSERT, new DiffLine(1, leftText), null);
-		DiffEdit right = new DiffEdit(DELETE, new DiffLine(1, rightText), null);
-		Map<DiffEdit, String> map = ImmutableMap.of(left, leftText, right, rightText);
-
 		DiffType expectedType = new RefactoringDiffTypeValue('R', BEXSide.RIGHT, "cast", type, true);
-		SubstitutionDiffType diffType = JAVA_CAST.accept(left, right, map,
-				DiffHelper.NO_NORMALIZATION_FUNCTION);
+
+		SubstitutionDiffType diffType = acceptSubstitutionType(JAVA_CAST, leftText, rightText);
 
 		assertThat(diffType).isEqualTo(expectedType);
 	}

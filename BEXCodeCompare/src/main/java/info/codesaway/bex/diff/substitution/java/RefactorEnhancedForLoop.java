@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
@@ -47,30 +48,25 @@ public final class RefactorEnhancedForLoop implements JavaSubstitution, Refactor
 	private State lastState = null;
 
 	@Override
-	public RefactoringDiffType accept(final DiffEdit left, final DiffEdit right,
+	public RefactoringDiffType accept(final BEXPair<DiffEdit> checkPair,
 			final Map<DiffEdit, String> normalizedTexts,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
-		String normalizedLeft = normalizedTexts.get(left);
-		String normalizedRight = normalizedTexts.get(right);
+		BEXPair<String> normalizedText = checkPair.map(normalizedTexts::get);
 
 		Matcher enhancedForLoopMatcher = ENHANCED_FOR_LOOP_MATCHER.get();
 		Matcher regularForLoopMatcher = REGULAR_FOR_LOOP_MATCHER.get();
 
-		BEXSide side;
 		// TODO: switch from matches to find to handle named loop and line comments at end?
-		if (enhancedForLoopMatcher.reset(normalizedRight).matches()
-				&& regularForLoopMatcher.reset(normalizedLeft).matches()) {
-			side = BEXSide.RIGHT;
-		} else if (enhancedForLoopMatcher.reset(normalizedLeft).matches()
-				&& regularForLoopMatcher.reset(normalizedRight).matches()) {
-			side = BEXSide.LEFT;
-		} else {
+		BEXSide side = normalizedText.testRightLeftMirror((r, l) -> enhancedForLoopMatcher.reset(r).matches()
+				&& regularForLoopMatcher.reset(l).matches());
+
+		if (side == null) {
 			// Check if this is a substitution part of the for loop (changing)
 			for (State state : this.states.values()) {
 				//				System.out.println("Norm left: " + normalizedLeft);
 				//				System.out.println("Norm right: " + normalizedRight);
 
-				if (state.accept(normalizedLeft, normalizedRight)) {
+				if (normalizedText.test(state::accept)) {
 					//					System.out.println("Refactoring?");
 					//					System.out.println("Left: " + left);
 					//					System.out.println("Right: " + right);

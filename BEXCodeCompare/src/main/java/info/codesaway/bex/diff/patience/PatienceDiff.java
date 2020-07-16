@@ -230,7 +230,7 @@ public final class PatienceDiff extends AbstractDiffAlgorithm {
 		// TODO: refactor to combine logic using LEFT / RIGHT
 		// Iterate over the range of the slice for left lines
 		for (int n = slice.getLeftStart(); n < slice.getLeftEnd(); n++) {
-			String text = this.normalize(this.getLeftText(n), "").getLeftText();
+			String text = this.normalize(this.getLeftText(n), "").getLeft();
 
 			// Introduced variable to make lambda happy
 			int lineNumber = n;
@@ -242,7 +242,7 @@ public final class PatienceDiff extends AbstractDiffAlgorithm {
 
 		// Iterate over the range of the slice for right lines
 		for (int n = slice.getRightStart(); n < slice.getRightEnd(); n++) {
-			String text = this.normalize("", this.getRightText(n)).getRightText();
+			String text = this.normalize("", this.getRightText(n)).getRight();
 
 			// Introduced variable to make lambda happy
 			int lineNumber = n;

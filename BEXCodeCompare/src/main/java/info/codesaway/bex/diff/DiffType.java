@@ -10,14 +10,14 @@ import static info.codesaway.bex.util.BEXUtilities.in;
  */
 public interface DiffType {
 	/**
-	 * Get the symbol used to describe the type of change (for example, a '+' for an insert)
+	 * Gets the symbol used to describe the type of change (for example, a '+' for an insert)
 	 *
 	 * @return the symbol used to describe the type of change
 	 */
 	public char getSymbol();
 
 	/**
-	 * Indicate if this DiffType describes a move
+	 * Indicates if this DiffType describes a move
 	 *
 	 * @return <code>true</code> if this DiffType indicates a move occurred
 	 * @see BasicDiffType#MOVE_LEFT
@@ -27,7 +27,7 @@ public interface DiffType {
 	public boolean isMove();
 
 	/**
-	 * Indicate if this DiffType describes a substitution / replacement
+	 * Indicates if this DiffType describes a substitution / replacement
 	 *
 	 * @return <code>true</code> if this DiffType indicates a substitution / replacement occurred
 	 */

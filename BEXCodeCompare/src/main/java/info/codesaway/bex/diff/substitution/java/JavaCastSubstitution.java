@@ -8,6 +8,7 @@ import static info.codesaway.util.regex.Pattern.getThreadLocalMatcher;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffNormalizedText;
@@ -27,30 +28,22 @@ public final class JavaCastSubstitution implements JavaSubstitution {
 					+ "(?<tail>.*+)"));
 
 	@Override
-	public RefactoringDiffType accept(final DiffEdit left, final DiffEdit right,
+	public RefactoringDiffType accept(final BEXPair<DiffEdit> checkPair,
 			final Map<DiffEdit, String> normalizedTexts,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
-		String normalizedLeft = normalizedTexts.get(left);
-		String normalizedRight = normalizedTexts.get(right);
+		BEXPair<String> normalizedText = checkPair.map(normalizedTexts::get);
 
 		Matcher castMatcher = CAST_MATCHER.get();
 
-		//		System.out.println("CAST? " + castMatcher.reset(normalizedLeft).find() + "\t" + normalizedLeft);
-
-		BEXSide side;
-		String expectedText;
-		String originalText;
-		if (castMatcher.reset(normalizedLeft).find()) {
-			side = BEXSide.RIGHT;
-			expectedText = normalizedRight;
-			originalText = normalizedLeft;
-		} else if (castMatcher.reset(normalizedRight).find()) {
-			side = BEXSide.LEFT;
-			expectedText = normalizedLeft;
-			originalText = normalizedRight;
-		} else {
+		BEXSide side = normalizedText.testLeftMirror(t -> castMatcher.reset(t).find());
+		if (side == null) {
 			return null;
 		}
+
+		String originalText = normalizedText.get(side);
+		// Indicate the refactoring is on the other side
+		side = side.other();
+		String expectedText = normalizedText.get(side);
 
 		// Does normal text replace
 		// (wouldn't correctly handle if string text or comment contained something that would match the refactoring)

@@ -1,7 +1,9 @@
 package info.codesaway.bex.diff;
 
+import static info.codesaway.bex.BEXSide.RIGHT;
 import static info.codesaway.bex.diff.BasicDiffType.REPLACEMENT_BLOCK;
 import static info.codesaway.bex.util.BEXUtilities.firstNonNull;
+import static info.codesaway.bex.util.BEXUtilities.not;
 import static info.codesaway.util.regex.Pattern.getThreadLocalMatcher;
 import static java.util.stream.Collectors.toMap;
 
@@ -116,8 +118,8 @@ public final class DiffHelper {
 	public static String normalize(final BEXSide side, final String text,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
 		return side == BEXSide.LEFT
-				? normalize(text, "", normalizationFunction).getLeftText()
-				: normalize("", text, normalizationFunction).getRightText();
+				? normalize(text, "", normalizationFunction).getLeft()
+				: normalize("", text, normalizationFunction).getRight();
 	}
 
 	/**
@@ -264,35 +266,35 @@ public final class DiffHelper {
 				.filter(DiffWithIndex::isInsertOrDelete)
 				.filter(d -> d.getDiffEdit().getText().trim().startsWith("import"))
 				.collect(toList());
-
+	
 		// Group imports by classname
 		Map<String, List<DiffWithIndex>> importsByClassName = new HashMap<>();
 		Map<DiffWithIndex, MatchResult> matchResults = new HashMap<>();
-
+	
 		for (DiffWithIndex possibleImport : possibleImports) {
 			Matcher matcher = IMPORT_MATCHER.get().reset(possibleImport.getDiffEdit().getText());
-
+	
 			if (!matcher.find()) {
 				continue;
 			}
-
+	
 			matchResults.put(possibleImport, matcher.toMatchResult());
 			importsByClassName.computeIfAbsent(matcher.group("class"), k -> new ArrayList<>()).add(possibleImport);
 		}
-
+	
 		// Check results
 		for (Entry<String, List<DiffWithIndex>> entry : importsByClassName.entrySet()) {
 			List<DiffWithIndex> list = entry.getValue();
 			if (list.size() != 2) {
 				continue;
 			}
-
+	
 			DiffWithIndex firstDiff = list.get(0);
 			DiffWithIndex secondDiff = list.get(1);
-
+	
 			DiffWithIndex left = null;
 			DiffWithIndex right = null;
-
+	
 			if (firstDiff.hasLeftLine()) {
 				if (secondDiff.hasRightLine()) {
 					left = firstDiff;
@@ -302,13 +304,13 @@ public final class DiffHelper {
 				left = secondDiff;
 				right = firstDiff;
 			}
-
+	
 			if (left != null && right != null) {
 				ImportSameClassnameDiffType diffType = determineImportSameClassnameDiffType(matchResults.get(left),
 						matchResults.get(right), true);
-
+	
 				//				System.out.println(entry);
-
+	
 				if (diffType != null) {
 					DiffEdit diffEdit = new DiffEdit(diffType, left.getLeftLine(), right.getRightLine());
 					diff.set(left.getIndex(), diffEdit);
@@ -316,49 +318,55 @@ public final class DiffHelper {
 				}
 			}
 		}
-
+	
 		return diff;
 	}*/
 
-	public static ImportSameClassnameDiffType determineImportSameClassnameDiffType(final MatchResult left,
-			final MatchResult right, final boolean isMove) {
-		if (left == null || right == null) {
+	public static ImportSameClassnameDiffType determineImportSameClassnameDiffType(final BEXPair<String> checkPair,
+			final boolean isMove) {
+
+		if (checkPair.testOrBoth(Objects::isNull)) {
 			return null;
 		}
 
-		if (!left.matched() || !right.matched()) {
+		BEXPair<MatchResult> matchResult = checkPair.map(DiffHelper::toImportMatchResult);
+
+		if (matchResult.testOrBoth(not(MatchResult::matched))) {
 			return null;
 		}
 
-		if (!left.matched("class", false) || !right.matched("class", false)
-				|| !left.matched("package", false) || !right.matched("package", false)) {
+		if (matchResult.testOrBoth(r -> !r.matched("class") || !r.matched("package"))) {
 			return null;
 		}
 
-		if (left.matched("static", false) || right.matched("static", false)) {
+		if (matchResult.testOrBoth(r -> r.matched("static"))) {
 			// For now, don't compare static imports
 			return null;
 		}
 
-		String leftClass = left.get("class");
-		String rightClass = right.get("class");
+		BEXPair<String> className = matchResult.map(r -> r.get("class"));
 
-		if (!Objects.equals(leftClass, rightClass)) {
+		if (!className.test(Objects::equals)) {
 			return null;
 		}
 
-		String leftImport = left.get("package");
-		String rightImport = right.get("package");
+		return new ImportSameClassnameDiffType(className.getRight(), matchResult.map(DiffHelper::getImportPackage),
+				isMove);
+	}
 
-		if (leftImport.endsWith(".")) {
-			leftImport = leftImport.substring(0, leftImport.length() - 1);
+	private static MatchResult toImportMatchResult(final String text) {
+		Matcher importMatcher = DiffHelper.IMPORT_MATCHER.get();
+		importMatcher.reset(text).find();
+		return importMatcher.toMatchResult();
+	}
+
+	private static String getImportPackage(final MatchResult importMatchResult) {
+		String importPackage = importMatchResult.get("package");
+		if (importPackage.endsWith(".")) {
+			importPackage = importPackage.substring(0, importPackage.length() - 1);
 		}
 
-		if (rightImport.endsWith(".")) {
-			rightImport = rightImport.substring(0, rightImport.length() - 1);
-		}
-
-		return new ImportSameClassnameDiffType(rightClass, leftImport, rightImport, isMove);
+		return importPackage;
 	}
 
 	private static Map<Integer, DiffWithIndex> createMap(final List<DiffEdit> diff, final BEXSide side) {
@@ -585,14 +593,11 @@ public final class DiffHelper {
 		List<PatienceMatch> patienceMatches = new ArrayList<>();
 
 		for (BEXPair<DiffEdit> checkPair : checkPairs) {
-			DiffEdit left = checkPair.getLeft();
-			DiffEdit right = checkPair.getRight();
-
-			if (alreadyFound.contains(left) || alreadyFound.contains(right)) {
+			if (checkPair.testOrBoth(alreadyFound::contains)) {
 				continue;
 			}
 
-			if (!alreadyChecked.computeIfAbsent(left, k -> new HashSet<>()).add(right)) {
+			if (checkPair.test((l, r) -> !alreadyChecked.computeIfAbsent(l, x -> new HashSet<>()).add(r))) {
 				continue;
 			}
 
@@ -600,7 +605,7 @@ public final class DiffHelper {
 			// (this way can group with enhanced for refactoring the deleted local loop variable / value
 
 			for (SubstitutionType substitutionType : substitutionTypes) {
-				SubstitutionDiffType diffType = substitutionType.accept(left, right, normalizedTexts,
+				SubstitutionDiffType diffType = substitutionType.accept(checkPair, normalizedTexts,
 						normalizationFunction);
 
 				if (diffType != null) {
@@ -614,13 +619,13 @@ public final class DiffHelper {
 					//						System.out.println("R: " + right);
 					//					}
 
-					DiffEdit substitution = new DiffEdit(diffType, left.getLeftLine(), right.getRightLine());
+					DiffEdit substitution = new DiffEdit(diffType, checkPair.mapWithSide(DiffEdit::getLine));
 
-					potentialReplacements.put(left, null);
-					potentialReplacements.put(right, substitution);
+					checkPair.acceptWithSide((e, side) -> potentialReplacements.put(e, side == RIGHT
+							? substitution
+							: null));
 
-					alreadyFound.add(left);
-					alreadyFound.add(right);
+					checkPair.acceptBoth(alreadyFound::add);
 
 					patienceMatches.add(new PatienceMatch(substitution.getLeftLineNumber(),
 							substitution.getRightLineNumber()));
@@ -630,7 +635,9 @@ public final class DiffHelper {
 		}
 
 		// TODO: is there a better way to do this?
-		if (!refactoringTypes.isEmpty()) {
+		if (!refactoringTypes.isEmpty())
+
+		{
 			for (DiffEdit left : diffEdits) {
 				if (!left.hasLeftLine()) {
 					continue;
@@ -1072,11 +1079,11 @@ public final class DiffHelper {
 				hasEntry = true;
 
 				if (diffEdit.hasLeftLine()) {
-					normalizedLeftTextBuilder.append(normalizedText.getLeftText());
+					normalizedLeftTextBuilder.append(normalizedText.getLeft());
 				}
 
 				if (diffEdit.hasRightLine()) {
-					normalizedRightTextBuilder.append(normalizedText.getRightText());
+					normalizedRightTextBuilder.append(normalizedText.getRight());
 				}
 			}
 
@@ -1118,7 +1125,7 @@ public final class DiffHelper {
 			boolean containsOnlyBlankLines = unit.getEdits()
 					.stream()
 					.map(d -> normalize(d, normalizationFunction))
-					.allMatch(n -> n.getLeftText().isEmpty() && n.getRightText().isEmpty());
+					.allMatch(n -> n.getLeft().isEmpty() && n.getRight().isEmpty());
 
 			if (containsOnlyBlankLines) {
 				diffUnits.set(i, new DiffBlock(BasicDiffType.NORMALIZE, unit.getEdits()));

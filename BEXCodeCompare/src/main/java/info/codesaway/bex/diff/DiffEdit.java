@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.IntBEXPair;
 
@@ -41,6 +42,10 @@ public final class DiffEdit implements DiffUnit {
 	 */
 	public DiffEdit(final DiffType type, final DiffLine leftLine, final DiffLine rightLine) {
 		this(type, Optional.ofNullable(leftLine), Optional.ofNullable(rightLine));
+	}
+
+	public DiffEdit(final DiffType type, final BEXPair<Optional<DiffLine>> line) {
+		this(type, line.getLeft(), line.getRight());
 	}
 
 	public DiffEdit(final DiffType type, final Optional<DiffLine> leftLine, final Optional<DiffLine> rightLine) {
