@@ -11,7 +11,7 @@ public interface IntPair {
 
 	/**
 	 * Returns a BEXPair&lt;Integer&gt; representing this IntPair
-	 * @return a BEXPair&lt;Integer&ght; representing this IntPair
+	 * @return a BEXPair&lt;Integer&gt; representing this IntPair
 	 * @since 0.4
 	 */
 	public default BEXPair<Integer> toBEXPair() {
