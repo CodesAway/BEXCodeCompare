@@ -1,6 +1,5 @@
 package info.codesaway.becr.parsing;
 
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
@@ -150,8 +149,9 @@ public final class MethodSignature implements Comparable<MethodSignature>, CodeI
 		this.className = methodBinding.getDeclaringClass().getTypeDeclaration().getQualifiedName();
 		this.shortClassName = methodBinding.getDeclaringClass().getTypeDeclaration().getName();
 
+		// https://stackoverflow.com/a/22886481
 		if (options.length != 0) {
-			this.optionsSet = EnumSet.copyOf(Arrays.asList(options));
+			this.optionsSet = EnumSet.of(options[0], options);
 		} else {
 			this.optionsSet = EnumSet.noneOf(MethodSignatureOption.class);
 		}

@@ -16,8 +16,8 @@ public final class RefactoringDiffTypeValue implements RefactoringDiffType {
 
 	/**
 	 *
-	 * @param symbol
-	 * @param side the BEXSide (may be <code>null</code>)
+	 * @param symbol the symbol used to describe the type of change
+	 * @param side the BEXSide where the refactoring was done (may be <code>null</code>)
 	 * @param category the category (may be <code>null</code>)
 	 * @param info the info (may be <code>null</code>)
 	 */
@@ -27,8 +27,8 @@ public final class RefactoringDiffTypeValue implements RefactoringDiffType {
 
 	/**
 	 *
-	 * @param symbol
-	 * @param side the BEXSide (may be <code>null</code>)
+	 * @param symbol the symbol used to describe the type of change
+	 * @param side the BEXSide where the refactoring was done (may be <code>null</code>)
 	 * @param category the category (may be <code>null</code>)
 	 * @param info the info (may be <code>null</code>)
 	 * @param shouldTreatAsNormalizedEqual
@@ -124,6 +124,7 @@ public final class RefactoringDiffTypeValue implements RefactoringDiffType {
 		RefactoringDiffTypeValue other = (RefactoringDiffTypeValue) obj;
 		return Objects.equals(this.category, other.category) && this.side == other.side
 				&& Objects.equals(this.info, other.info) && this.isMove == other.isMove
-				&& this.shouldTreatAsNormalizedEqual == other.shouldTreatAsNormalizedEqual && this.symbol == other.symbol;
+				&& this.shouldTreatAsNormalizedEqual == other.shouldTreatAsNormalizedEqual
+				&& this.symbol == other.symbol;
 	}
 }

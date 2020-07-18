@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: BEX Code Compare
 Bundle-SymbolicName: info.codesaway.bex;singleton:=true
-Bundle-Version: 0.3.0.qualifier
+Bundle-Version: 0.4.0.qualifier
 Bundle-Activator: info.codesaway.bex.Activator
 Bundle-Vendor: CodesAway
 Require-Bundle: org.eclipse.ui,
@@ -40,5 +40,5 @@ Export-Package: info.codesaway.bex,
  info.codesaway.util.lcs,
  info.codesaway.util.regex
 Bundle-ClassPath: .,
- lib/regexplus-1.0.jar,
- lib/bex.jar
+ lib/bex.jar,
+ lib/regexplus.jar

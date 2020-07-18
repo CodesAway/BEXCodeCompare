@@ -12,7 +12,7 @@ import java.util.function.Supplier;
  * @param <V> the type of values in the maps
  * @since 0.3
  */
-public final class BEXMapPair<K, V> implements BEXPairCore<Map<K, V>> {
+public final class BEXMapPair<K, V> implements BEXPair<Map<K, V>> {
 	private final BEXPair<Map<K, V>> pair;
 
 	/**
@@ -23,10 +23,17 @@ public final class BEXMapPair<K, V> implements BEXPairCore<Map<K, V>> {
 		this(supplier.get(), supplier.get());
 	}
 
+	/**
+	 * @param left
+	 * @param right
+	 */
 	public BEXMapPair(final Map<K, V> left, final Map<K, V> right) {
-		this(new BEXPair(left, right));
+		this(new BEXPairValue<>(left, right));
 	}
 
+	/**
+	 * @param mapPair
+	 */
 	public BEXMapPair(final BEXPair<Map<K, V>> mapPair) {
 		this.pair = mapPair;
 	}
@@ -67,6 +74,6 @@ public final class BEXMapPair<K, V> implements BEXPairCore<Map<K, V>> {
 		V left = this.getLeft().get(leftKey);
 		V right = this.getRight().get(rightKey);
 
-		return new BEXPair<>(left, right);
+		return new BEXPairValue<>(left, right);
 	}
 }

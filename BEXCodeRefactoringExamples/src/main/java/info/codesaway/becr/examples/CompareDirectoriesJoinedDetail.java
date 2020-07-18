@@ -9,6 +9,7 @@ import info.codesaway.becr.diff.ImpactType;
 import info.codesaway.becr.diff.PathChangeType;
 import info.codesaway.becr.parsing.CodeInfoWithLineInfo;
 import info.codesaway.bex.BEXPair;
+import info.codesaway.bex.BEXPairValue;
 import info.codesaway.bex.diff.DiffType;
 
 public final class CompareDirectoriesJoinedDetail {
@@ -39,7 +40,7 @@ public final class CompareDirectoriesJoinedDetail {
 	 * @param rightCode the "destination" code info (may be null for deleted or unknown blocks)
 	 */
 	public CompareDirectoriesJoinedDetail(final CodeInfoWithLineInfo leftCode, final CodeInfoWithLineInfo rightCode) {
-		this(new BEXPair<>(leftCode, rightCode));
+		this(new BEXPairValue<>(leftCode, rightCode));
 	}
 
 	public CompareDirectoriesJoinedDetail(final BEXPair<CodeInfoWithLineInfo> code) {

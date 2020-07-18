@@ -8,4 +8,14 @@ public interface IntPair {
 	public default int get(final BEXSide side) {
 		return side == BEXSide.LEFT ? this.getLeft() : this.getRight();
 	}
+
+	/**
+	 * Returns a BEXPair&lt;Integer&gt; representing this IntPair
+	 * @return a BEXPair&lt;Integer&gt; representing this IntPair
+	 * @since 0.4
+	 */
+	public default BEXPair<Integer> toBEXPair() {
+		return new BEXPairValue<>(this.getLeft(), this.getRight());
+	}
+
 }

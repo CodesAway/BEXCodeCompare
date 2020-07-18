@@ -3,6 +3,7 @@ package info.codesaway.bex.diff.substitution;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffNormalizedText;
 import info.codesaway.bex.diff.substitution.SubstitutionContainsDiffType.Direction;
@@ -10,11 +11,13 @@ import info.codesaway.bex.diff.substitution.SubstitutionContainsDiffType.Directi
 // TODO: give better name
 public final class SubstitutionContainsSubstitutionType implements SubstitutionType {
 	@Override
-	public SubstitutionDiffType accept(final DiffEdit left, final DiffEdit right,
+	public SubstitutionDiffType accept(final BEXPair<DiffEdit> checkPair,
 			final Map<DiffEdit, String> normalizedTexts,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
-		String normalizedLeft = normalizedTexts.get(left);
-		String normalizedRight = normalizedTexts.get(right);
+
+		BEXPair<String> normalizedText = checkPair.map(normalizedTexts::get);
+		String normalizedLeft = normalizedText.getLeft();
+		String normalizedRight = normalizedText.getRight();
 
 		boolean isSubstring = false;
 		String prefix = "";
@@ -22,8 +25,8 @@ public final class SubstitutionContainsSubstitutionType implements SubstitutionT
 		String suffix = "";
 
 		if (normalizedRight.length() >= normalizedLeft.length()) {
-			// Insert is longer, so check if contains delete
-			// TODO: 3/26/2019 - use last index of, so if empty block of text, see entire line as prefix versus suffix
+			// Right is longer, so check if contains left
+			// (use last index of, so if empty block of text, see entire line as prefix versus suffix)
 			int index = normalizedRight.lastIndexOf(normalizedLeft);
 
 			if (index != -1) {
@@ -34,8 +37,8 @@ public final class SubstitutionContainsSubstitutionType implements SubstitutionT
 				suffix = normalizedRight.substring(index + normalizedLeft.length());
 			}
 		} else {
-			// Delete is longer, so check if contains insert
-			// TODO: 3/26/2019 - use last index of, so if empty block of text, see entire line as prefix versus suffix
+			// Left is longer, so check if contains right
+			// (use last index of, so if empty block of text, see entire line as prefix versus suffix)
 			int index = normalizedLeft.lastIndexOf(normalizedRight);
 
 			if (index != -1) {
@@ -52,7 +55,7 @@ public final class SubstitutionContainsSubstitutionType implements SubstitutionT
 		// (needed to differentiate between deleted line versus substitution (like commenting out blank line))
 		int blankLineCompareThreshhold = 3;
 		if (isSubstring
-				&& (normalizedLeft.isEmpty() || normalizedRight.isEmpty())
+				&& (normalizedText.testOrBoth(String::isEmpty))
 				&& (prefix.length() > blankLineCompareThreshhold
 						|| suffix.length() > blankLineCompareThreshhold)) {
 			isSubstring = false;

@@ -10,6 +10,7 @@ import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.Comment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
@@ -233,39 +234,43 @@ public final class CompareDirectoriesVisitor extends ASTVisitor {
 		}
 
 		for (VariableDeclarationFragment fragment : fragments) {
-			IVariableBinding variableBinding = fragment.resolveBinding();
-
-			// Ignore serialVersionUID (used for Serialization)
-			if (variableBinding != null) {
-				FieldInfo fieldInfo = new FieldInfo(variableBinding, FieldInfoOption.USE_SHORT_NAME);
-
-				int nodeExtendedStart = this.compilationUnit.getExtendedStartPosition(node);
-				int fieldStart = fragment.getName().getStartPosition();
-
-				int nodeStart = node.getStartPosition();
-				int nodeEnd = nodeStart + node.getLength();
-
-				int nodeExtendedStartLine = this.getLineNumber(nodeExtendedStart);
-				int fieldStartLine = this.getLineNumber(fieldStart);
-				int nodeEndLine = this.getLineNumber(nodeEnd);
-
-				Integer commentStart = this.commentsMap.get(nodeExtendedStartLine);
-
-				if (commentStart != null) {
-					nodeExtendedStartLine = commentStart;
-				}
-
-				//				System.out.println("Field: " + fieldInfo + "\t" + nodeExtendedStartLine + "\t" + fieldStartLine + "\t"
-				//						+ nodeEndLine);
-
-				this.details.add(
-						new CodeInfoWithLineInfo(fieldInfo, nodeExtendedStartLine, fieldStartLine, nodeEndLine));
-			}
-			//			else if (!Utilities.in(fragment.getName().toString(), "serialVersionUID")) {
-			//				throw new AssertionError("Cannot read variable binding for " + fragment);
-			//			}
+			int fieldStart = fragment.getName().getStartPosition();
+			this.addDetail(fragment.resolveBinding(), node, fieldStart);
 		}
 
 		return true;
 	}
+
+	/**
+	 * @since 0.2
+	 */
+	@Override
+	public boolean visit(final EnumConstantDeclaration node) {
+		this.addDetail(node.resolveVariable(), node, node.getName().getStartPosition());
+		return true;
+	}
+
+	private void addDetail(final IVariableBinding variableBinding, final ASTNode node, final int fieldStart) {
+		if (variableBinding != null) {
+			FieldInfo fieldInfo = new FieldInfo(variableBinding, FieldInfoOption.USE_SHORT_NAME);
+
+			int nodeExtendedStart = this.compilationUnit.getExtendedStartPosition(node);
+
+			int nodeStart = node.getStartPosition();
+			int nodeEnd = nodeStart + node.getLength();
+
+			int nodeExtendedStartLine = this.getLineNumber(nodeExtendedStart);
+			int fieldStartLine = this.getLineNumber(fieldStart);
+			int nodeEndLine = this.getLineNumber(nodeEnd);
+
+			Integer commentStart = this.commentsMap.get(nodeExtendedStartLine);
+
+			if (commentStart != null) {
+				nodeExtendedStartLine = commentStart;
+			}
+
+			this.details.add(new CodeInfoWithLineInfo(fieldInfo, nodeExtendedStartLine, fieldStartLine, nodeEndLine));
+		}
+	}
+
 }

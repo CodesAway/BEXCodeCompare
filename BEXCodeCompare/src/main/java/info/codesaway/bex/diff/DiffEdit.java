@@ -1,5 +1,7 @@
 package info.codesaway.bex.diff;
 
+import static info.codesaway.bex.BEXSide.LEFT;
+import static info.codesaway.bex.BEXSide.RIGHT;
 import static info.codesaway.bex.util.BEXUtilities.checkArgument;
 
 import java.util.Arrays;
@@ -9,10 +11,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.IntBEXPair;
 
-// TODO: see if can simplify this code by using BEXPairCore
+// TODO: see if can simplify this code by using BEXPair
 public final class DiffEdit implements DiffUnit {
 	// Reference: https://blog.jcoglan.com/2017/02/17/the-myers-diff-algorithm-part-3/
 	private final DiffType type;
@@ -43,6 +46,16 @@ public final class DiffEdit implements DiffUnit {
 		this(type, Optional.ofNullable(leftLine), Optional.ofNullable(rightLine));
 	}
 
+	public DiffEdit(final DiffType type, final BEXPair<Optional<DiffLine>> line) {
+		this(type, line.getLeft(), line.getRight());
+	}
+
+	public DiffEdit(final BEXSide side, final DiffType type, final DiffLine line) {
+		this(type,
+				side == LEFT ? line : null,
+				side == RIGHT ? line : null);
+	}
+
 	public DiffEdit(final DiffType type, final Optional<DiffLine> leftLine, final Optional<DiffLine> rightLine) {
 		checkArgument(leftLine.isPresent() || rightLine.isPresent(), "Either left line or right line is required.");
 
@@ -70,11 +83,11 @@ public final class DiffEdit implements DiffUnit {
 	 * Gets the first side which has data (left or right)
 	 */
 	public BEXSide getFirstSide() {
-		return this.hasLeftLine() ? BEXSide.LEFT : BEXSide.RIGHT;
+		return this.hasLeftLine() ? LEFT : RIGHT;
 	}
 
 	public Optional<DiffLine> getLine(final BEXSide side) {
-		return side == BEXSide.LEFT ? this.getLeftLine() : this.getRightLine();
+		return side == LEFT ? this.getLeftLine() : this.getRightLine();
 	}
 
 	public Optional<DiffLine> getLeftLine() {
@@ -83,6 +96,16 @@ public final class DiffEdit implements DiffUnit {
 
 	public Optional<DiffLine> getRightLine() {
 		return this.rightLine;
+	}
+
+	/**
+	 * Indicates if has line on the specified side
+	 * @param side the side
+	 * @return <code>true</code> if has line on the specified side
+	 * @since 0.4
+	 */
+	public boolean hasLine(final BEXSide side) {
+		return side == LEFT ? this.hasLeftLine() : this.hasRightLine();
 	}
 
 	/**
@@ -111,14 +134,14 @@ public final class DiffEdit implements DiffUnit {
 	 * Gets the text for the left line
 	 */
 	public String getLeftText() {
-		return this.getText(BEXSide.LEFT);
+		return this.getText(LEFT);
 	}
 
 	/**
 	 * Gets the text for the right line
 	 */
 	public String getRightText() {
-		return this.getText(BEXSide.RIGHT);
+		return this.getText(RIGHT);
 	}
 
 	/**
@@ -128,6 +151,17 @@ public final class DiffEdit implements DiffUnit {
 	 */
 	public IntBEXPair getLineNumber() {
 		return IntBEXPair.of(this.getLeftLineNumber(), this.getRightLineNumber());
+	}
+
+	/**
+	 * Gets the line number for the line on the specified side
+	 * @param side the side
+	 *
+	 * @return the line number (or -1 if there is no line on the specified side)
+	 * @since 0.4
+	 */
+	public int getLineNumber(final BEXSide side) {
+		return side == LEFT ? this.getLeftLineNumber() : this.getRightLineNumber();
 	}
 
 	/**
@@ -184,8 +218,8 @@ public final class DiffEdit implements DiffUnit {
 	 * @return
 	 */
 	public String toString(final char symbol, final boolean shouldHandleSubstitutionSpecial) {
-		String leftLineNumber = this.getLineNumberString(BEXSide.LEFT);
-		String rightLineNumber = this.getLineNumberString(BEXSide.RIGHT);
+		String leftLineNumber = this.getLineNumberString(LEFT);
+		String rightLineNumber = this.getLineNumberString(RIGHT);
 
 		if (shouldHandleSubstitutionSpecial && this.isSubstitution()) {
 			// Format with line numbers
@@ -205,8 +239,8 @@ public final class DiffEdit implements DiffUnit {
 		char symbol = this.getSymbol();
 		String lineNumber = this.getLineNumberString(side);
 
-		String leftLineNumber = side == BEXSide.LEFT ? lineNumber : "";
-		String rightLineNumber = side == BEXSide.RIGHT ? lineNumber : "";
+		String leftLineNumber = side == LEFT ? lineNumber : "";
+		String rightLineNumber = side == RIGHT ? lineNumber : "";
 
 		// Format with line numbers
 		return String.format("%s%6s%6s    %s", symbol, leftLineNumber, rightLineNumber, this.getText(side));
