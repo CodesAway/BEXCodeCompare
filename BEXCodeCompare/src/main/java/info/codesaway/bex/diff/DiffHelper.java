@@ -1,6 +1,6 @@
 package info.codesaway.bex.diff;
 
-import static info.codesaway.bex.BEXPairUtilities.mapGet;
+import static info.codesaway.bex.BEXPairs.mapGet;
 import static info.codesaway.bex.BEXSide.BEX_SIDES;
 import static info.codesaway.bex.BEXSide.LEFT;
 import static info.codesaway.bex.BEXSide.RIGHT;
@@ -35,6 +35,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import info.codesaway.bex.BEXPair;
+import info.codesaway.bex.BEXPairValue;
 import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.IntPair;
 import info.codesaway.bex.diff.patience.FrequencyCount;
@@ -186,19 +187,18 @@ public final class DiffHelper {
 	*
 	*
 	* @param diff
-	* @return
 	*/
-	public static List<DiffEdit> handleMovedLines(final List<DiffEdit> diff) {
-		return handleMovedLines(diff, NO_NORMALIZATION_FUNCTION);
+	public static void handleMovedLines(final List<DiffEdit> diff) {
+		handleMovedLines(diff, NO_NORMALIZATION_FUNCTION);
 	}
 
 	/**
 	 * Modifies the passed list of DiffEdit to handle moved lines
 	 *
 	 * @param diff
-	 * @return the modified passed list (same reference as parameter, returned to allow nested method calls)
+	 * @param normalizationFunction
 	 */
-	public static List<DiffEdit> handleMovedLines(final List<DiffEdit> diff,
+	public static void handleMovedLines(final List<DiffEdit> diff,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
 
 		Map<Integer, DiffWithIndex> leftMap = createMap(diff, LEFT);
@@ -255,8 +255,6 @@ public final class DiffHelper {
 				}
 			}
 		} while (!done);
-
-		return diff;
 	}
 
 	public static final ThreadLocal<Matcher> IMPORT_MATCHER = getThreadLocalMatcher(
@@ -270,35 +268,35 @@ public final class DiffHelper {
 				.filter(DiffWithIndex::isInsertOrDelete)
 				.filter(d -> d.getDiffEdit().getText().trim().startsWith("import"))
 				.collect(toList());
-
+	
 		// Group imports by classname
 		Map<String, List<DiffWithIndex>> importsByClassName = new HashMap<>();
 		Map<DiffWithIndex, MatchResult> matchResults = new HashMap<>();
-
+	
 		for (DiffWithIndex possibleImport : possibleImports) {
 			Matcher matcher = IMPORT_MATCHER.get().reset(possibleImport.getDiffEdit().getText());
-
+	
 			if (!matcher.find()) {
 				continue;
 			}
-
+	
 			matchResults.put(possibleImport, matcher.toMatchResult());
 			importsByClassName.computeIfAbsent(matcher.group("class"), k -> new ArrayList<>()).add(possibleImport);
 		}
-
+	
 		// Check results
 		for (Entry<String, List<DiffWithIndex>> entry : importsByClassName.entrySet()) {
 			List<DiffWithIndex> list = entry.getValue();
 			if (list.size() != 2) {
 				continue;
 			}
-
+	
 			DiffWithIndex firstDiff = list.get(0);
 			DiffWithIndex secondDiff = list.get(1);
-
+	
 			DiffWithIndex left = null;
 			DiffWithIndex right = null;
-
+	
 			if (firstDiff.hasLeftLine()) {
 				if (secondDiff.hasRightLine()) {
 					left = firstDiff;
@@ -308,13 +306,13 @@ public final class DiffHelper {
 				left = secondDiff;
 				right = firstDiff;
 			}
-
+	
 			if (left != null && right != null) {
 				ImportSameClassnameDiffType diffType = determineImportSameClassnameDiffType(matchResults.get(left),
 						matchResults.get(right), true);
-
+	
 				//				System.out.println(entry);
-
+	
 				if (diffType != null) {
 					DiffEdit diffEdit = new DiffEdit(diffType, left.getLeftLine(), right.getRightLine());
 					diff.set(left.getIndex(), diffEdit);
@@ -322,7 +320,7 @@ public final class DiffHelper {
 				}
 			}
 		}
-
+	
 		return diff;
 	}*/
 
@@ -445,21 +443,20 @@ public final class DiffHelper {
 	 *
 	 *
 	 * @param diff
-	 * @return
 	 */
-	public static List<DiffEdit> handleSubstitution(final List<DiffEdit> diff,
+	public static void handleSubstitution(final List<DiffEdit> diff,
 			final SubstitutionType... substitutionTypes) {
-		return handleSubstitution(diff, NO_NORMALIZATION_FUNCTION, substitutionTypes);
+		handleSubstitution(diff, NO_NORMALIZATION_FUNCTION, substitutionTypes);
 	}
 
 	/**
 	 * Handle substitutions
 	 *
-	 * @param diff
+	 * @param diff the list of differences (will be modified by this method)
 	 * @param normalizationFunction
-	 * @return
+	 * @param substitutionTypes
 	 */
-	public static List<DiffEdit> handleSubstitution(final List<DiffEdit> diff,
+	public static void handleSubstitution(final List<DiffEdit> diff,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction,
 			final SubstitutionType... substitutionTypes) {
 		List<DiffEdit> diffEdits = new ArrayList<>();
@@ -515,8 +512,6 @@ public final class DiffHelper {
 		// (mimics other methods which process results in-line)
 		diff.clear();
 		diff.addAll(results);
-
-		return diff;
 	}
 
 	/**
@@ -638,7 +633,6 @@ public final class DiffHelper {
 			}
 		}
 
-		// TODO: is there a better way to do this?
 		if (!refactoringTypes.isEmpty()) {
 			BEX_SIDES.acceptBoth(side -> {
 				for (DiffEdit diffEdit : diffEdits) {
@@ -670,7 +664,7 @@ public final class DiffHelper {
 			return;
 		}
 
-		BEXPair<NavigableMap<Integer, DiffEdit>> diffEditLines = new BEXPair<>(TreeMap::new);
+		BEXPair<NavigableMap<Integer, DiffEdit>> diffEditLines = new BEXPairValue<>(TreeMap::new);
 
 		for (DiffEdit diffEdit : diffEdits) {
 			BEX_SIDES.acceptBoth(side -> {
@@ -689,7 +683,7 @@ public final class DiffHelper {
 		// (reduced amount of code necessary)
 		PatienceMatch nextMatch = match;
 
-		BEXPair<Integer> previousMatchLine = BEXPair.of(Integer.MIN_VALUE);
+		BEXPair<Integer> previousMatchLine = BEXPairValue.of(Integer.MIN_VALUE);
 
 		// TODO: change to while loop, to make more obvious that looping while match isn't null
 		while (match != null) {
@@ -705,7 +699,7 @@ public final class DiffHelper {
 				diffEdit.acceptBoth(matches::add);
 				diffEdit.acceptBoth(e -> replacements.put(e, potentialReplacements.get(e)));
 			} else {
-				matchLine = BEXPair.of(Integer.MAX_VALUE);
+				matchLine = BEXPairValue.of(Integer.MAX_VALUE);
 			}
 
 			// Find lines between matches that are not already part of a match
@@ -820,7 +814,7 @@ public final class DiffHelper {
 			Collection<DiffEdit> leftEdits = entry.getValue();
 			for (DiffEdit left : leftEdits) {
 				for (DiffEdit right : rightEdits) {
-					BEXPair<DiffEdit> pair = new BEXPair<>(left, right);
+					BEXPair<DiffEdit> pair = new BEXPairValue<>(left, right);
 					//					System.out.printf("Pair:%nL: %s%nR: %s%n", pair.getLeft(), pair.getRight());
 					results.add(pair);
 				}

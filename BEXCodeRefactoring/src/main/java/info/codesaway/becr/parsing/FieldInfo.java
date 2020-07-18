@@ -1,6 +1,5 @@
 package info.codesaway.becr.parsing;
 
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Objects;
 
@@ -44,8 +43,9 @@ public final class FieldInfo implements CodeInfo {
 		this.className = variableBinding.getDeclaringClass().getTypeDeclaration().getQualifiedName();
 		this.shortClassName = variableBinding.getDeclaringClass().getTypeDeclaration().getName();
 
+		// https://stackoverflow.com/a/22886481
 		if (options.length != 0) {
-			this.optionsSet = EnumSet.copyOf(Arrays.asList(options));
+			this.optionsSet = EnumSet.of(options[0], options);
 		} else {
 			this.optionsSet = EnumSet.noneOf(FieldInfoOption.class);
 		}

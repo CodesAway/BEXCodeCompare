@@ -16,7 +16,7 @@ public enum BEXSide {
 	 *
 	 * @since 0.4
 	 */
-	public static final BEXPair<BEXSide> BEX_SIDES = new BEXPair<>(LEFT, RIGHT);
+	public static final BEXPair<BEXSide> BEX_SIDES = new BEXPairValue<>(LEFT, RIGHT);
 
 	/**
 	 * Returns the other BEXSide

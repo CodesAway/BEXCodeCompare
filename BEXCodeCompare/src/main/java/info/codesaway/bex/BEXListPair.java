@@ -12,7 +12,7 @@ import java.util.function.Supplier;
  * @param <E> the type of elements in the lists
  * @since 0.3
  */
-public final class BEXListPair<E> implements BEXPairCore<List<E>> {
+public final class BEXListPair<E> implements BEXPair<List<E>> {
 	private final BEXPair<List<E>> pair;
 
 	/**
@@ -24,7 +24,7 @@ public final class BEXListPair<E> implements BEXPairCore<List<E>> {
 	}
 
 	public BEXListPair(final List<E> left, final List<E> right) {
-		this(new BEXPair<>(left, right));
+		this(new BEXPairValue<>(left, right));
 	}
 
 	public BEXListPair(final BEXPair<List<E>> listPair) {
@@ -101,7 +101,7 @@ public final class BEXListPair<E> implements BEXPairCore<List<E>> {
 	 * @throws IndexOutOfBoundsException if the index is out of range for either the left or right list
 	 */
 	public BEXPair<E> get(final int index) {
-		return new BEXPair<>(this.getLeft().get(index), this.getRight().get(index));
+		return new BEXPairValue<>(this.getLeft().get(index), this.getRight().get(index));
 	}
 
 	/**
@@ -111,7 +111,7 @@ public final class BEXListPair<E> implements BEXPairCore<List<E>> {
 	 * @throws IndexOutOfBoundsException if the index is out of range for either the left or right list
 	 */
 	public BEXPair<E> get(final IntPair index) {
-		return new BEXPair<>(this.getLeft().get(index.getLeft()), this.getRight().get(index.getRight()));
+		return new BEXPairValue<>(this.getLeft().get(index.getLeft()), this.getRight().get(index.getRight()));
 	}
 
 	/**
@@ -123,6 +123,6 @@ public final class BEXListPair<E> implements BEXPairCore<List<E>> {
 	 */
 	@Override
 	public <R> BEXPair<R> map(final Function<List<E>, R> function) {
-		return new BEXPair<>(function.apply(this.getLeft()), function.apply(this.getRight()));
+		return new BEXPairValue<>(function.apply(this.getLeft()), function.apply(this.getRight()));
 	}
 }

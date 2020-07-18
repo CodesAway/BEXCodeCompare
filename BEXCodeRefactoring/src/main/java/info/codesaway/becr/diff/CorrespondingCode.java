@@ -3,9 +3,9 @@ package info.codesaway.becr.diff;
 import java.util.Objects;
 
 import info.codesaway.becr.parsing.CodeInfoWithLineInfo;
-import info.codesaway.bex.BEXPairCore;
+import info.codesaway.bex.BEXPair;
 
-public final class CorrespondingCode implements BEXPairCore<CodeInfoWithLineInfo> {
+public final class CorrespondingCode implements BEXPair<CodeInfoWithLineInfo> {
 	private final CodeInfoWithLineInfo left;
 	private final CodeInfoWithLineInfo right;
 

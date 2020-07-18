@@ -74,7 +74,7 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	 *
 	 * <p>This is a lazy getter and the diff is only calculated the first time it's run</p>
 	 *
-	 * @return
+	 * @return the calculated diff
 	 */
 	// Reference: https://projectlombok.org/features/GetterLazy
 	@SuppressFBWarnings(value = "JLM_JSR166_UTILCONCURRENT_MONITORENTER", justification = "Code from Project Lombok")

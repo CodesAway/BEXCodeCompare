@@ -8,7 +8,7 @@ import java.util.function.BiFunction;
 
 import com.google.common.collect.ImmutableMap;
 
-import info.codesaway.bex.BEXPair;
+import info.codesaway.bex.BEXPairValue;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 import info.codesaway.bex.diff.substitution.SubstitutionType;
 
@@ -29,6 +29,6 @@ public class TestUtilities {
 		Map<DiffEdit, String> map = ImmutableMap.of(left, normalizedText.getLeft(), right,
 				normalizedText.getRight());
 
-		return substitutionType.accept(new BEXPair<>(left, right), map, normalizationFunction);
+		return substitutionType.accept(new BEXPairValue<>(left, right), map, normalizationFunction);
 	}
 }

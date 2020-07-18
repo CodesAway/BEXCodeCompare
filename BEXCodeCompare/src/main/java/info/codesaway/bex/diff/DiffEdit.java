@@ -15,7 +15,7 @@ import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.IntBEXPair;
 
-// TODO: see if can simplify this code by using BEXPairCore
+// TODO: see if can simplify this code by using BEXPair
 public final class DiffEdit implements DiffUnit {
 	// Reference: https://blog.jcoglan.com/2017/02/17/the-myers-diff-algorithm-part-3/
 	private final DiffType type;

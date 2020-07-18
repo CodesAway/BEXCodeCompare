@@ -15,7 +15,7 @@ public interface IntPair {
 	 * @since 0.4
 	 */
 	public default BEXPair<Integer> toBEXPair() {
-		return new BEXPair<>(this.getLeft(), this.getRight());
+		return new BEXPairValue<>(this.getLeft(), this.getRight());
 	}
 
 }

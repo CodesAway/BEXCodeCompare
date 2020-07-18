@@ -1,5 +1,6 @@
 package info.codesaway.becr.examples;
 
+import static info.codesaway.becr.examples.CompareDirectoriesOption.EXCLUDE_DEFAULT_SUBSTITUTIONS;
 import static info.codesaway.becr.util.ExcelUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER;
 import static info.codesaway.bex.BEXSide.LEFT;
 import static info.codesaway.bex.BEXSide.RIGHT;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -32,6 +34,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -85,6 +88,7 @@ import info.codesaway.becr.util.ExcelUtilities;
 import info.codesaway.bex.BEXListPair;
 import info.codesaway.bex.BEXMapPair;
 import info.codesaway.bex.BEXPair;
+import info.codesaway.bex.BEXPairValue;
 import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.MutableIntBEXPair;
 import info.codesaway.bex.diff.BasicDiffType;
@@ -102,6 +106,18 @@ import info.codesaway.bex.util.BEXUtilities;
 
 // TODO: change this into a utility and separate out report generation from determining differences
 // Use this as an example, but have the common functionality available for anyone to use how they want
+/**
+ * Tool to help compare directories and optionally generate an Excel report of the results
+ *
+ * <p>This classes uses a builder pattern to allow you to customize the compare</p>
+ *
+ * <p>Customization substitutions are supported
+ * and passed to {@link DiffHelper#handleSubstitution(List, BiFunction, SubstitutionType...)} in groups, in numeric order</p>
+ *
+ * <p>Several default substitutions are included in group 0.
+ * If desired, these can be omitted by specifying the {@link CompareDirectoriesOption#EXCLUDE_DEFAULT_SUBSTITUTIONS} when creating the <code>CompareDirectories</code> object
+ * </p>
+ */
 public class CompareDirectories {
 	/**
 	 * If not null, copies the changed files to the specified pathname
@@ -129,8 +145,11 @@ public class CompareDirectories {
 	private Set<String> ignoreProjects;
 	private Predicate<Path> skipTextCompare;
 
+	private final Map<Integer, List<BiFunction<Path, BEXListPair<DiffLine>, SubstitutionType>>> substitutionGroups = new TreeMap<>();
 	private final List<BiFunction<Path, BEXListPair<DiffLine>, SubstitutionType>> substitutionTypes = new ArrayList<>();
+
 	private boolean excludeLCSMaxSubstitution = false;
+	private boolean excludeLCSMinSubstitution = false;
 
 	// Flatten reporting of directories
 	// Only report if contains files or contains nothing (meaning deepest level)
@@ -143,10 +162,23 @@ public class CompareDirectories {
 
 	private Comparator<Path> pathComparator = Comparator.naturalOrder();
 
-	public CompareDirectories() {
-		this.addSubstitutionTypes(JAVA_SEMICOLON, SUBSTITUTION_CONTAINS, IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
-				JAVA_UNBOXING, JAVA_CAST, JAVA_FINAL_KEYWORD, JAVA_DIAMOND_OPERATOR);
-		this.addSubstitutionTypes(EnhancedForLoopRefactoring::new);
+	private Predicate<Path> shouldCheckPath = this::shouldCheckPath;
+
+	private final EnumSet<CompareDirectoriesOption> options;
+
+	public CompareDirectories(final CompareDirectoriesOption... options) {
+		// https://stackoverflow.com/a/22886481
+		this.options = options.length > 0
+				? EnumSet.of(options[0], options)
+				: EnumSet.noneOf(CompareDirectoriesOption.class);
+
+		this.substitutionGroups.put(0, this.substitutionTypes);
+
+		if (!this.options.contains(EXCLUDE_DEFAULT_SUBSTITUTIONS)) {
+			this.addSubstitutionTypes(JAVA_SEMICOLON, SUBSTITUTION_CONTAINS, IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
+					JAVA_UNBOXING, JAVA_CAST, JAVA_FINAL_KEYWORD, JAVA_DIAMOND_OPERATOR);
+			this.addSubstitutionTypes(EnhancedForLoopRefactoring::new);
+		}
 	}
 
 	/**
@@ -160,8 +192,12 @@ public class CompareDirectories {
 	}
 
 	/**
-	 * @param ignoreProjects
+	 * Ignore the specified projects
+	 *
+	 * <p><b>NOTE</b>: If {@link #shouldCheckPath(Predicate)} is specified, this setting ignored</p>
+	 * @param ignoreProjects the projects to ignore
 	 * @return <code>this</code> object
+	 * @see #shouldCheckPath(Predicate)
 	 */
 	public CompareDirectories ignoreProjects(final Set<String> ignoreProjects) {
 		this.ignoreProjects = ignoreProjects;
@@ -183,6 +219,15 @@ public class CompareDirectories {
 	 */
 	public CompareDirectories excludeLCSMaxSubstitution(final boolean excludeLCSMaxSubstitution) {
 		this.excludeLCSMaxSubstitution = excludeLCSMaxSubstitution;
+		return this;
+	}
+
+	/**
+	 * @param excludeLCSMinSubstitution
+	 * @return <code>this</code> object
+	 */
+	public CompareDirectories excludeLCSMinSubstitution(final boolean excludeLCSMinSubstitution) {
+		this.excludeLCSMinSubstitution = excludeLCSMinSubstitution;
 		return this;
 	}
 
@@ -214,6 +259,7 @@ public class CompareDirectories {
 		for (Supplier<SubstitutionType> substitutionTypeSupplier : substitutionTypeSuppliers) {
 			this.substitutionTypes.add((p, l) -> substitutionTypeSupplier.get());
 		}
+
 		return this;
 	}
 
@@ -227,6 +273,7 @@ public class CompareDirectories {
 		for (BiFunction<Path, BEXListPair<DiffLine>, SubstitutionType> substitutionTypeBiFunction : substitutionTypeBiFunctions) {
 			this.substitutionTypes.add(substitutionTypeBiFunction);
 		}
+
 		return this;
 	}
 
@@ -238,6 +285,7 @@ public class CompareDirectories {
 		for (SubstitutionType substitutionType : substitutionTypes) {
 			this.substitutionTypes.add((p, l) -> substitutionType);
 		}
+
 		return this;
 	}
 
@@ -245,11 +293,78 @@ public class CompareDirectories {
 	 * @param substitutionTypes
 	 * @return <code>this</code> object
 	 */
-	public final CompareDirectories addSubstitutionTypes(final List<SubstitutionType> substitutionTypes) {
+	public final CompareDirectories addSubstitutionTypes(final Collection<SubstitutionType> substitutionTypes) {
 		for (SubstitutionType substitutionType : substitutionTypes) {
 			this.substitutionTypes.add((p, l) -> substitutionType);
 		}
+
 		return this;
+	}
+
+	/**
+	 * @param group group which to put the substitution (default ones are in group 0)
+	 * @param substitutionTypeSuppliers
+	 * @return <code>this</code> object
+	 */
+	@SafeVarargs
+	public final CompareDirectories addSubstitutionTypes(final int group,
+			final Supplier<SubstitutionType>... substitutionTypeSuppliers) {
+		for (Supplier<SubstitutionType> substitutionTypeSupplier : substitutionTypeSuppliers) {
+			this.addSubstitutionType(group, (p, l) -> substitutionTypeSupplier.get());
+		}
+
+		return this;
+	}
+
+	/**
+	 * @param group group which to put the substitution (default ones are in group 0)
+	 * @param substitutionTypeBiFunctions <code>BiFunction</code> taking relative Path and list of lines of the file to be compared
+	 * @return <code>this</code> object
+	 */
+	@SafeVarargs
+	public final CompareDirectories addSubstitutionTypes(final int group,
+			final BiFunction<Path, BEXListPair<DiffLine>, SubstitutionType>... substitutionTypeBiFunctions) {
+		for (BiFunction<Path, BEXListPair<DiffLine>, SubstitutionType> substitutionTypeBiFunction : substitutionTypeBiFunctions) {
+			this.addSubstitutionType(group, substitutionTypeBiFunction);
+		}
+		return this;
+	}
+
+	/**
+	 * @param group group which to put the substitution (default ones are in group 0)
+	 * @param substitutionTypes
+	 * @return <code>this</code> object
+	 */
+	public final CompareDirectories addSubstitutionTypes(final int group,
+			final SubstitutionType... substitutionTypes) {
+		for (SubstitutionType substitutionType : substitutionTypes) {
+			this.addSubstitutionType(group, (p, l) -> substitutionType);
+		}
+
+		return this;
+	}
+
+	/**
+	 * @param group group which to put the substitution (default ones are in group 0)
+	 * @param substitutionTypes
+	 * @return <code>this</code> object
+	 */
+	public final CompareDirectories addSubstitutionTypes(final int group,
+			final Collection<SubstitutionType> substitutionTypes) {
+		for (SubstitutionType substitutionType : substitutionTypes) {
+			this.addSubstitutionType(group, (p, l) -> substitutionType);
+		}
+
+		return this;
+	}
+
+	private final void addSubstitutionType(final int group,
+			final BiFunction<Path, BEXListPair<DiffLine>, SubstitutionType> substitutionType) {
+		List<BiFunction<Path, BEXListPair<DiffLine>, SubstitutionType>> substitutionTypes = group == 0
+				? this.substitutionTypes
+				: this.substitutionGroups.computeIfAbsent(group, ArrayList::new);
+
+		substitutionTypes.add(substitutionType);
 	}
 
 	/**
@@ -258,6 +373,15 @@ public class CompareDirectories {
 	 */
 	public final CompareDirectories pathComparator(final Comparator<Path> pathComparator) {
 		this.pathComparator = pathComparator;
+		return this;
+	}
+
+	/**
+	 * @param shouldCheckPath
+	 * @return <code>this</code> object
+	 */
+	public final CompareDirectories shouldCheckPath(final Predicate<Path> shouldCheckPath) {
+		this.shouldCheckPath = shouldCheckPath;
 		return this;
 	}
 
@@ -326,9 +450,9 @@ public class CompareDirectories {
 
 			BEXPair<ProjectPath> javaPath = javaPaths.get(i);
 
-			BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> extendedRanges = new BEXPair<>(
+			BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> extendedRanges = new BEXPairValue<>(
 					TreeRangeMap::create);
-			BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> ranges = new BEXPair<>(TreeRangeMap::create);
+			BEXPair<RangeMap<Integer, CodeInfoWithLineInfo>> ranges = new BEXPairValue<>(TreeRangeMap::create);
 
 			BEXPair<CompareJavaCodeInfo> parseResult = parseResults.get(javaPath.map(ProjectPath::getPathname));
 			javaPath.acceptWithSide((p, side) -> javaParseResults.put(p, parseResult.get(side)));
@@ -376,6 +500,7 @@ public class CompareDirectories {
 				javaChanges);
 	}
 
+	// TODO: how to allow user to customize how to determine changes?
 	private List<CompareDirectoriesJoinedDetail> determineChanges(
 			final BEXPair<CompareJavaCodeInfo> parseResult, final DifferencesResult differencesResult,
 			final CorrespondingCodeResult correspondingCodeResult,
@@ -1549,22 +1674,28 @@ public class CompareDirectories {
 		List<DiffEdit> diff = PatienceDiff.diff(lines.getLeft(), lines.getRight(), normalizationFunction,
 				MyersLinearDiff.with(normalizationFunction));
 
-		List<SubstitutionType> substitutionTypes = this.substitutionTypes.stream()
-				.map(s -> s.apply(relativePath, lines))
-				.collect(toList());
+		for (List<BiFunction<Path, BEXListPair<DiffLine>, SubstitutionType>> value : this.substitutionGroups.values()) {
+			List<SubstitutionType> substitutionTypes = value.stream()
+					.map(s -> s.apply(relativePath, lines))
+					.collect(toList());
 
-		if (!this.excludeLCSMaxSubstitution) {
-			substitutionTypes.add(LCS_MAX_OPERATOR);
+			// Only do this for group 0
+			if (value == this.substitutionTypes && !this.excludeLCSMaxSubstitution) {
+				substitutionTypes.add(LCS_MAX_OPERATOR);
+			}
+
+			DiffHelper.handleSubstitution(diff, normalizationFunction,
+					substitutionTypes.toArray(new SubstitutionType[0]));
 		}
 
-		// Look first for common refactorings, so can group changes together
-		DiffHelper.handleSubstitution(diff, normalizationFunction, substitutionTypes.toArray(new SubstitutionType[0]));
-
-		// Do separately, so LCS max can find better matches and do only run LCS min on leftovers
-		DiffHelper.handleSubstitution(diff, normalizationFunction, SubstitutionType.LCS_MIN_OPERATOR);
+		if (!this.excludeLCSMinSubstitution) {
+			// Do separately, so LCS max can find better matches and do only run LCS min on leftovers
+			DiffHelper.handleSubstitution(diff, normalizationFunction, SubstitutionType.LCS_MIN_OPERATOR);
+		}
 
 		// TODO: handle split lines BEFORE handle moved lines
 		// (sometimes was seeing a move, which prevented it from recognizing as split lines)
+		// (would also allow a range of lines being seen as split even if there would be other lines in that block)
 
 		//		DiffHelper.handleMovedLines(diff, normalizationFunction);
 
@@ -1654,11 +1785,10 @@ public class CompareDirectories {
 	/**
 	 * Indicates if the path should be checked for the compare
 	 *
-	 * <p><b>NOTE</b>: this method may be overridden to implement your own functionality</p>
 	 * @param path the path to check
 	 * @return <code>true</code> if the path should be checked as part of the compare
 	 */
-	public boolean shouldCheckPath(final Path path) {
+	private boolean shouldCheckPath(final Path path) {
 		Path fileNamePath = path.getFileName();
 
 		if (fileNamePath == null) {
@@ -1826,7 +1956,7 @@ public class CompareDirectories {
 		BEXListPair<Path> paths = new BEXListPair<>(rootPath.mapThrows(r -> Files.walk(r)
 				// Run in parallel for performance boost
 				.parallel()
-				.filter(this::shouldCheckPath)
+				.filter(this.shouldCheckPath)
 				// Sort so can iterate over and find differences
 				.sorted(this.pathComparator)
 				.collect(toList())));
@@ -1847,7 +1977,7 @@ public class CompareDirectories {
 			BEXPair<Path> path = paths.get(index);
 			BEXPair<FileType> fileType = path.map(FileType::determineFileType);
 
-			BEXPair<Path> relativePath = BEXPair.from(side -> rootPath.get(side).relativize(path.get(side)));
+			BEXPair<Path> relativePath = BEXPairValue.from(side -> rootPath.get(side).relativize(path.get(side)));
 
 			int compare = relativePath.applyAsInt(Path::compareTo);
 			BEXSide side = compare < 0 ? LEFT : RIGHT;

@@ -40,5 +40,5 @@ Export-Package: info.codesaway.bex,
  info.codesaway.util.lcs,
  info.codesaway.util.regex
 Bundle-ClassPath: .,
- lib/regexplus-1.0.jar,
- lib/bex.jar
+ lib/bex.jar,
+ lib/regexplus.jar

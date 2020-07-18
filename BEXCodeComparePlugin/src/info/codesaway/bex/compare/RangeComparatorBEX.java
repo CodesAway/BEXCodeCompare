@@ -40,7 +40,7 @@ import info.codesaway.bex.diff.DiffUnit;
 import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.substitution.SubstitutionType;
-import info.codesaway.bex.diff.substitution.java.RefactorEnhancedForLoop;
+import info.codesaway.bex.diff.substitution.java.EnhancedForLoopRefactoring;
 import info.codesaway.bex.views.BEXView;
 import info.codesaway.eclipse.compare.internal.DocLineComparator;
 import info.codesaway.eclipse.compare.rangedifferencer.AbstractRangeDifferenceFactory;
@@ -128,12 +128,12 @@ public class RangeComparatorBEX {
 		if (shouldUseEnhancedCompare) {
 			// Look first for common refactorings, so can group changes together
 			DiffHelper.handleSubstitution(diff, normalizationFunction, JAVA_SEMICOLON, SUBSTITUTION_CONTAINS,
-					new RefactorEnhancedForLoop(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE, JAVA_UNBOXING, JAVA_CAST,
+					new EnhancedForLoopRefactoring(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE, JAVA_UNBOXING, JAVA_CAST,
 					JAVA_FINAL_KEYWORD, JAVA_DIAMOND_OPERATOR,
 					SubstitutionType.LCS_MAX_OPERATOR);
 		} else {
 			DiffHelper.handleSubstitution(diff, normalizationFunction, SUBSTITUTION_CONTAINS,
-					new RefactorEnhancedForLoop(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
+					new EnhancedForLoopRefactoring(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
 					SubstitutionType.LCS_MAX_OPERATOR);
 		}
 
