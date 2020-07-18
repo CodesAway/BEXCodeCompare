@@ -8,6 +8,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2020-07-18
+### Added
+* BEXPair helper methods
+  * mirror- returns a new BEXPair with the sides swapped (#29)
+  * Various test methods which test one side then the mirror
+    * testLeftMirror
+    * testRightMirror
+    * testLeftRightMirror
+    * testRightLeftMirror
+
+* BEXSides.BEX_SIDES - BEXPair<BEXSide> containing LEFT / RIGHT; this is used to help reduce some of the redundant code in the BEX library
+
+* IntPair method toBEXPair
+
+* CompareDirectories settings
+  * substitutionGroups - allows specifying the order which substitutions are applied (#25)
+  * excludeLCSMinSubstitution (#25)
+  * shouldCheckPath (#24)
+
+* CompareDirectoriesOption enum
+  * EXCLUDE_DEFAULT_SUBSTITUTIONS
+  * Other options can be added over time as they are requested and implemented
+
+* DiffEdit has additional constructors
+
+* BEXPairs utility class with static methods
+
+* BEXUtilities helper methods
+
+* ParsingUtilities.createASTs method
+
+* TestUtilities to help simplify common tests
+
+### Changed
+* Renamed class BEXPair to BEXPairValue
+* Renamed interface BEXPairCore to BEXPair
+* This follow's Java's naming convention where the Interface name is short and used in most places (for parameters and return values), such as List. Whereas, the Class name is more descriptive, such as ArrayList
+
+* SubstitutionType method **accept** now uses BEXPair instead of passing left / right values separately (#28)
+  * This allows easily getting the normalized text
+  * BEXPair<String> normalizedText = checkPair.map(normalizedTexts::get);
+  * Used new mirror methods to reduce the repeated code
+
+* Rename RefactorEnchanedForLoop to EnhancedForLoopRefactoring (#27)
+
+* Changed method **from(final Function<BEXSide, T> function)**  instead of constructor for BEXPairValue (Java compiler was complaining about ambiguity in certain cases)
+
+* DiffHelper
+  * Several methods now return void instead of List, since the return value wasn't needed
+  * Lots of cleanup and refactoring (#30)
+
+* Refactoring of names to make more consistent
+
+### Fixed
+* CompareDirectoriesVisitor detects enum constants (#31)
+
 ## [0.3.0] - 2020-07-12
 ### Added
 * BEX Library adds some useful Pair classes to handle left / right pairs which are the same type 
