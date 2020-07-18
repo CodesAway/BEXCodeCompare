@@ -12,6 +12,13 @@ public enum BEXSide {
 	LEFT, RIGHT;
 
 	/**
+	 * <code>BEXPair</code> of the <code>BEXSide</code>s {@link #LEFT} and {@link #RIGHT}
+	 *
+	 * @since 0.4
+	 */
+	public static final BEXPair<BEXSide> BEX_SIDES = new BEXPair<>(LEFT, RIGHT);
+
+	/**
 	 * Returns the other BEXSide
 	 * @return {@link #RIGHT} if called from {@link #LEFT} and {@link #LEFT} if called from {@link #RIGHT}
 	 * @since 0.4

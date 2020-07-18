@@ -63,4 +63,29 @@ public final class BEXUtilities {
 	public static <T> Predicate<T> not(final Predicate<? super T> target) {
 		return (Predicate<T>) target.negate();
 	}
+
+	/**
+	 * Checks if the contents of the StringBuilder are equal
+	 *
+	 * <p><b>Note</b>: The StringBuilder.equals method checks reference equality.</p>
+	 * @param s1 the first StringBuilder
+	 * @param s2 the second StringBuilder
+	 * @return <code>true</code> if the contents of the StringBuilder objects are equal
+	 * @since 0.4
+	 */
+	public static boolean contentEquals(final StringBuilder s1, final StringBuilder s2) {
+		// Check length as fast check
+		if (s1.length() != s2.length()) {
+			return false;
+		}
+
+		// Compare contents
+		for (int i = 0; i < s2.length(); i++) {
+			if (s1.charAt(i) != s2.charAt(i)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
 }

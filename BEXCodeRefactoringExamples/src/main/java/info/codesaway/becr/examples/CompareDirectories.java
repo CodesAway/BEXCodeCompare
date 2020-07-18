@@ -97,7 +97,7 @@ import info.codesaway.bex.diff.DiffUnit;
 import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.substitution.SubstitutionType;
-import info.codesaway.bex.diff.substitution.java.RefactorEnhancedForLoop;
+import info.codesaway.bex.diff.substitution.java.EnhancedForLoopRefactoring;
 import info.codesaway.bex.util.BEXUtilities;
 
 // TODO: change this into a utility and separate out report generation from determining differences
@@ -146,7 +146,7 @@ public class CompareDirectories {
 	public CompareDirectories() {
 		this.addSubstitutionTypes(JAVA_SEMICOLON, SUBSTITUTION_CONTAINS, IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
 				JAVA_UNBOXING, JAVA_CAST, JAVA_FINAL_KEYWORD, JAVA_DIAMOND_OPERATOR);
-		this.addSubstitutionTypes(RefactorEnhancedForLoop::new);
+		this.addSubstitutionTypes(EnhancedForLoopRefactoring::new);
 	}
 
 	/**
@@ -1847,7 +1847,7 @@ public class CompareDirectories {
 			BEXPair<Path> path = paths.get(index);
 			BEXPair<FileType> fileType = path.map(FileType::determineFileType);
 
-			BEXPair<Path> relativePath = new BEXPair<>(side -> rootPath.get(side).relativize(path.get(side)));
+			BEXPair<Path> relativePath = BEXPair.from(side -> rootPath.get(side).relativize(path.get(side)));
 
 			int compare = relativePath.applyAsInt(Path::compareTo);
 			BEXSide side = compare < 0 ? LEFT : RIGHT;

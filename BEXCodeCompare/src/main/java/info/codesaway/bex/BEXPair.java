@@ -25,21 +25,34 @@ public final class BEXPair<T> implements BEXPairCore<T> {
 	}
 
 	/**
-	 * Creates a new BEXPair using the results of applying the specified function for both {@link BEXSide#LEFT} and {@link BEXSide#RIGHT}
-	 * @param function the function to apply
-	 * @since 0.3
-	 */
-	public BEXPair(final Function<BEXSide, T> function) {
-		this(function.apply(BEXSide.LEFT), function.apply(BEXSide.RIGHT));
-	}
-
-	/**
 	 * Creates a new BEXPair using the specified supplier (same supplier used for left and right values)
 	 * @param supplier the supplier
 	 * @since 0.3
 	 */
 	public BEXPair(final Supplier<T> supplier) {
 		this(supplier.get(), supplier.get());
+	}
+
+	/**
+	 * Creates a new BEXPair using the results of applying the specified function for both {@link BEXSide#LEFT} and {@link BEXSide#RIGHT}
+	 * @param <T>
+	 * @param function the function to apply
+	 * @return
+	 * @since 0.4
+	 */
+	// Changed from constructor to static method due to ambiguity between this and constructor accepting a Supplier
+	public static <T> BEXPair<T> from(final Function<BEXSide, T> function) {
+		return new BEXPair<>(function.apply(BEXSide.LEFT), function.apply(BEXSide.RIGHT));
+	}
+
+	/**
+	 * Creates a new BEXPair with both values set to <code>both</code>
+	 * @param <T> the type of value
+	 * @param both the value used for both sides
+	 * @return new BEXPair with both values set to <code>both</code>
+	 */
+	public static <T> BEXPair<T> of(final T both) {
+		return new BEXPair<>(both, both);
 	}
 
 	/**

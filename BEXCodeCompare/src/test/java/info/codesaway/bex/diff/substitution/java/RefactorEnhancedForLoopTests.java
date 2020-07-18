@@ -34,7 +34,7 @@ class RefactorEnhancedForLoopTests {
 				new DiffEdit(DELETE, enhancedLine, null)));
 
 		DiffHelper.handleSubstitution(diff, DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION,
-				new RefactorEnhancedForLoop());
+				new EnhancedForLoopRefactoring());
 
 		DiffType expectedType = new RefactoringDiffTypeValue('R', BEXSide.LEFT, "enhanced for", "myList", true);
 
@@ -78,7 +78,7 @@ class RefactorEnhancedForLoopTests {
 				new DiffEdit(DELETE, enhancedLine, null)));
 
 		DiffHelper.handleSubstitution(diff, DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION,
-				new RefactorEnhancedForLoop());
+				new EnhancedForLoopRefactoring());
 
 		DiffType expectedType = new RefactoringDiffTypeValue('R', BEXSide.LEFT, "enhanced for", iterableName, true);
 
