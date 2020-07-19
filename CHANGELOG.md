@@ -4,12 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+**NOTE**: The below change log references the version of the BEX library, since this is the version for the Maven artifact. The below change log will indicate when the Eclipse plugin is updated and its changes; this will be listed after the BEX library changes.
 
 ## [Unreleased]
 
 ## [0.4.0] - 2020-07-18
 
-**NOTE**: Starting with BEX Code Compare 0.4.0, the version number for BEX Code Compare and the Eclipse plugin diverged. Since no changes were required in the Eclipse plugin, it remains at version 0.3.0. The below change log references the version of the BEX library, since this is the version for the Maven artifact. The below change log will indicate when the Eclipse plugin is updated and its changes; this will be listed after the BEX library changes.
+**NOTE**: Starting with BEX Code Compare 0.4.0, the version number for BEX Code Compare and the Eclipse plugin diverged. Since no changes were required in the Eclipse plugin, it remains at version 0.3.0 (using BEX 0.3.0).
 
 ### Added
 * BEXPair helper methods
