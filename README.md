@@ -6,10 +6,10 @@ BEX Code Compare is a library and Eclipse plugin, which uses Patience sort / Mye
 The library has no dependency on Eclipse and can be used in commercial or private projects.
 
  - [Maven Dependency](#maven-dependency)
- - [Update Site](#update-site)
  - [What is BEX Code Compare?](#what)
  - [What is BECR?](#becr)
  - [How does it work?](#how)
+ - [Eclipse Update Site](#update-site)
  - [Installation](#install)
 
 <a name="maven-dependency"></a>
@@ -32,21 +32,6 @@ The library has no dependency on Eclipse and can be used in commercial or privat
         <version>0.2</version>
     </dependency>
 
-
-<a name="update-site"></a>
-## Update Site
-[codesaway.info/eclipse](https://codesaway.info/eclipse)
-
-### Stable
-* **Name**: BEX Code Compare
-* **Location**: https://codesaway.info/eclipse
-* **Version**: 0.3.0
-
-### Beta
-* **Name**: BEX Code Compare
-* **Location**: https://codesaway.info/eclipse-beta
-* **Version**: 0.3.0
-
 <a name="what"></a>
 ## What is BEX Code Compare?
 BEX Code Compare is **B**e **E**nhanced **ϽC** Code Compare
@@ -63,6 +48,20 @@ First we use Patience sort / Myers diff (similar to how GitHub does a compare). 
 Along the way, BEX identifies important versus non important changes (such as a line being split across multiple lines if ignoring whitespace differences). It then shows an Eclipse view with the changes.
 
 BECR uses BEX and Eclipe's JDT to parse Java code and provide parsing and refactoring functionality. There are examples available to show how BECR could be used.
+
+<a name="update-site"></a>
+## Update Site
+[codesaway.info/eclipse](https://codesaway.info/eclipse)
+
+### Stable
+* **Name**: BEX Code Compare
+* **Location**: https://codesaway.info/eclipse
+* **Version**: 0.3.0
+
+### Beta
+* **Name**: BEX Code Compare
+* **Location**: https://codesaway.info/eclipse-beta
+* **Version**: 0.3.0
 
 <a name="install"></a>
 ## Installation
