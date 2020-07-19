@@ -9,6 +9,7 @@ The library has no dependency on Eclipse and can be used in commercial or privat
  - [What is BEX Code Compare?](#what)
  - [What is BECR?](#becr)
  - [How does it work?](#how)
+ - [How does the Eclipse plugin work?](#how-plugin)
  - [Eclipse Update Site](#update-site)
  - [Installation](#install)
 
@@ -45,9 +46,12 @@ BECR, pronounced Beccer, is **B**e **E**nhanced **C**ode **R**efactoring
 
 First we use Patience sort / Myers diff (similar to how GitHub does a compare). Then, we take the resulting diff and do some post diff processing to group the differences into groups of changes.
 
-Along the way, BEX identifies important versus non important changes (such as a line being split across multiple lines if ignoring whitespace differences). It then shows an Eclipse view with the changes.
-
 BECR uses BEX and Eclipe's JDT to parse Java code and provide parsing and refactoring functionality. There are examples available to show how BECR could be used.
+
+<a name="how-plugin"></a>
+## How does the Eclipse plugin work?
+
+We start with the BEX library and the functionality it provides outside of an IDE. Then, the BEX Eclipse plugin identifies important versus non important changes (such as a line being split across multiple lines if ignoring whitespace differences). It then shows an Eclipse view with the changes.
 
 <a name="update-site"></a>
 ## Update Site
