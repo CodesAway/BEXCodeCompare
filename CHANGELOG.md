@@ -67,10 +67,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 * CompareDirectoriesVisitor detects enum constants (#31)
 
-### Eclipse plugin
-* No changes with the 0.4.0 BEX Code Compare release
-* Remains at version 0.3.0 using BEX 0.3.0
-
 ## [0.3.0] - 2020-07-12
 ### Added
 * BEX Library adds some useful Pair classes to handle left / right pairs which are the same type 
