@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.stream.IntStream;
 
-import org.eclipse.compare.internal.core.Messages;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.SubMonitor;
@@ -58,7 +57,7 @@ public class RangeComparatorBEX {
 			final IProgressMonitor pm, final DocLineComparator left, final DocLineComparator right,
 			final boolean isMirrored, final boolean updateView) {
 		RangeComparatorBEX bex = new RangeComparatorBEX(left, right, isMirrored);
-		SubMonitor monitor = SubMonitor.convert(pm, Messages.RangeComparatorLCS_0, 100);
+		SubMonitor monitor = SubMonitor.convert(pm, "BEX Code Compare", 100);
 		try {
 			// TODO: how to use monitor?
 			bex.computeDifferences(monitor.newChild(95), updateView);
