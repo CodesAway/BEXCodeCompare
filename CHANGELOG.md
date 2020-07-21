@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## BECR Examples [0.2.1] - 2020-07-21
 * Fixed issues with long project names used as Excel sheet names ([#37](https://github.com/CodesAway/BEXCodeCompare/issues/37))
-* Fixed issues with large amount of text in Excel report  ([#36](https://github.com/CodesAway/BEXCodeCompare/issues/36)
+* Fixed issues with large amount of text in Excel report  ([#36](https://github.com/CodesAway/BEXCodeCompare/issues/36))
 
 ## [0.4.0] - 2020-07-18
 
