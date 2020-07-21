@@ -48,7 +48,7 @@ Use enhanced compare (enabled by default)
 Ignore comments (disabled by default)  
 ![Ignore comments setting](/Screenshots/Ignore%20comments%20setting.png)
 
-Show both sides of substitution setting in BEX View (disabled by default)  
+Show both sides of substitution in BEX View (disabled by default)  
 ![Show both sides of substitution setting in BEX View](/Screenshots/Show%20both%20sides%20of%20substitution%20setting.png)
 
 <a name="what"></a>
