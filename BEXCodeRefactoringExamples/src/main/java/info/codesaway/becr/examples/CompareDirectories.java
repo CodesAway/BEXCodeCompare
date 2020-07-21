@@ -850,6 +850,11 @@ public class CompareDirectories {
 	public XSSFWorkbook generateExcelReport(final Path excelReportPath,
 			final Map<String, String> projectSheetNameMap,
 			final CompareDirectoriesResult compareDirectoriesResult) throws IOException {
+
+		// Make a copy so can add entris as create sheets
+		// (handle case of sheetname longer than 31 characters)
+		Map<String, String> projectSheetNames = new HashMap<>(projectSheetNameMap);
+
 		// TODO: refactor so split excel report creation from comparison
 		// This way, compare would return the results of the compare, regardless if an excel report was generated or not
 		// This allows, for example, creating a custom report
@@ -942,9 +947,17 @@ public class CompareDirectories {
 					}
 
 					StringJoiner info = new StringJoiner(System.lineSeparator());
+					int notesLength = 0;
 
 					for (String note : change.getNotes()) {
 						info.add(note);
+
+						notesLength += note.length();
+
+						if (notesLength > 10000) {
+							info.add("Trimmed long change notes");
+							break;
+						}
 					}
 
 					final PathChangeType changeType;
@@ -1198,7 +1211,7 @@ public class CompareDirectories {
 					String detailsSheetName = project;
 					//						String detailsSheetName = "Details";
 
-					String projectSpecificDetailsSheetName = projectSheetNameMap.get(project);
+					String projectSpecificDetailsSheetName = projectSheetNames.get(project);
 
 					if (projectSpecificDetailsSheetName != null) {
 						detailsSheetName = projectSpecificDetailsSheetName;
@@ -1209,6 +1222,7 @@ public class CompareDirectories {
 					// First time using sheet
 					if (detailsSheet == null) {
 						detailsSheet = workbook.createSheet(detailsSheetName);
+						projectSheetNames.put(project, detailsSheet.getSheetName());
 
 						ExcelUtilities.createHeaderRow(detailsSheet, 0, detailsHeaderColumnNames);
 					}
