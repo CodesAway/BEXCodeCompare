@@ -36,19 +36,19 @@ The library has no dependency on Eclipse and can be used in commercial or privat
 
 <a name="screenshots"></a>
 ## Screenshots of Eclipse plugin
-Select BEX Code Compare
+Select BEX Code Compare  
 ![Select BEX Code Compare](/Screenshots/Select%20BEX%20Code%20Compare.png)
 
-BEX Code Compare View
+BEX Code Compare View  
 ![BEX Code Compare View](/Screenshots/BEX%20Code%20Compare%20View.png)
 
-Use enhanced compare (enabled by default)
+Use enhanced compare (enabled by default)  
 ![Use enhanced compare setting](/Screenshots/Use%20enhanced%20compare%20setting.png)
 
-Ignore comments (disabled by default)
+Ignore comments (disabled by default)  
 ![Ignore comments setting](/Screenshots/Ignore%20comments%20setting.png)
 
-Show both sides of substitution setting in BEX View (disabled by default)
+Show both sides of substitution setting in BEX View (disabled by default)  
 ![Show both sides of substitution setting in BEX View](/Screenshots/Show%20both%20sides%20of%20substitution%20setting.png)
 
 <a name="what"></a>
