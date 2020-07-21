@@ -69,7 +69,9 @@ BECR uses BEX and Eclipe's JDT to parse Java code and provide parsing and refact
 <a name="how-plugin"></a>
 ## How does the Eclipse plugin work?
 
-We start with the BEX library and the functionality it provides outside of an IDE. Then, the BEX Eclipse plugin identifies important versus non important changes (such as a line being split across multiple lines if ignoring whitespace differences). It then shows an Eclipse view with the changes.
+* We start with the BEX library and the functionality it provides outside of an IDE
+* Then, the BEX Eclipse plugin identifies important versus non important changes (such as a line being split across multiple lines if ignoring whitespace differences)
+* Finally, BEX shows an Eclipse view with the changes
 
 <a name="update-site"></a>
 ## Update Site
