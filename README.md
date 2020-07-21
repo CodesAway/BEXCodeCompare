@@ -6,6 +6,7 @@ BEX Code Compare is a library and Eclipse plugin, which uses Patience sort / Mye
 The library has no dependency on Eclipse and can be used in commercial or private projects.
 
  - [Maven Dependency](#maven-dependency)
+ - [Screenshots of Eclipse plugin](#screenshots)
  - [What is BEX Code Compare?](#what)
  - [What is BECR?](#becr)
  - [How does it work?](#how)
@@ -33,6 +34,23 @@ The library has no dependency on Eclipse and can be used in commercial or privat
         <version>0.2</version>
     </dependency>
 
+<a name="screenshots"></a>
+## Screenshots of Eclipse plugin
+Select BEX Code Compare  
+![Select BEX Code Compare](/Screenshots/Select%20BEX%20Code%20Compare.png)
+
+BEX Code Compare View  
+![BEX Code Compare View](/Screenshots/BEX%20Code%20Compare%20View.png)
+
+Use enhanced compare (enabled by default)  
+![Use enhanced compare setting](/Screenshots/Use%20enhanced%20compare%20setting.png)
+
+Ignore comments (disabled by default)  
+![Ignore comments setting](/Screenshots/Ignore%20comments%20setting.png)
+
+Show both sides of substitution in BEX View (disabled by default)  
+![Show both sides of substitution setting in BEX View](/Screenshots/Show%20both%20sides%20of%20substitution%20setting.png)
+
 <a name="what"></a>
 ## What is BEX Code Compare?
 BEX Code Compare is **B**e **E**nhanced **ϽC** Code Compare
@@ -51,7 +69,9 @@ BECR uses BEX and Eclipe's JDT to parse Java code and provide parsing and refact
 <a name="how-plugin"></a>
 ## How does the Eclipse plugin work?
 
-We start with the BEX library and the functionality it provides outside of an IDE. Then, the BEX Eclipse plugin identifies important versus non important changes (such as a line being split across multiple lines if ignoring whitespace differences). It then shows an Eclipse view with the changes.
+* We start with the BEX library and the functionality it provides outside of an IDE
+* Then, the BEX Eclipse plugin identifies important versus non important changes (such as a line being split across multiple lines if ignoring whitespace differences)
+* Finally, BEX shows an Eclipse view with the changes
 
 <a name="update-site"></a>
 ## Update Site
