@@ -31,7 +31,7 @@ The library has no dependency on Eclipse and can be used in commercial or privat
     <dependency>
         <groupId>info.codesaway</groupId>
         <artifactId>becr.examples</artifactId>
-        <version>0.2</version>
+        <version>0.2.1</version>
     </dependency>
 
 <a name="screenshots"></a>
