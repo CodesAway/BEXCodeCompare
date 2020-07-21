@@ -36,7 +36,7 @@ The library has no dependency on Eclipse and can be used in commercial or privat
 
 <a name="screenshots"></a>
 ## Screenshots
-![BEX Code Compare View](/Screenshots/BEX Code%20Compare%20View.png)
+![BEX Code Compare View](Screenshots/BEX Code Compare View.png)
 
 <a name="what"></a>
 ## What is BEX Code Compare?
