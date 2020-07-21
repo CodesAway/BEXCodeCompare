@@ -6,7 +6,7 @@ BEX Code Compare is a library and Eclipse plugin, which uses Patience sort / Mye
 The library has no dependency on Eclipse and can be used in commercial or private projects.
 
  - [Maven Dependency](#maven-dependency)
- - [Screenshots](#screenshots)
+ - [Screenshots of Eclipse plugin](#screenshots)
  - [What is BEX Code Compare?](#what)
  - [What is BECR?](#becr)
  - [How does it work?](#how)
@@ -35,7 +35,7 @@ The library has no dependency on Eclipse and can be used in commercial or privat
     </dependency>
 
 <a name="screenshots"></a>
-## Screenshots
+## Screenshots of Eclipse plugin
 Select BEX Code Compare
 ![Select BEX Code Compare](/Screenshots/Select%20BEX%20Code%20Compare.png)
 
