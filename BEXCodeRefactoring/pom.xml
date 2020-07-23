@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>info.codesaway</groupId>
 	<artifactId>becr</artifactId>
-	<version>0.4.0</version>
+	<version>0.5.0</version>
 	<name>Be Enhanced Code Refactoring (BECR)</name>
 	<description>Refactor better using BECR</description>
 	<properties>
@@ -22,13 +22,25 @@
 		<dependency>
 			<groupId>info.codesaway</groupId>
 			<artifactId>bex</artifactId>
-			<version>0.4.0</version>
+			<version>0.5.0</version>
 		</dependency>
 		<!-- Used to parse Java code -->
 		<dependency>
 			<groupId>org.eclipse.jdt</groupId>
 			<artifactId>org.eclipse.jdt.core</artifactId>
 			<version>3.22.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>5.6.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.assertj</groupId>
+			<artifactId>assertj-core</artifactId>
+			<version>3.16.1</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 	<build>

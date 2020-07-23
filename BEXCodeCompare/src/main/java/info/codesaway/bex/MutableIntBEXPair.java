@@ -31,16 +31,36 @@ public final class MutableIntBEXPair implements IntPair {
 	}
 
 	public void set(final IntPair intPair) {
-		this.left = intPair.getLeft();
-		this.right = intPair.getRight();
+		this.set(intPair.getLeft(), intPair.getRight());
 	}
 
 	public void set(final BEXSide side, final int newValue) {
 		if (side == BEXSide.LEFT) {
-			this.left = newValue;
+			this.setLeft(newValue);
 		} else {
-			this.right = newValue;
+			this.setRight(newValue);
 		}
+	}
+
+	public void set(final int left, final int right) {
+		this.setLeft(left);
+		this.setRight(right);
+	}
+
+	/**
+	 * @param left
+	 * @since 0.5
+	 */
+	public void setLeft(final int left) {
+		this.left = left;
+	}
+
+	/**
+	 * @param right
+	 * @since 0.5
+	 */
+	public void setRight(final int right) {
+		this.right = right;
 	}
 
 	/**
