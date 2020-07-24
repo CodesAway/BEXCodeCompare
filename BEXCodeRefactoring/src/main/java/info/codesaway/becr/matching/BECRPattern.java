@@ -8,7 +8,9 @@ import static info.codesaway.becr.matching.BECRMatchingUtilities.stringChar;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import info.codesaway.util.regex.Pattern;
 
@@ -20,10 +22,11 @@ public class BECRPattern {
 
 	private final List<Pattern> patterns;
 	private final List<String> groups;
+	Set<Integer> optionalGroups;
 
-	private final int regexPatternFlags;
+	//	private final int regexPatternFlags;
 
-	private BECRPattern(final List<Pattern> patterns, final List<String> groups, final int regexPatternFlags) {
+	private BECRPattern(final List<Pattern> patterns, final List<String> groups, final Set<Integer> optionalGroups) {
 		if (patterns.isEmpty()) {
 			throw new IllegalArgumentException("No patterns specified");
 		}
@@ -34,8 +37,11 @@ public class BECRPattern {
 
 		this.patterns = Collections.unmodifiableList(patterns);
 		this.groups = Collections.unmodifiableList(groups);
+		this.optionalGroups = optionalGroups.isEmpty()
+				? Collections.emptySet()
+				: Collections.unmodifiableSet(optionalGroups);
 
-		this.regexPatternFlags = regexPatternFlags;
+		//		this.regexPatternFlags = regexPatternFlags;
 	}
 
 	private static final String REGEX_BLOCK_START = "@--";
@@ -65,6 +71,7 @@ public class BECRPattern {
 
 		// TODO: support optional group matches
 		List<String> groups = new ArrayList<>();
+		Set<Integer> optionalGroups = new HashSet<>();
 
 		StringBuilder regexBuilder = new StringBuilder();
 
@@ -89,12 +96,18 @@ public class BECRPattern {
 			} else if (hasText(pattern, i, ":[:]")) {
 				regexBuilder.append(":");
 			} else if (c == ':' && nextChar(pattern, i) == '['
-					&& (isWordCharacter(nextChar(pattern, i + 1)) || nextChar(pattern, i + 1) == ' ')) {
+					&& isNextCharStartOfGroup(pattern, i + 1)) {
 				int originalStart = i;
 
 				// Start of group
 				i += 2;
 
+				boolean isOptional = pattern.charAt(i) == '?';
+				if (isOptional) {
+					i++;
+				}
+
+				// TODO: add tests to ensure if has dangling characters, then correct exception is thrown
 				boolean isSpace = pattern.charAt(i) == ' ';
 				if (isSpace) {
 					i++;
@@ -121,12 +134,12 @@ public class BECRPattern {
 
 				if (isSpace) {
 					// Match horizontal space in text (excludes line terminators)
-					regex = "\\h++";
+					regex = isOptional ? "\\h*+" : "\\h++";
 				} else if (hasText(pattern, i, ":w")) {
-					regex = "\\w+?";
+					regex = isOptional ? "\\w*?" : "\\w+?";
 					i += 2;
 				} else if (hasText(pattern, i, ".")) {
-					regex = "[\\w.-]+?";
+					regex = isOptional ? "[\\w.-]*?" : "[\\w.-]+?";
 					i++;
 				}
 
@@ -144,9 +157,16 @@ public class BECRPattern {
 							regexBuilder.append(")");
 						}
 					} else {
+						// If starts with group, regexBuilder will be empty
+						// TODO: this seems to work fine, but should it instead use the pattern "^"?
+						// Likely need to test multi-find, but thinking matching space would be preferred
+						// This way, if doing multi-find and first fails, could always try again later in the input??
 						patterns.add(Pattern.compile(regexBuilder.toString(), regexPatternFlags));
 						regexBuilder.setLength(0);
 
+						if (isOptional) {
+							optionalGroups.add(groups.size());
+						}
 						groups.add(groupName);
 					}
 
@@ -177,7 +197,6 @@ public class BECRPattern {
 					regexBuilder.append("\\s*+");
 					i++;
 				}
-
 			} else {
 				regexBuilder.append(Pattern.literal(stringChar(pattern, i)));
 				i++;
@@ -187,9 +206,18 @@ public class BECRPattern {
 		if (regexBuilder.length() > 0) {
 			patterns.add(Pattern.compile(regexBuilder.toString(), regexPatternFlags));
 			//			System.out.printf("Rest of regex: %s%s%s%n", REGEX_BLOCK_START, regexBuilder, REGEX_BLOCK_END);
+		} else {
+			// If ends with group, then group will capture rest of input
+			patterns.add(Pattern.compile("$"));
 		}
 
-		return new BECRPattern(patterns, groups, regexPatternFlags);
+		return new BECRPattern(patterns, groups, optionalGroups);
+	}
+
+	private static boolean isNextCharStartOfGroup(final String pattern, final int i) {
+		char nextChar = nextChar(pattern, i);
+
+		return isWordCharacter(nextChar) || nextChar == ' ' || nextChar == '?';
 	}
 
 	public BECRMatcher matcher(final CharSequence text) {
@@ -202,5 +230,9 @@ public class BECRPattern {
 
 	List<String> getGroups() {
 		return this.groups;
+	}
+
+	boolean isOptionalGroup(final int group) {
+		return this.optionalGroups.contains(group);
 	}
 }

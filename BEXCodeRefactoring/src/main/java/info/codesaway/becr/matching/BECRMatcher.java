@@ -20,8 +20,8 @@ public class BECRMatcher {
 	private static final boolean DEBUG = false;
 
 	// TODO: likely these won't be final since likely want to add similar functionality as in Pattern / Matcher regex classes
-	private BECRPattern parentPattern;
-	private CharSequence text;
+	private final BECRPattern parentPattern;
+	private final CharSequence text;
 
 	private final MutableIntBEXPair matchStartEnd = new MutableIntBEXPair(-1, 0);
 
@@ -48,14 +48,6 @@ public class BECRMatcher {
 		return this.text.toString();
 	}
 
-	private void setParentPattern(final BECRPattern parentPattern) {
-		this.parentPattern = parentPattern;
-	}
-
-	private void setText(final CharSequence text) {
-		this.text = text;
-	}
-
 	public boolean find() {
 		// Logic from regex Matcher.find
 		int nextSearchStart = this.end();
@@ -71,7 +63,6 @@ public class BECRMatcher {
 
 		boolean foundMatch = this.match(from);
 		if (!foundMatch) {
-			// TODO: should we also clear group values?
 			this.matchStartEnd.setLeft(-1);
 		}
 
@@ -135,6 +126,7 @@ public class BECRMatcher {
 
 				if (!validState.isValid(-1)) {
 					// Still not valid
+					// TODO: should keep trying until valid?
 					if (DEBUG) {
 						System.out.println("Still not valid");
 					}
@@ -178,6 +170,38 @@ public class BECRMatcher {
 			String group = this.parentPattern.getGroups().get(i);
 			//			String value = this.text.subSequence(start, end).toString();
 
+			// If group is already specified, the values must match
+			// (unless it's an unnamed group)
+			if (!group.equals("_")) {
+				// TODO: what if group was matched as part of regex, does normal group have to match?
+				IntPair startEnd = this.getInternal(group);
+
+				if (startEnd != null && startEnd != NOT_FOUND) {
+					// Verify the content equals; otherwise, don't match
+					// TODO: should go to next match or something... need to implement
+					int oldLength = startEnd.getRight() - startEnd.getLeft();
+					int newLength = end - start;
+
+					// Fast check, based on length
+					if (newLength != oldLength) {
+						return false;
+					}
+
+					// Compare character by character
+					int index1 = startEnd.getLeft();
+					int index2 = start;
+
+					for (int m = 0; m < oldLength; m++) {
+						char c1 = this.text.charAt(index1++);
+						char c2 = this.text.charAt(index2++);
+
+						if (c1 != c2) {
+							return false;
+						}
+					}
+				}
+			}
+
 			this.put(group, IntBEXPair.of(start, end));
 			this.putCaptureGroups(nextMatcher);
 
@@ -190,7 +214,9 @@ public class BECRMatcher {
 
 		this.matchStartEnd.set(matchStart, matchEnd);
 
-		System.out.println("Found match: " + this.matchStartEnd);
+		if (DEBUG) {
+			System.out.println("Found match: " + this.matchStartEnd);
+		}
 
 		return true;
 	}
@@ -350,6 +376,23 @@ public class BECRMatcher {
 	 *             If the group is not specified in the pattern
 	 */
 	public String get(final String group) {
+		IntPair startEnd = this.getInternal(group);
+
+		// Intentionally using identity equals
+		if (startEnd == NOT_FOUND) {
+			throw new IllegalArgumentException("The specified group is not in the pattern: " + group);
+		}
+
+		if (startEnd == null) {
+			return null;
+		}
+
+		return this.getSubstring(startEnd);
+	}
+
+	private static IntPair NOT_FOUND = IntBEXPair.of(Integer.MIN_VALUE, Integer.MIN_VALUE);
+
+	private IntPair getInternal(final String group) {
 		List<IntPair> existingValues = this.multipleValues.get(group);
 
 		if (existingValues != null) {
@@ -357,19 +400,10 @@ public class BECRMatcher {
 			return existingValues.stream()
 					.filter(Objects::nonNull)
 					.findFirst()
-					.map(this::getSubstring)
 					.orElse(null);
 		}
 
-		IntPair value = this.singleValues.get(group);
-
-		if (value != null) {
-			return this.getSubstring(value);
-		} else if (!this.singleValues.containsKey(group)) {
-			throw new IllegalArgumentException("The specified group is not in the pattern: " + group);
-		} else {
-			return null;
-		}
+		return this.singleValues.getOrDefault(group, NOT_FOUND);
 	}
 
 	private String getSubstring(final IntPair startEnd) {

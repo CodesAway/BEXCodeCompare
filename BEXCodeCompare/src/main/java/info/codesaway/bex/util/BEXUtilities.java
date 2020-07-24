@@ -65,15 +65,14 @@ public final class BEXUtilities {
 	}
 
 	/**
-	 * Checks if the contents of the StringBuilder are equal
+	 * Checks if the contents of the <code>CharSequence</code>s are equal
 	 *
-	 * <p><b>Note</b>: The StringBuilder.equals method checks reference equality.</p>
-	 * @param s1 the first StringBuilder
-	 * @param s2 the second StringBuilder
-	 * @return <code>true</code> if the contents of the StringBuilder objects are equal
+	 * @param s1 the first CharSequence
+	 * @param s2 the second CharSequence
+	 * @return <code>true</code> if the contents of the <code>CharSequence</code>s are equal
 	 * @since 0.4
 	 */
-	public static boolean contentEquals(final StringBuilder s1, final StringBuilder s2) {
+	public static boolean contentEquals(final CharSequence s1, final CharSequence s2) {
 		// Check length as fast check
 		if (s1.length() != s2.length()) {
 			return false;
