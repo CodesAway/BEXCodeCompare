@@ -187,7 +187,10 @@ public class BECRMatcher {
 
 		int matchStart = currentMatcher.start();
 		int matchEnd = regionStart;
+
 		this.matchStartEnd.set(matchStart, matchEnd);
+
+		System.out.println("Found match: " + this.matchStartEnd);
 
 		return true;
 	}
@@ -309,6 +312,10 @@ public class BECRMatcher {
 			newValues.add(value);
 			this.multipleValues.put(group, newValues);
 		}
+	}
+
+	public IntPair startEndPair() {
+		return this.matchStartEnd.toIntBEXPair();
 	}
 
 	public int start() {

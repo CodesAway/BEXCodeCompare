@@ -38,8 +38,8 @@ public class BECRPattern {
 		this.regexPatternFlags = regexPatternFlags;
 	}
 
-	private static final String REGEX_BLOCK_START = "@~~";
-	private static final String REGEX_BLOCK_END = "~~@";
+	private static final String REGEX_BLOCK_START = "@--";
+	private static final String REGEX_BLOCK_END = "--!";
 
 	public static BECRPattern compile(final String pattern, final BECRPatternFlag... flags) {
 		// Allow duplicate names in capture groups
@@ -86,9 +86,9 @@ public class BECRPattern {
 
 				regexBuilder.append(pattern.substring(i, end));
 				i = end + REGEX_BLOCK_END.length();
-			} else if (hasText(pattern, i, "~[~]")) {
-				regexBuilder.append("~");
-			} else if (c == '~' && nextChar(pattern, i) == '['
+			} else if (hasText(pattern, i, ":[:]")) {
+				regexBuilder.append(":");
+			} else if (c == ':' && nextChar(pattern, i) == '['
 					&& (isWordCharacter(nextChar(pattern, i + 1)) || nextChar(pattern, i + 1) == ' ')) {
 				int originalStart = i;
 

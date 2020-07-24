@@ -121,6 +121,25 @@ public final class ParsingUtilities {
 		return predicate.negate();
 	}
 
+	/**
+	 * Gets a parser to parse Java files in the workspace
+	 *
+	 * <p>For the JRE path, it uses</p>
+	 * <pre>private final String jrePathname = System.getenv("JAVA_HOME");</pre>
+	 * @param workspace the workspace
+	 * @return
+	 */
+	public static ASTParser getParser(final String workspace) {
+		String jrePathname = System.getenv("JAVA_HOME");
+		return getParser(workspace, jrePathname);
+	}
+
+	/**
+	 * Gets a parser to parse
+	 * @param workspace
+	 * @param jrePathname
+	 * @return
+	 */
 	public static ASTParser getParser(final String workspace, final String jrePathname) {
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
 		parser.setResolveBindings(true);

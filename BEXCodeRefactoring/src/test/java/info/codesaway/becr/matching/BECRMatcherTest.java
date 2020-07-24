@@ -9,15 +9,15 @@ class BECRMatcherTest {
 
 	@Test
 	void testMatchStringText() {
-		String pattern = "\"User~[value]\"";
+		String pattern = "\"User:[value]\"";
 		String text = "request.addChildTag(\"Users\", \"a\", null)";
 		String expectedValue = "s";
 		this.testBECRMatch(pattern, text, expectedValue);
 	}
 
 	@Test
-	void testMatchStringHasBracketText() {
-		String pattern = "\"~[value](\"";
+	void testMatchStringHasParenthesisText() {
+		String pattern = "\":[value](\"";
 		String text = "webView.loadUrl(\"javascript:showDetail(\"+m.getId()+\")\");";
 		String expectedValue = "javascript:showDetail";
 		this.testBECRMatch(pattern, text, expectedValue);
