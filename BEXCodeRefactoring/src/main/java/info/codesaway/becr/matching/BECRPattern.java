@@ -144,7 +144,8 @@ public final class BECRPattern {
 					regex = isOptional ? "[\\w.-]*?" : "[\\w.-]+?";
 					i++;
 				} else if (hasText(pattern, i, "<>")) {
-					groupMatchSetting.turnOn(MATCH_ANGLE_BRACKETS);
+					groupMatchSetting = groupMatchSetting.turnOn(MATCH_ANGLE_BRACKETS);
+					i += 2;
 				}
 
 				if (hasText(pattern, i, "]")) {
@@ -169,7 +170,7 @@ public final class BECRPattern {
 						regexBuilder.setLength(0);
 
 						if (isOptional) {
-							groupMatchSetting.turnOn(OPTIONAL);
+							groupMatchSetting = groupMatchSetting.turnOn(OPTIONAL);
 						}
 
 						if (!groupMatchSetting.isDefault()) {

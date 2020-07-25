@@ -87,4 +87,17 @@ public final class BEXUtilities {
 
 		return true;
 	}
+
+	/**
+	 * Indicates if the specified <code>number</code> is between the specified <code>start</code> and <code>end</code> (inclusive)
+	 *
+	 * @param number
+	 * @param start
+	 * @param end
+	 * @return
+	 * @since 0.5
+	 */
+	public static boolean isBetween(final int number, final int start, final int end) {
+		return number >= start && number <= end;
+	}
 }

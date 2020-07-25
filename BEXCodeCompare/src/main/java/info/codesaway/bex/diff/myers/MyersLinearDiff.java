@@ -1,5 +1,7 @@
 package info.codesaway.bex.diff.myers;
 
+import static info.codesaway.bex.util.BEXUtilities.isBetween;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -355,17 +357,5 @@ public final class MyersLinearDiff extends AbstractDiffAlgorithm {
 	 */
 	private static boolean isEven(final int number) {
 		return (number & 1) == 0;
-	}
-
-	/**
-	 * Indicates if the specified <code>number</code> is between the specified <code>start</code> and <code>end</code> (inclusive)
-	 *
-	 * @param number
-	 * @param start
-	 * @param end
-	 * @return
-	 */
-	private static boolean isBetween(final int number, final int start, final int end) {
-		return number >= start && number <= end;
 	}
 }

@@ -1,5 +1,6 @@
 package info.codesaway.becr.matching;
 
+import static info.codesaway.becr.matching.BECRGroupMatchSetting.DEFAULT;
 import static info.codesaway.becr.matching.BECRGroupMatchSetting.STOP_WHEN_VALID;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.lastChar;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.nextChar;
@@ -106,7 +107,8 @@ public final class BECRMatcher {
 			int start = regionStart;
 			int end = nextMatcher.start();
 
-			BECRGroupMatchSetting groupMatchSetting = this.parentPattern.getGroupMatchSettings().get(i);
+			BECRGroupMatchSetting groupMatchSetting = this.parentPattern.getGroupMatchSettings()
+					.getOrDefault(i, DEFAULT);
 
 			BECRState state = search(this.text, start, end, groupMatchSetting);
 
@@ -169,6 +171,11 @@ public final class BECRMatcher {
 				}
 
 				end = nextMatcher.start();
+			}
+
+			if (start == end && !groupMatchSetting.isOptional()) {
+				// TODO: check if expanding group would allow to match
+				return false;
 			}
 
 			String group = this.parentPattern.getGroups().get(i);

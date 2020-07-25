@@ -3,7 +3,6 @@ package info.codesaway.becr.matching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import org.junit.jupiter.api.Test;
 
@@ -84,6 +83,20 @@ class BECRMatcherTest {
 		this.testNoBECRMatch(pattern, text);
 	}
 
+	@Test
+	void testEmptyDoesNotMatch() {
+		String pattern = ":[value]";
+		String text = "";
+		this.testNoBECRMatch(pattern, text);
+	}
+
+	@Test
+	void testEmptyOptionalMatch() {
+		String pattern = ":[?value]";
+		String text = "";
+		this.testJustBECRMatch(pattern, text);
+	}
+
 	// TODO: this test fails
 	// * Expecting to match "("
 	// * Currently, the code expects the match to have balanced parentheses
@@ -97,26 +110,6 @@ class BECRMatcherTest {
 	//		this.testBECRMatch(pattern, text, expectedValue);
 	//	}
 
-	/**
-	 * Test that a match occurred and that the group named "value" matches the expectedValue
-	 * @param pattern the pattern to match
-	 * @param text the text to match
-	 * @param expectedValue the expected value
-	 */
-	private void testBECRMatch(final String pattern, final String text, final String expectedValue) {
-		// TODO Auto-generated method stub
-		BECRPattern becrPattern = BECRPattern.compile(pattern);
-		BECRMatcher becrMatcher = becrPattern.matcher(text);
-
-		if (!becrMatcher.find()) {
-			fail("Could not find match");
-		}
-
-		assertThat(becrMatcher)
-				.extracting(m -> m.get("value"))
-				.isEqualTo(expectedValue);
-	}
-
 	private void testNoBECRMatch(final String pattern, final String text) {
 		// TODO Auto-generated method stub
 		BECRPattern becrPattern = BECRPattern.compile(pattern);
@@ -125,11 +118,27 @@ class BECRMatcherTest {
 		assertFalse(becrMatcher.find(), "Should not find match");
 	}
 
-	private void testJustBECRMatch(final String pattern, final String text) {
+	private BECRMatcher testJustBECRMatch(final String pattern, final String text) {
 		// TODO Auto-generated method stub
 		BECRPattern becrPattern = BECRPattern.compile(pattern);
 		BECRMatcher becrMatcher = becrPattern.matcher(text);
 
 		assertTrue(becrMatcher.find(), "Could not find match");
+
+		return becrMatcher;
+	}
+
+	/**
+	 * Test that a match occurred and that the group named "value" matches the expectedValue
+	 * @param pattern the pattern to match
+	 * @param text the text to match
+	 * @param expectedValue the expected value
+	 */
+	private void testBECRMatch(final String pattern, final String text, final String expectedValue) {
+		BECRMatcher becrMatcher = this.testJustBECRMatch(pattern, text);
+
+		assertThat(becrMatcher)
+				.extracting(m -> m.get("value"))
+				.isEqualTo(expectedValue);
 	}
 }
