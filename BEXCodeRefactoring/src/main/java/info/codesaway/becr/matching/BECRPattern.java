@@ -1,5 +1,7 @@
 package info.codesaway.becr.matching;
 
+import static info.codesaway.becr.matching.BECRGroupMatchSetting.MATCH_ANGLE_BRACKETS;
+import static info.codesaway.becr.matching.BECRGroupMatchSetting.OPTIONAL;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.hasText;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.isWordCharacter;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.nextChar;
@@ -8,13 +10,13 @@ import static info.codesaway.becr.matching.BECRMatchingUtilities.stringChar;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import info.codesaway.util.regex.Pattern;
 
-public class BECRPattern {
+public final class BECRPattern {
 	// TODO: expand, but most common will be text [group text]*
 	// Initially, support this and add others over time
 	// What if starts or ends with group?
@@ -22,11 +24,12 @@ public class BECRPattern {
 
 	private final List<Pattern> patterns;
 	private final List<String> groups;
-	Set<Integer> optionalGroups;
+	private final Map<Integer, BECRGroupMatchSetting> groupMatchSettings;
 
 	//	private final int regexPatternFlags;
 
-	private BECRPattern(final List<Pattern> patterns, final List<String> groups, final Set<Integer> optionalGroups) {
+	private BECRPattern(final List<Pattern> patterns, final List<String> groups,
+			final Map<Integer, BECRGroupMatchSetting> groupMatchSettings) {
 		if (patterns.isEmpty()) {
 			throw new IllegalArgumentException("No patterns specified");
 		}
@@ -37,9 +40,7 @@ public class BECRPattern {
 
 		this.patterns = Collections.unmodifiableList(patterns);
 		this.groups = Collections.unmodifiableList(groups);
-		this.optionalGroups = optionalGroups.isEmpty()
-				? Collections.emptySet()
-				: Collections.unmodifiableSet(optionalGroups);
+		this.groupMatchSettings = Collections.unmodifiableMap(groupMatchSettings);
 
 		//		this.regexPatternFlags = regexPatternFlags;
 	}
@@ -67,11 +68,11 @@ public class BECRPattern {
 			}
 		}
 
-		List<Pattern> patterns = new ArrayList<>();
+		ArrayList<Pattern> patterns = new ArrayList<>();
 
 		// TODO: support optional group matches
-		List<String> groups = new ArrayList<>();
-		Set<Integer> optionalGroups = new HashSet<>();
+		ArrayList<String> groups = new ArrayList<>();
+		Map<Integer, BECRGroupMatchSetting> groupMatchSettings = new HashMap<>();
 
 		StringBuilder regexBuilder = new StringBuilder();
 
@@ -131,6 +132,7 @@ public class BECRPattern {
 				int groupNameEnd = i;
 
 				String regex = null;
+				BECRGroupMatchSetting groupMatchSetting = BECRGroupMatchSetting.DEFAULT;
 
 				if (isSpace) {
 					// Match horizontal space in text (excludes line terminators)
@@ -141,6 +143,8 @@ public class BECRPattern {
 				} else if (hasText(pattern, i, ".")) {
 					regex = isOptional ? "[\\w.-]*?" : "[\\w.-]+?";
 					i++;
+				} else if (hasText(pattern, i, "<>")) {
+					groupMatchSetting.turnOn(MATCH_ANGLE_BRACKETS);
 				}
 
 				if (hasText(pattern, i, "]")) {
@@ -165,7 +169,11 @@ public class BECRPattern {
 						regexBuilder.setLength(0);
 
 						if (isOptional) {
-							optionalGroups.add(groups.size());
+							groupMatchSetting.turnOn(OPTIONAL);
+						}
+
+						if (!groupMatchSetting.isDefault()) {
+							groupMatchSettings.put(groups.size(), groupMatchSetting);
 						}
 						groups.add(groupName);
 					}
@@ -211,7 +219,11 @@ public class BECRPattern {
 			patterns.add(Pattern.compile("$"));
 		}
 
-		return new BECRPattern(patterns, groups, optionalGroups);
+		// Reduce memory footprint (likely minimal impact, but mine as well do it)
+		patterns.trimToSize();
+		groups.trimToSize();
+
+		return new BECRPattern(patterns, groups, groupMatchSettings);
 	}
 
 	private static boolean isNextCharStartOfGroup(final String pattern, final int i) {
@@ -232,7 +244,21 @@ public class BECRPattern {
 		return this.groups;
 	}
 
-	boolean isOptionalGroup(final int group) {
-		return this.optionalGroups.contains(group);
+	Map<Integer, BECRGroupMatchSetting> getGroupMatchSettings() {
+		return this.groupMatchSettings;
 	}
+
+	//	boolean isOptionalGroup(final int group) {
+	//		return this.hasGroupOption(group, BECRGroupOption.OPTIONAL);
+	//	}
+	//
+	//	boolean shouldMatchAngleBrackets(final int group) {
+	//		return this.hasGroupOption(group, BECRGroupOption.MATCH_ANGLE_BRACKETS);
+	//	}
+	//
+	//	private boolean hasGroupOption(final int group, final BECRGroupOption option) {
+	//		return this.groupOptions
+	//				.getOrDefault(option, Collections.emptySet())
+	//				.contains(group);
+	//	}
 }

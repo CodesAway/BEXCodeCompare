@@ -70,6 +70,20 @@ class BECRMatcherTest {
 		this.testBECRMatch(pattern, text, "a = a");
 	}
 
+	@Test
+	void testAngleBracketsOkayNotBalanced() {
+		String pattern = ":[value]";
+		String text = "1 < 2";
+		this.testBECRMatch(pattern, text, "1 < 2");
+	}
+
+	@Test
+	void testOptionAngleBracketsMustBeBalanced() {
+		String pattern = ":[value<>]";
+		String text = "1 < 2";
+		this.testNoBECRMatch(pattern, text);
+	}
+
 	// TODO: this test fails
 	// * Expecting to match "("
 	// * Currently, the code expects the match to have balanced parentheses

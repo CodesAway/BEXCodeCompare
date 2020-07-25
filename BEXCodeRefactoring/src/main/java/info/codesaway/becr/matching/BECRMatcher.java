@@ -1,5 +1,6 @@
 package info.codesaway.becr.matching;
 
+import static info.codesaway.becr.matching.BECRGroupMatchSetting.STOP_WHEN_VALID;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.lastChar;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.nextChar;
 import static info.codesaway.becr.matching.BECRStateOption.IN_STRING_LITERAL;
@@ -16,7 +17,7 @@ import info.codesaway.bex.MutableIntBEXPair;
 import info.codesaway.util.regex.Matcher;
 import info.codesaway.util.regex.Pattern;
 
-public class BECRMatcher {
+public final class BECRMatcher {
 	private static final boolean DEBUG = false;
 
 	// TODO: likely these won't be final since likely want to add similar functionality as in Pattern / Matcher regex classes
@@ -105,7 +106,9 @@ public class BECRMatcher {
 			int start = regionStart;
 			int end = nextMatcher.start();
 
-			BECRState state = search(this.text, start, end);
+			BECRGroupMatchSetting groupMatchSetting = this.parentPattern.getGroupMatchSettings().get(i);
+
+			BECRState state = search(this.text, start, end, groupMatchSetting);
 
 			if (!state.isValid(end)) {
 				// TODO: if has mismatched brackets, start over and try to find after this?
@@ -122,7 +125,8 @@ public class BECRMatcher {
 					System.out.printf("Not valid group value: @%s@%n", this.text.subSequence(start, end));
 				}
 
-				BECRState validState = search(this.text, state.getPosition(), this.text.length(), state, true);
+				BECRState validState = search(this.text, state.getPosition(), this.text.length(),
+						groupMatchSetting.turnOn(STOP_WHEN_VALID), state);
 
 				if (!validState.isValid(-1)) {
 					// Still not valid
@@ -221,18 +225,30 @@ public class BECRMatcher {
 		return true;
 	}
 
-	private static final String bracketStarts = "([{<";
-	private static final String bracketEnds = ")]}>";
-
-	private static BECRState search(final CharSequence text, final int start, final int end) {
-		return search(text, start, end, null, false);
+	private static BECRState search(final CharSequence text, final int start, final int end,
+			final BECRGroupMatchSetting groupMatchSetting) {
+		return search(text, start, end, groupMatchSetting, null);
 	}
 
 	private static BECRState search(final CharSequence text, final int start, final int end,
-			final BECRState state, final boolean shouldStopWhenValid) {
+			final BECRGroupMatchSetting groupMatchSetting, final BECRState state) {
 		// Verify parentheses / brackets are balanced
 		// TODO: handle string (what if group is in String??)
 		// TODO: handle comments (what if group is in comments??)
+
+		boolean shouldStopWhenValid = groupMatchSetting.shouldStopWhenValid();
+
+		// By default, don't include angled brackets <> as part of balancing (unless specified)
+		String bracketStarts;
+		String bracketEnds;
+
+		if (groupMatchSetting.shouldMatchAngleBrackets()) {
+			bracketStarts = "([{<";
+			bracketEnds = ")]}>";
+		} else {
+			bracketStarts = "([{";
+			bracketEnds = ")]}";
+		}
 
 		StringBuilder brackets = new StringBuilder();
 		boolean inStringLiteral = false;
@@ -263,7 +279,7 @@ public class BECRMatcher {
 					}
 				}
 				// Other characters don't matter??
-				// TODO: handle unicode and other escaping
+				// TODO: handle unicode and other escaping in String literal
 			} else if (bracketStarts.indexOf(c) != -1) {
 				brackets.append(c);
 			} else if (c == '"') {

@@ -8,12 +8,13 @@ import info.codesaway.becr.diff.PathChangeInfo;
 import info.codesaway.becr.parsing.ProjectPath;
 import info.codesaway.bex.BEXListPair;
 
-public class CompareDirectoriesDifferencesResult {
+public final class CompareDirectoriesDifferencesResult {
 	private final List<PathChangeInfo> pathChanges;
 	private final BEXListPair<ProjectPath> javaPaths;
 	private final Map<Path, DifferencesResult> javaPathDiffMap;
 
-	public CompareDirectoriesDifferencesResult(final List<PathChangeInfo> pathChanges, final BEXListPair<ProjectPath> javaPaths,
+	public CompareDirectoriesDifferencesResult(final List<PathChangeInfo> pathChanges,
+			final BEXListPair<ProjectPath> javaPaths,
 			final Map<Path, DifferencesResult> javaPathDiffMap) {
 		this.pathChanges = pathChanges;
 		this.javaPaths = javaPaths;
