@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import info.codesaway.bex.IntPair;
+
 public final class BEXUtilities {
 	private BEXUtilities() {
 		throw new UnsupportedOperationException();
@@ -99,5 +101,13 @@ public final class BEXUtilities {
 	 */
 	public static boolean isBetween(final int number, final int start, final int end) {
 		return number >= start && number <= end;
+	}
+
+	public static String getSubstring(final CharSequence text, final IntPair startEnd) {
+		return getSubSequence(text, startEnd).toString();
+	}
+
+	public static CharSequence getSubSequence(final CharSequence text, final IntPair startEnd) {
+		return text.subSequence(startEnd.getLeft(), startEnd.getRight());
 	}
 }

@@ -18,7 +18,7 @@ import info.codesaway.bex.MutableIntBEXPair;
 import info.codesaway.util.regex.Matcher;
 import info.codesaway.util.regex.Pattern;
 
-public final class BECRMatcher {
+public final class BECRMatcher implements BECRMatchResult {
 	private static final boolean DEBUG = false;
 
 	// TODO: likely these won't be final since likely want to add similar functionality as in Pattern / Matcher regex classes
@@ -42,10 +42,12 @@ public final class BECRMatcher {
 		this.text = text;
 	}
 
+	@Override
 	public BECRPattern pattern() {
 		return this.parentPattern;
 	}
 
+	@Override
 	public String text() {
 		return this.text.toString();
 	}
@@ -363,41 +365,25 @@ public final class BECRMatcher {
 		}
 	}
 
+	@Override
 	public IntPair startEndPair() {
 		return this.matchStartEnd.toIntBEXPair();
 	}
 
-	public int start() {
-		return this.matchStartEnd.getLeft();
+	@Override
+	public IntPair startEndPair(final String group) {
+		IntPair startEnd = this.getInternal(group);
+
+		// Intentionally using identity equals
+		if (startEnd == NOT_FOUND) {
+			throw new IllegalArgumentException("The specified group is not in the pattern: " + group);
+		}
+
+		return startEnd;
 	}
 
-	public int end() {
-		return this.matchStartEnd.getRight();
-	}
-
-	public String group() {
-		return this.getSubstring(this.matchStartEnd);
-	}
-
-	// Added to correspond to Regex Matcher.group
-	public String group(final String group) {
-		return this.get(group);
-	}
-
-	/**
-	 *
-	 * Gets the value for the specified group
-	 *
-	 * <p>If there are multiple values, the first non-null is returned (or <code>null</code> if they are all null)</p>
-	 * @param group
-	 * @return the value for the specified group (may be <code>null</code>, such as for regex capture groups)
-	 * @throws IllegalStateException
-	 *             If no match has yet been attempted, or if the previous match
-	 *             operation failed
-	 *
-	 * @throws IllegalArgumentException
-	 *             If the group is not specified in the pattern
-	 */
+	/*
+	@Override
 	public String get(final String group) {
 		IntPair startEnd = this.getInternal(group);
 
@@ -412,8 +398,10 @@ public final class BECRMatcher {
 
 		return this.getSubstring(startEnd);
 	}
+	*/
 
 	private static IntPair NOT_FOUND = IntBEXPair.of(Integer.MIN_VALUE, Integer.MIN_VALUE);
+	private static IntPair NULL_PAIR = IntBEXPair.of(-1, -1);
 
 	private IntPair getInternal(final String group) {
 		List<IntPair> existingValues = this.multipleValues.get(group);
@@ -423,17 +411,9 @@ public final class BECRMatcher {
 			return existingValues.stream()
 					.filter(Objects::nonNull)
 					.findFirst()
-					.orElse(null);
+					.orElse(NULL_PAIR);
 		}
 
 		return this.singleValues.getOrDefault(group, NOT_FOUND);
-	}
-
-	private String getSubstring(final IntPair startEnd) {
-		return this.getSubSequence(startEnd).toString();
-	}
-
-	private CharSequence getSubSequence(final IntPair startEnd) {
-		return this.text.subSequence(startEnd.getLeft(), startEnd.getRight());
 	}
 }

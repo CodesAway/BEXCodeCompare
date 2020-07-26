@@ -8,9 +8,12 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Comment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.NodeFinder;
 
+import info.codesaway.becr.matching.BECRMatchResult;
 import info.codesaway.bex.IntBEXPair;
 import info.codesaway.bex.IntPair;
 
@@ -57,5 +60,27 @@ public final class ASTNodeUtilities {
 
 		// Subtract 1 from end since exclusive
 		return isBetween(start, range.getLeft(), range.getRight() - 1);
+	}
+
+	public static ASTNode findNode(final CompilationUnit cu, final BECRMatchResult match) {
+		int start = match.start();
+		int end = match.end();
+		String text = match.text();
+
+		// Ignore leading and trailing whitespace when finding the corresponding node
+		while (start < end && Character.isWhitespace(text.codePointAt(start))) {
+			start++;
+		}
+
+		while (end > start && Character.isWhitespace(text.codePointAt(end - 1))) {
+			end--;
+		}
+
+		if (end <= start) {
+			// Entire match is whitespace, so match original range
+			return NodeFinder.perform(cu, match.start(), match.end() - match.start());
+		}
+
+		return NodeFinder.perform(cu, start, end - start);
 	}
 }
