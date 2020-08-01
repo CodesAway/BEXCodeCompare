@@ -97,6 +97,39 @@ class BECRMatcherTest {
 		this.testJustBECRMatch(pattern, text);
 	}
 
+	@Test
+	void testInStringLiteralShouldIgnore() {
+		String pattern = "try { }";
+		String text = "\"try { }\"";
+		this.testNoBECRMatch(pattern, text);
+	}
+
+	@Test
+	void testLineCommentShouldIgnore() {
+		String pattern = "try { }";
+		String text = "// try { }";
+		this.testNoBECRMatch(pattern, text);
+	}
+
+	@Test
+	void testMultilineCommentShouldIgnore() {
+		String pattern = "try { }";
+		String text = "/*\n"
+				+ "try\n"
+				+ "{\n"
+				+ "}\n"
+				+ "*/";
+		this.testNoBECRMatch(pattern, text);
+	}
+
+	@Test
+	void testStillInStringNoMatch() {
+		String pattern = "\":[value]\"";
+		String text = "\"some text ( with a \\\" in it\"";
+		String expectedValue = "some text ( with a \\\" in it";
+		this.testBECRMatch(pattern, text, expectedValue);
+	}
+
 	// TODO: this test fails
 	// * Expecting to match "("
 	// * Currently, the code expects the match to have balanced parentheses
@@ -110,8 +143,14 @@ class BECRMatcherTest {
 	//		this.testBECRMatch(pattern, text, expectedValue);
 	//	}
 
+	@Test
+	void testEscapeColonInPattern() {
+		String pattern = ":[:]";
+		String text = ":";
+		this.testJustBECRMatch(pattern, text);
+	}
+
 	private void testNoBECRMatch(final String pattern, final String text) {
-		// TODO Auto-generated method stub
 		BECRPattern becrPattern = BECRPattern.compile(pattern);
 		BECRMatcher becrMatcher = becrPattern.matcher(text);
 
@@ -119,7 +158,6 @@ class BECRMatcherTest {
 	}
 
 	private BECRMatcher testJustBECRMatch(final String pattern, final String text) {
-		// TODO Auto-generated method stub
 		BECRPattern becrPattern = BECRPattern.compile(pattern);
 		BECRMatcher becrMatcher = becrPattern.matcher(text);
 

@@ -2,16 +2,22 @@ package info.codesaway.becr.matching;
 
 import static info.codesaway.becr.matching.BECRGroupMatchSetting.DEFAULT;
 import static info.codesaway.becr.matching.BECRGroupMatchSetting.STOP_WHEN_VALID;
+import static info.codesaway.becr.matching.BECRMatchingUtilities.hasText;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.lastChar;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.nextChar;
+import static info.codesaway.becr.matching.BECRStateOption.IN_LINE_COMMENT;
+import static info.codesaway.becr.matching.BECRStateOption.IN_MULTILINE_COMMENT;
 import static info.codesaway.becr.matching.BECRStateOption.IN_STRING_LITERAL;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.TreeMap;
 
+import info.codesaway.becr.StartEndIntPair;
 import info.codesaway.bex.IntBEXPair;
 import info.codesaway.bex.IntPair;
 import info.codesaway.bex.MutableIntBEXPair;
@@ -21,9 +27,13 @@ import info.codesaway.util.regex.Pattern;
 public final class BECRMatcher implements BECRMatchResult {
 	private static final boolean DEBUG = false;
 
-	// TODO: likely these won't be final since likely want to add similar functionality as in Pattern / Matcher regex classes
-	private final BECRPattern parentPattern;
-	private final CharSequence text;
+	private BECRPattern parentPattern;
+	private CharSequence text;
+
+	/**
+	 * Map from range start to BECRTextInfo (contains range and other text info)
+	 */
+	private TreeMap<Integer, BECRTextInfo> textInfoMap;
 
 	private final MutableIntBEXPair matchStartEnd = new MutableIntBEXPair(-1, 0);
 
@@ -38,8 +48,8 @@ public final class BECRMatcher implements BECRMatchResult {
 	private final Map<String, List<IntPair>> multipleValues = new HashMap<>();
 
 	BECRMatcher(final BECRPattern parent, final CharSequence text) {
-		this.parentPattern = parent;
-		this.text = text;
+		this.setParentPattern(parent);
+		this.setText(text);
 	}
 
 	@Override
@@ -47,9 +57,86 @@ public final class BECRMatcher implements BECRMatchResult {
 		return this.parentPattern;
 	}
 
+	public void setParentPattern(final BECRPattern parentPattern) {
+		this.parentPattern = parentPattern;
+	}
+
 	@Override
 	public String text() {
 		return this.text.toString();
+	}
+
+	public void setText(final CharSequence text) {
+		this.text = text;
+		this.textInfoMap = new TreeMap<>();
+
+		// Parse text to get info
+		// * Block comment
+		// * Line comment
+		// * In String literal
+		// * Other stuff?
+
+		// TODO: see if can share this common logic
+
+		boolean isInStringLiteral = false;
+		boolean isInLineComment = false;
+		boolean isInMultilineComment = false;
+
+		int startTextInfo = -1;
+
+		for (int i = 0; i < text.length(); i++) {
+			char c = text.charAt(i);
+
+			if (isInStringLiteral) {
+				if (c == '\\') {
+					// Escape next character
+					if (nextChar(text, i) == '\0') {
+						break;
+					}
+
+					i++;
+				} else if (c == '"') {
+					// End of String literal
+					isInStringLiteral = false;
+
+					this.textInfoMap.put(startTextInfo,
+							new BECRTextInfo(StartEndIntPair.of(startTextInfo, i), IN_STRING_LITERAL));
+				}
+				// Other characters don't matter??
+				// TODO: handle unicode and other escaping in String literal
+			} else if (isInLineComment) {
+				if (c == '\n' || c == '\r') {
+					isInLineComment = false;
+					this.textInfoMap.put(startTextInfo,
+							new BECRTextInfo(StartEndIntPair.of(startTextInfo, i), IN_LINE_COMMENT));
+				}
+				// Other characters don't matter?
+			} else if (isInMultilineComment) {
+				if (hasText(text, i, "*/")) {
+					isInMultilineComment = false;
+					i++;
+					this.textInfoMap.put(startTextInfo,
+							new BECRTextInfo(StartEndIntPair.of(startTextInfo, i), IN_MULTILINE_COMMENT));
+				}
+			} else if (c == '/' && nextChar(text, i) == '/') {
+				isInLineComment = true;
+				startTextInfo = i;
+				i++;
+			} else if (c == '/' && nextChar(text, i) == '*') {
+				isInMultilineComment = true;
+				startTextInfo = i;
+				i++;
+			} else if (c == '"') {
+				// String literal
+				isInStringLiteral = true;
+				startTextInfo = i;
+			}
+		}
+
+		if (isInLineComment) {
+			this.textInfoMap.put(startTextInfo,
+					new BECRTextInfo(StartEndIntPair.of(startTextInfo, text.length()), IN_LINE_COMMENT));
+		}
 	}
 
 	public boolean find() {
@@ -82,16 +169,43 @@ public final class BECRMatcher implements BECRMatchResult {
 
 		// TODO: cache matchers?
 		Matcher currentMatcher = patterns.get(0).matcher(this.text);
-		if (!currentMatcher.find(from)) {
-			if (DEBUG) {
-				System.out.println("Couldn't find match 0: " + from + "\t" + this.text());
-				System.out.println("Pattern 0: @" + currentMatcher.pattern() + "@");
+
+		boolean foundMatch;
+		int searchFrom = from;
+		do {
+			if (!currentMatcher.find(searchFrom)) {
+				if (DEBUG) {
+					System.out.println("Couldn't find match 0: " + from + "\t" + this.text());
+					System.out.println("Pattern 0: @" + currentMatcher.pattern() + "@");
+				}
+				return false;
 			}
-			return false;
-		}
+
+			int start = currentMatcher.start();
+			Entry<Integer, BECRTextInfo> entry = this.textInfoMap.floorEntry(start);
+			if (entry != null && entry.getValue().getRange().contains(start) && start != entry.getKey()) {
+				// Don't count as match, since part of string literal or comment
+				// If match starts with the block, then okay to match
+				// TODO: when else would it be okay to match?
+				foundMatch = false;
+				searchFrom = start + 1;
+			} else {
+				foundMatch = true;
+				if (DEBUG) {
+					System.out.println("Found match! " + start);
+					System.out.println(this.textInfoMap);
+				}
+			}
+		} while (!foundMatch);
+
+		// Don't match if in string literal or comment
+		// TODO: under what scenarios should it match stuff in comments?
+
+		// TODO: need to process code before match to detect if in block comment, line comment, or String literal
 
 		this.putCaptureGroups(currentMatcher);
 		int regionStart = currentMatcher.end();
+		// TODO: keep track of matchStart (such as if requires multiple passes to find next match)
 
 		for (int i = 0; i < patterns.size() - 1; i++) {
 			Pattern nextPattern = patterns.get(i + 1);
@@ -109,12 +223,38 @@ public final class BECRMatcher implements BECRMatchResult {
 			int start = regionStart;
 			int end = nextMatcher.start();
 
+			// If match starts with " and prior character is \ then ignore
+			// (trying to handle match within string, while ignoring escaped double quote)
+			// TODO: is there a better way to do this?
+			// Doesn't work, since regionStart is used to determine when the capture group starts
+			// Instead, when building the pattern, if see double quote character, need to ensure not escaped
+			//			if (hasText(this.text, end, "\"") && prevChar(this.text, end) == '\\') {
+			//				// Redo the current pattern
+			//				i--;
+			//
+			//				// Start with the character after the double quote
+			//				regionStart = end + 1;
+			//
+			//				continue;
+			//			}
+
+			// TODO: need to set state info, such as if in String literal
+			//			BECRState initialState = new BECRState(-1, "", IN_STRING_LITERAL);
+
+			Entry<Integer, BECRTextInfo> entry = this.textInfoMap.floorEntry(start);
+			BECRState initialState;
+			if (entry != null && entry.getValue().getRange().contains(start)) {
+				initialState = new BECRState(-1, "", entry.getValue().getStateOption());
+			} else {
+				initialState = BECRState.DEFAULT;
+			}
+
 			BECRGroupMatchSetting groupMatchSetting = this.parentPattern.getGroupMatchSettings()
 					.getOrDefault(i, DEFAULT);
 
-			BECRState state = search(this.text, start, end, groupMatchSetting);
+			BECRState state = search(this.text, start, end, groupMatchSetting, initialState);
 
-			if (!state.isValid(end)) {
+			while (!state.isValid(end, initialState.getOptions())) {
 				// TODO: if has mismatched brackets, start over and try to find after this?
 				// This way, if one line in a file isn't valid, could still handle other lines (versus never matching ever)
 				if (state.hasMismatchedBrackets()) {
@@ -132,6 +272,7 @@ public final class BECRMatcher implements BECRMatchResult {
 				BECRState validState = search(this.text, state.getPosition(), this.text.length(),
 						groupMatchSetting.turnOn(STOP_WHEN_VALID), state);
 
+				// TODO: should I ignore the initialState options?
 				if (!validState.isValid(-1)) {
 					// Still not valid
 					// TODO: should keep trying until valid?
@@ -159,20 +300,24 @@ public final class BECRMatcher implements BECRMatchResult {
 					return false;
 				}
 
-				if (nextMatcher.start() != position) {
+				end = nextMatcher.start();
+
+				if (end != position) {
 					// TODO: there may be extra stuff between the valid position and the next start
-					// (if this is also valid, it would be
+					// (if this is also valid, it would be okay)
 					if (DEBUG) {
 						System.out.printf("New scenario %d: %d\t%d\t%s%n", i + 1, nextMatcher.start(), position,
 								this.text.subSequence(position, nextMatcher.start()));
 
-						System.out.printf("Position does not match next matcher start: %d != %d", position,
+						System.out.printf("Position does not match next matcher start: %d != %d%n", position,
 								nextMatcher.start());
 					}
-					return false;
+					//					return false;
+					// TODO: what should I pass for initial state
+					state = search(this.text, position, end, groupMatchSetting);
+				} else {
+					break;
 				}
-
-				end = nextMatcher.start();
 			}
 
 			if (start == end && !groupMatchSetting.isOptional()) {
@@ -260,17 +405,21 @@ public final class BECRMatcher implements BECRMatchResult {
 		}
 
 		StringBuilder brackets = new StringBuilder();
-		boolean inStringLiteral = false;
+		boolean isInStringLiteral = false;
+		boolean isInLineComment = false;
+		boolean isInMultilineComment = false;
 
 		if (state != null) {
 			brackets.append(state.getBrackets());
-			inStringLiteral = state.isInStringLiteral();
+			isInStringLiteral = state.isInStringLiteral();
+			isInLineComment = state.isInLineComment();
+			isInMultilineComment = state.isInMultilineComment();
 		}
 
 		for (int i = start; i < end; i++) {
 			char c = text.charAt(i);
 
-			if (inStringLiteral) {
+			if (isInStringLiteral) {
 				if (c == '\\') {
 					// Escape next character
 					if (nextChar(text, i) == '\0') {
@@ -281,7 +430,7 @@ public final class BECRMatcher implements BECRMatchResult {
 					i++;
 				} else if (c == '"') {
 					// End of String literal
-					inStringLiteral = false;
+					isInStringLiteral = false;
 
 					if (shouldStopWhenValid && brackets.length() == 0) {
 						return new BECRState(i + 1, "");
@@ -289,11 +438,27 @@ public final class BECRMatcher implements BECRMatchResult {
 				}
 				// Other characters don't matter??
 				// TODO: handle unicode and other escaping in String literal
+			} else if (isInLineComment) {
+				if (c == '\n' || c == '\r') {
+					isInLineComment = false;
+				}
+				// Other characters don't matter?
+			} else if (isInMultilineComment) {
+				if (hasText(text, i, "*/")) {
+					isInMultilineComment = false;
+					i++;
+				}
+			} else if (c == '/' && nextChar(text, i) == '/') {
+				isInLineComment = true;
+				i++;
+			} else if (c == '/' && nextChar(text, i) == '*') {
+				isInMultilineComment = true;
+				i++;
 			} else if (bracketStarts.indexOf(c) != -1) {
 				brackets.append(c);
 			} else if (c == '"') {
 				// String literal
-				inStringLiteral = true;
+				isInStringLiteral = true;
 			} else {
 				int bracketEndIndex = bracketEnds.indexOf(c);
 
@@ -315,7 +480,10 @@ public final class BECRMatcher implements BECRMatchResult {
 
 		//		System.out.println("inStringLiteral? " + inStringLiteral + "\t" + brackets);
 
-		return new BECRState(end, brackets.toString(), inStringLiteral ? IN_STRING_LITERAL : null);
+		return new BECRState(end, brackets.toString(),
+				isInStringLiteral ? IN_STRING_LITERAL : null,
+				isInLineComment ? IN_LINE_COMMENT : null,
+				isInMultilineComment ? IN_MULTILINE_COMMENT : null);
 	}
 
 	private void putCaptureGroups(final Matcher matcher) {

@@ -1,7 +1,5 @@
 package info.codesaway.becr.util;
 
-import static info.codesaway.bex.util.BEXUtilities.isBetween;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
@@ -13,9 +11,8 @@ import org.eclipse.jdt.core.dom.Comment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.NodeFinder;
 
+import info.codesaway.becr.StartEndIntPair;
 import info.codesaway.becr.matching.BECRMatchResult;
-import info.codesaway.bex.IntBEXPair;
-import info.codesaway.bex.IntPair;
 
 public final class ASTNodeUtilities {
 	private ASTNodeUtilities() {
@@ -33,33 +30,30 @@ public final class ASTNodeUtilities {
 	 * @param cu the CompilationUnit
 	 * @return the comment ranges
 	 */
-	public static NavigableMap<Integer, IntPair> getCommentRanges(final CompilationUnit cu) {
+	public static NavigableMap<Integer, StartEndIntPair> getCommentRanges(final CompilationUnit cu) {
 		@SuppressWarnings("unchecked")
 		List<Comment> commentList = cu.getCommentList();
 
-		TreeMap<Integer, IntPair> commentRanges = new TreeMap<>();
+		TreeMap<Integer, StartEndIntPair> commentRanges = new TreeMap<>();
 
 		for (Comment comment : commentList) {
 			int start = comment.getStartPosition();
 			int end = start + comment.getLength();
 
-			commentRanges.put(start, IntBEXPair.of(start, end));
+			commentRanges.put(start, StartEndIntPair.of(start, end));
 		}
 
 		return Collections.unmodifiableNavigableMap(commentRanges);
 	}
 
-	public static boolean isInComment(final int start, final NavigableMap<Integer, IntPair> commentRanges) {
-		Entry<Integer, IntPair> entry = commentRanges.floorEntry(start);
+	public static boolean isInComment(final int start, final NavigableMap<Integer, StartEndIntPair> commentRanges) {
+		Entry<Integer, StartEndIntPair> entry = commentRanges.floorEntry(start);
 
 		if (entry == null) {
 			return false;
 		}
 
-		IntPair range = entry.getValue();
-
-		// Subtract 1 from end since exclusive
-		return isBetween(start, range.getLeft(), range.getRight() - 1);
+		return entry.getValue().contains(start);
 	}
 
 	public static ASTNode findNode(final CompilationUnit cu, final BECRMatchResult match) {

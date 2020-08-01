@@ -92,10 +92,14 @@ public final class BECRPattern {
 							"Regex match does not have valid end: " + pattern.substring(regexBlockStart));
 				}
 
-				regexBuilder.append(pattern.substring(i, end));
+				// Put regex in non-capture group
+				// (this way, if ends with "|", represents empty string and doesn't cross into next logic)
+				// (also any flags set don't impart rest of matching)
+				regexBuilder.append("(?:").append(pattern.substring(i, end)).append(")");
 				i = end + REGEX_BLOCK_END.length();
 			} else if (hasText(pattern, i, ":[:]")) {
 				regexBuilder.append(":");
+				i += 4;
 			} else if (c == ':' && nextChar(pattern, i) == '['
 					&& isNextCharStartOfGroup(pattern, i + 1)) {
 				int originalStart = i;
@@ -146,6 +150,14 @@ public final class BECRPattern {
 				} else if (hasText(pattern, i, "<>")) {
 					groupMatchSetting = groupMatchSetting.turnOn(MATCH_ANGLE_BRACKETS);
 					i += 2;
+				} else if (hasText(pattern, i, "*")) {
+					// Wildcard to match 0 or more characters (excludes line terminators)
+					regex = ".*?";
+					i++;
+				} else if (hasText(pattern, i, "+")) {
+					// Wildcard to match 1 or more characters (excludes line terminators)
+					regex = ".+?";
+					i++;
 				}
 
 				if (hasText(pattern, i, "]")) {
@@ -206,6 +218,11 @@ public final class BECRPattern {
 					regexBuilder.append("\\s*+");
 					i++;
 				}
+			} else if (c == '"') {
+				// Ensure the double quote isn't escaped
+				// (if it is, then don't match it)
+				regexBuilder.append("(?<!\\\\)\"");
+				i++;
 			} else {
 				regexBuilder.append(Pattern.literal(stringChar(pattern, i)));
 				i++;
