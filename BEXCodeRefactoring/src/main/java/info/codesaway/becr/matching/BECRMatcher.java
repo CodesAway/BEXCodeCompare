@@ -2,6 +2,7 @@ package info.codesaway.becr.matching;
 
 import static info.codesaway.becr.matching.BECRGroupMatchSetting.DEFAULT;
 import static info.codesaway.becr.matching.BECRGroupMatchSetting.STOP_WHEN_VALID;
+import static info.codesaway.becr.matching.BECRMatchingUtilities.extractJavaTextStates;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.hasText;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.lastChar;
 import static info.codesaway.becr.matching.BECRMatchingUtilities.nextChar;
@@ -53,7 +54,7 @@ public final class BECRMatcher implements BECRMatchResult {
 	private final Map<String, List<IntPair>> multipleValues = new HashMap<>();
 
 	BECRMatcher(final BECRPattern parent, final CharSequence text) {
-		this(parent, text, BECRString.extractJavaTextStates(text), 0);
+		this(parent, text, extractJavaTextStates(text), 0);
 	}
 
 	BECRMatcher(final BECRPattern parent, final CharSequence text,

@@ -2,7 +2,7 @@ package info.codesaway.becr.matching;
 
 import info.codesaway.becr.IntRange;
 
-class BECRTextState {
+public class BECRTextState {
 	private final IntRange range;
 	private final BECRStateOption stateOption;
 
