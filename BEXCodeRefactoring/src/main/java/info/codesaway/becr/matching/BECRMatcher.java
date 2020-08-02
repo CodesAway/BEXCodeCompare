@@ -14,10 +14,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.NavigableMap;
 import java.util.Objects;
-import java.util.TreeMap;
 
-import info.codesaway.becr.StartEndIntPair;
 import info.codesaway.bex.IntBEXPair;
 import info.codesaway.bex.IntPair;
 import info.codesaway.bex.MutableIntBEXPair;
@@ -27,13 +26,19 @@ import info.codesaway.util.regex.Pattern;
 public final class BECRMatcher implements BECRMatchResult {
 	private static final boolean DEBUG = false;
 
-	private BECRPattern parentPattern;
-	private CharSequence text;
+	private final BECRPattern parentPattern;
+
+	private final CharSequence text;
 
 	/**
-	 * Map from range start to BECRTextInfo (contains range and other text info)
+	 * Map from range start to BECRTextState (contains range and text state)
 	 */
-	private TreeMap<Integer, BECRTextInfo> textInfoMap;
+	private final NavigableMap<Integer, BECRTextState> textStateMap;
+
+	/**
+	 * Offset used when resolving indexes in textStateMap (allows sharing textStateMap such as in BECRString)
+	 */
+	private final int offset;
 
 	private final MutableIntBEXPair matchStartEnd = new MutableIntBEXPair(-1, 0);
 
@@ -48,8 +53,15 @@ public final class BECRMatcher implements BECRMatchResult {
 	private final Map<String, List<IntPair>> multipleValues = new HashMap<>();
 
 	BECRMatcher(final BECRPattern parent, final CharSequence text) {
-		this.setParentPattern(parent);
-		this.setText(text);
+		this(parent, text, BECRString.extractJavaTextStates(text), 0);
+	}
+
+	BECRMatcher(final BECRPattern parent, final CharSequence text,
+			final NavigableMap<Integer, BECRTextState> textStateMap, final int offset) {
+		this.parentPattern = parent;
+		this.text = text;
+		this.textStateMap = textStateMap;
+		this.offset = offset;
 	}
 
 	@Override
@@ -57,86 +69,9 @@ public final class BECRMatcher implements BECRMatchResult {
 		return this.parentPattern;
 	}
 
-	public void setParentPattern(final BECRPattern parentPattern) {
-		this.parentPattern = parentPattern;
-	}
-
 	@Override
 	public String text() {
 		return this.text.toString();
-	}
-
-	public void setText(final CharSequence text) {
-		this.text = text;
-		this.textInfoMap = new TreeMap<>();
-
-		// Parse text to get info
-		// * Block comment
-		// * Line comment
-		// * In String literal
-		// * Other stuff?
-
-		// TODO: see if can share this common logic
-
-		boolean isInStringLiteral = false;
-		boolean isInLineComment = false;
-		boolean isInMultilineComment = false;
-
-		int startTextInfo = -1;
-
-		for (int i = 0; i < text.length(); i++) {
-			char c = text.charAt(i);
-
-			if (isInStringLiteral) {
-				if (c == '\\') {
-					// Escape next character
-					if (nextChar(text, i) == '\0') {
-						break;
-					}
-
-					i++;
-				} else if (c == '"') {
-					// End of String literal
-					isInStringLiteral = false;
-
-					this.textInfoMap.put(startTextInfo,
-							new BECRTextInfo(StartEndIntPair.of(startTextInfo, i), IN_STRING_LITERAL));
-				}
-				// Other characters don't matter??
-				// TODO: handle unicode and other escaping in String literal
-			} else if (isInLineComment) {
-				if (c == '\n' || c == '\r') {
-					isInLineComment = false;
-					this.textInfoMap.put(startTextInfo,
-							new BECRTextInfo(StartEndIntPair.of(startTextInfo, i), IN_LINE_COMMENT));
-				}
-				// Other characters don't matter?
-			} else if (isInMultilineComment) {
-				if (hasText(text, i, "*/")) {
-					isInMultilineComment = false;
-					i++;
-					this.textInfoMap.put(startTextInfo,
-							new BECRTextInfo(StartEndIntPair.of(startTextInfo, i), IN_MULTILINE_COMMENT));
-				}
-			} else if (c == '/' && nextChar(text, i) == '/') {
-				isInLineComment = true;
-				startTextInfo = i;
-				i++;
-			} else if (c == '/' && nextChar(text, i) == '*') {
-				isInMultilineComment = true;
-				startTextInfo = i;
-				i++;
-			} else if (c == '"') {
-				// String literal
-				isInStringLiteral = true;
-				startTextInfo = i;
-			}
-		}
-
-		if (isInLineComment) {
-			this.textInfoMap.put(startTextInfo,
-					new BECRTextInfo(StartEndIntPair.of(startTextInfo, text.length()), IN_LINE_COMMENT));
-		}
 	}
 
 	public boolean find() {
@@ -182,8 +117,11 @@ public final class BECRMatcher implements BECRMatchResult {
 			}
 
 			int start = currentMatcher.start();
-			Entry<Integer, BECRTextInfo> entry = this.textInfoMap.floorEntry(start);
-			if (entry != null && entry.getValue().getRange().contains(start) && start != entry.getKey()) {
+			int startWithOffset = start + this.offset;
+			// TODO: how to support this with taking BECRString.substring?
+			Entry<Integer, BECRTextState> entry = this.textStateMap.floorEntry(startWithOffset);
+			if (entry != null && entry.getValue().getRange().contains(startWithOffset)
+					&& startWithOffset != entry.getKey()) {
 				// Don't count as match, since part of string literal or comment
 				// If match starts with the block, then okay to match
 				// TODO: when else would it be okay to match?
@@ -192,8 +130,12 @@ public final class BECRMatcher implements BECRMatchResult {
 			} else {
 				foundMatch = true;
 				if (DEBUG) {
-					System.out.println("Found match! " + start);
-					System.out.println(this.textInfoMap);
+					if (start == startWithOffset) {
+						System.out.printf("Found match! %d%n", start);
+					} else {
+						System.out.printf("Found match! %d (%d)%n", start, startWithOffset);
+					}
+					System.out.println(this.textStateMap);
 				}
 			}
 		} while (!foundMatch);
@@ -245,9 +187,10 @@ public final class BECRMatcher implements BECRMatchResult {
 			// TODO: need to set state info, such as if in String literal
 			//			BECRState initialState = new BECRState(-1, "", IN_STRING_LITERAL);
 
-			Entry<Integer, BECRTextInfo> entry = this.textInfoMap.floorEntry(start);
+			int startWithOffset = start + this.offset;
+			Entry<Integer, BECRTextState> entry = this.textStateMap.floorEntry(startWithOffset);
 			BECRState initialState;
-			if (entry != null && entry.getValue().getRange().contains(start)) {
+			if (entry != null && entry.getValue().getRange().contains(startWithOffset)) {
 				initialState = new BECRState(-1, "", entry.getValue().getStateOption());
 			} else {
 				initialState = BECRState.DEFAULT;

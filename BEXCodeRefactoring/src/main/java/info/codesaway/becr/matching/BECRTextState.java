@@ -1,17 +1,17 @@
 package info.codesaway.becr.matching;
 
-import info.codesaway.becr.StartEndIntPair;
+import info.codesaway.becr.IntRange;
 
-class BECRTextInfo {
-	private final StartEndIntPair range;
+class BECRTextState {
+	private final IntRange range;
 	private final BECRStateOption stateOption;
 
-	public BECRTextInfo(final StartEndIntPair range, final BECRStateOption stateOption) {
+	public BECRTextState(final IntRange range, final BECRStateOption stateOption) {
 		this.range = range;
 		this.stateOption = stateOption;
 	}
 
-	public StartEndIntPair getRange() {
+	public IntRange getRange() {
 		return this.range;
 	}
 

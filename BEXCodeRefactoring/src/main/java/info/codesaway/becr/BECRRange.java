@@ -1,11 +1,9 @@
 package info.codesaway.becr;
 
-import info.codesaway.bex.IntPair;
-
 /**
  * An IntPair representing a start and end
  */
-public class StartEndIntPair implements IntPair {
+public final class BECRRange implements IntRange {
 	private final int start;
 	private final int end;
 
@@ -14,7 +12,7 @@ public class StartEndIntPair implements IntPair {
 	 * @param start the start
 	 * @param end the end (exclusive)
 	 */
-	private StartEndIntPair(final int start, final int end) {
+	private BECRRange(final int start, final int end) {
 		this.start = start;
 		this.end = end;
 	}
@@ -23,6 +21,7 @@ public class StartEndIntPair implements IntPair {
 	 * Gets the start
 	 * @return the start
 	 */
+	@Override
 	public int getStart() {
 		return this.start;
 	}
@@ -31,26 +30,13 @@ public class StartEndIntPair implements IntPair {
 	 * Gets the end
 	 * @return the end
 	 */
+	@Override
 	public int getEnd() {
 		return this.end;
 	}
 
-	@Override
-	public int getLeft() {
-		return this.getStart();
-	}
-
-	@Override
-	public int getRight() {
-		return this.getEnd();
-	}
-
-	public static StartEndIntPair of(final int start, final int end) {
-		return new StartEndIntPair(start, end);
-	}
-
-	public boolean contains(final int value) {
-		return value >= this.start && value < this.end;
+	public static BECRRange of(final int start, final int end) {
+		return new BECRRange(start, end);
 	}
 
 	@Override

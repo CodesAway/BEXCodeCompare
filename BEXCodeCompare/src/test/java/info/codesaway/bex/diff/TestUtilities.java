@@ -12,7 +12,7 @@ import info.codesaway.bex.BEXPairValue;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 import info.codesaway.bex.diff.substitution.SubstitutionType;
 
-public class TestUtilities {
+public final class TestUtilities {
 	public static SubstitutionDiffType acceptSubstitutionType(final SubstitutionType substitutionType,
 			final String leftText, final String rightText) {
 		return acceptSubstitutionType(substitutionType, leftText, rightText, DiffHelper.NO_NORMALIZATION_FUNCTION);

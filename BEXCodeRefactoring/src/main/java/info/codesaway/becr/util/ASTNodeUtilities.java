@@ -2,7 +2,6 @@ package info.codesaway.becr.util;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
@@ -11,12 +10,19 @@ import org.eclipse.jdt.core.dom.Comment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.NodeFinder;
 
-import info.codesaway.becr.StartEndIntPair;
+import info.codesaway.becr.BECRRange;
 import info.codesaway.becr.matching.BECRMatchResult;
 
 public final class ASTNodeUtilities {
 	private ASTNodeUtilities() {
 		throw new UnsupportedOperationException();
+	}
+
+	public static BECRRange getStartEnd(final ASTNode node) {
+		int start = node.getStartPosition();
+		int end = start + node.getLength();
+
+		return BECRRange.of(start, end);
 	}
 
 	/**
@@ -30,30 +36,17 @@ public final class ASTNodeUtilities {
 	 * @param cu the CompilationUnit
 	 * @return the comment ranges
 	 */
-	public static NavigableMap<Integer, StartEndIntPair> getCommentRanges(final CompilationUnit cu) {
+	public static NavigableMap<Integer, BECRRange> getCommentRanges(final CompilationUnit cu) {
 		@SuppressWarnings("unchecked")
 		List<Comment> commentList = cu.getCommentList();
 
-		TreeMap<Integer, StartEndIntPair> commentRanges = new TreeMap<>();
+		TreeMap<Integer, BECRRange> commentRanges = new TreeMap<>();
 
 		for (Comment comment : commentList) {
-			int start = comment.getStartPosition();
-			int end = start + comment.getLength();
-
-			commentRanges.put(start, StartEndIntPair.of(start, end));
+			commentRanges.put(comment.getStartPosition(), getStartEnd(comment));
 		}
 
 		return Collections.unmodifiableNavigableMap(commentRanges);
-	}
-
-	public static boolean isInComment(final int start, final NavigableMap<Integer, StartEndIntPair> commentRanges) {
-		Entry<Integer, StartEndIntPair> entry = commentRanges.floorEntry(start);
-
-		if (entry == null) {
-			return false;
-		}
-
-		return entry.getValue().contains(start);
 	}
 
 	public static ASTNode findNode(final CompilationUnit cu, final BECRMatchResult match) {

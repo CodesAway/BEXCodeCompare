@@ -142,11 +142,15 @@ public final class BECRPattern {
 					// Match horizontal space in text (excludes line terminators)
 					regex = isOptional ? "\\h*+" : "\\h++";
 				} else if (hasText(pattern, i, ":w")) {
-					regex = isOptional ? "\\w*?" : "\\w+?";
+					// TODO: test against comby
+					// though, based no my example, this shouldn't be lazy
+					// (should be greedy, but not possessive)
+					regex = isOptional ? "\\w*" : "\\w+";
+					//					regex = isOptional ? "\\w*?" : "\\w+?";
 					i += 2;
 				} else if (hasText(pattern, i, ".")) {
 					// TODO: test against comby
-					// though, based no my example, this shouldnt' be lazy
+					// though, based no my example, this shouldn't be lazy
 					// (should be greedy, but not possessive)
 					regex = isOptional ? "[\\w.-]*" : "[\\w.-]+";
 					//					regex = isOptional ? "[\\w.-]*?" : "[\\w.-]+?";
@@ -256,6 +260,12 @@ public final class BECRPattern {
 
 	public BECRMatcher matcher(final CharSequence text) {
 		return new BECRMatcher(this, text);
+	}
+
+	public BECRMatcher matcher(final BECRString text) {
+		// TODO: how to provide special handling for BECRString
+		// TODO: how to handle offset
+		return new BECRMatcher(this, text.getText(), text.getTextStateMap(), text.getOffset());
 	}
 
 	List<Pattern> getPatterns() {
