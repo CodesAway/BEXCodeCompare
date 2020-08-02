@@ -220,6 +220,10 @@ public final class BECRMatcher implements BECRMatchResult {
 				return false;
 			}
 
+			if (DEBUG) {
+				System.out.printf("Matched next match %d %s\t%s%n", i + 1, nextMatcher.pattern(), nextMatcher.group());
+			}
+
 			int start = regionStart;
 			int end = nextMatcher.start();
 
@@ -554,16 +558,16 @@ public final class BECRMatcher implements BECRMatchResult {
 	@Override
 	public String get(final String group) {
 		IntPair startEnd = this.getInternal(group);
-
+	
 		// Intentionally using identity equals
 		if (startEnd == NOT_FOUND) {
 			throw new IllegalArgumentException("The specified group is not in the pattern: " + group);
 		}
-
+	
 		if (startEnd == null) {
 			return null;
 		}
-
+	
 		return this.getSubstring(startEnd);
 	}
 	*/

@@ -84,6 +84,20 @@ class BECRMatcherTest {
 	}
 
 	@Test
+	void testOptionAngleBracketsMustBeBalancedSuchAsJavaGenerics() {
+		String pattern = "List:[value<>] :[variable.]";
+		String text = "List<String, List<Integer>> values";
+		String expectedValue = "<String, List<Integer>>";
+		BECRMatcher becrMatcher = this.testBECRMatch(pattern, text, expectedValue);
+
+		System.out.println(becrMatcher.get("value"));
+
+		assertThat(becrMatcher)
+				.extracting(m -> m.get("variable"))
+				.isEqualTo("values");
+	}
+
+	@Test
 	void testEmptyDoesNotMatch() {
 		String pattern = ":[value]";
 		String text = "";
@@ -130,6 +144,16 @@ class BECRMatcherTest {
 		this.testBECRMatch(pattern, text, expectedValue);
 	}
 
+	@Test
+	void testSingleLinePlusOneOrMoreCharacters() {
+		// Doesn't check for balanced, since just getting characters
+		// like regex .+?
+		String pattern = "something :[value+] fun";
+		String text = "something cool(unbalanced fun";
+		String expectedValue = "cool(unbalanced";
+		this.testBECRMatch(pattern, text, expectedValue);
+	}
+
 	// TODO: this test fails
 	// * Expecting to match "("
 	// * Currently, the code expects the match to have balanced parentheses
@@ -172,11 +196,13 @@ class BECRMatcherTest {
 	 * @param text the text to match
 	 * @param expectedValue the expected value
 	 */
-	private void testBECRMatch(final String pattern, final String text, final String expectedValue) {
+	private BECRMatcher testBECRMatch(final String pattern, final String text, final String expectedValue) {
 		BECRMatcher becrMatcher = this.testJustBECRMatch(pattern, text);
 
 		assertThat(becrMatcher)
 				.extracting(m -> m.get("value"))
 				.isEqualTo(expectedValue);
+
+		return becrMatcher;
 	}
 }

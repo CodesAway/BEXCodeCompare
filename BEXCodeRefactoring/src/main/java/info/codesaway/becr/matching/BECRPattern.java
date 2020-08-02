@@ -145,7 +145,11 @@ public final class BECRPattern {
 					regex = isOptional ? "\\w*?" : "\\w+?";
 					i += 2;
 				} else if (hasText(pattern, i, ".")) {
-					regex = isOptional ? "[\\w.-]*?" : "[\\w.-]+?";
+					// TODO: test against comby
+					// though, based no my example, this shouldnt' be lazy
+					// (should be greedy, but not possessive)
+					regex = isOptional ? "[\\w.-]*" : "[\\w.-]+";
+					//					regex = isOptional ? "[\\w.-]*?" : "[\\w.-]+?";
 					i++;
 				} else if (hasText(pattern, i, "<>")) {
 					groupMatchSetting = groupMatchSetting.turnOn(MATCH_ANGLE_BRACKETS);
