@@ -25,7 +25,7 @@ import info.codesaway.util.regex.Matcher;
 import info.codesaway.util.regex.Pattern;
 
 public final class BECRMatcher implements BECRMatchResult {
-	private static final boolean DEBUG = false;
+	static final boolean DEBUG = false;
 
 	private final BECRPattern parentPattern;
 
@@ -105,6 +105,8 @@ public final class BECRMatcher implements BECRMatchResult {
 
 		// TODO: cache matchers?
 		Matcher currentMatcher = patterns.get(0).matcher(this.text);
+		// TODO: specify as option? (needed to handle spaces after group)
+		currentMatcher.useTransparentBounds(true);
 
 		boolean foundMatch;
 		int searchFrom = from;
@@ -154,11 +156,19 @@ public final class BECRMatcher implements BECRMatchResult {
 			Pattern nextPattern = patterns.get(i + 1);
 
 			Matcher nextMatcher = nextPattern.matcher(this.text);
+
+			if (DEBUG) {
+				System.out.println("Region start: " + regionStart);
+			}
+
 			nextMatcher.region(regionStart, this.text.length());
+			nextMatcher.useTransparentBounds(true);
 
 			if (!nextMatcher.find()) {
 				if (DEBUG) {
 					System.out.printf("Didn't match next matcher %d%n", i + 1);
+					System.out.println("Pattern: " + nextPattern);
+					System.out.println("Text: " + this.text.subSequence(regionStart, this.text.length()));
 				}
 				return false;
 			}
@@ -238,6 +248,8 @@ public final class BECRMatcher implements BECRMatchResult {
 				}
 
 				nextMatcher.region(position, this.text.length());
+				// TODO: specify as option? (needed to handle spaces after group)
+				nextMatcher.useTransparentBounds(true);
 
 				if (!nextMatcher.find()) {
 					// State is valid and cannot find another match
@@ -502,16 +514,16 @@ public final class BECRMatcher implements BECRMatchResult {
 	@Override
 	public String get(final String group) {
 		IntPair startEnd = this.getInternal(group);
-	
+
 		// Intentionally using identity equals
 		if (startEnd == NOT_FOUND) {
 			throw new IllegalArgumentException("The specified group is not in the pattern: " + group);
 		}
-	
+
 		if (startEnd == null) {
 			return null;
 		}
-	
+
 		return this.getSubstring(startEnd);
 	}
 	*/

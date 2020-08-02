@@ -42,6 +42,12 @@ public final class BECRPattern {
 		this.groups = Collections.unmodifiableList(groups);
 		this.groupMatchSettings = Collections.unmodifiableMap(groupMatchSettings);
 
+		if (BECRMatcher.DEBUG) {
+			System.out.println("Patterns:");
+			patterns.forEach(System.out::println);
+			System.out.println();
+		}
+
 		//		this.regexPatternFlags = regexPatternFlags;
 	}
 
@@ -75,6 +81,7 @@ public final class BECRPattern {
 		Map<Integer, BECRGroupMatchSetting> groupMatchSettings = new HashMap<>();
 
 		StringBuilder regexBuilder = new StringBuilder();
+		boolean isAfterGroup = false;
 
 		for (int i = 0; i < pattern.length();) {
 			char c = pattern.charAt(i);
@@ -206,6 +213,9 @@ public final class BECRPattern {
 					// (also, this way, can add more functionality over time without braking existing code)
 					throw new IllegalArgumentException("Invalid syntax: " + pattern.substring(originalStart, i + 1));
 				}
+
+				isAfterGroup = true;
+				continue;
 			} else if (c == ' ') {
 				// Handle whitespace
 				// A single space represents optional whitespace (except when between two alphanumeric)
@@ -222,6 +232,20 @@ public final class BECRPattern {
 					// If space is between 2 alphanumeric, then space is required
 					regexBuilder.append("\\s++");
 					i++;
+				} else if (isAfterGroup) {
+					// TODO: need to handle if group in middle is optional and has space before group
+					// In this case, the space after the group must be optional (otherwise, will always fail)
+					// (since would have captured space before, the group is empty, and there is no space after to get)
+
+					// Space after group is required
+					regexBuilder.append("\\s*+(?<=\\s)");
+					i++;
+				} else if (hasText(pattern, i + 1, ":[")) {
+					// Space before group is required
+					//					regexBuilder.append("(?:\\s++|(?<=\\s)\\s*+)");
+					regexBuilder.append("\\s*+(?<=\\s)");
+					//					regexBuilder.append("\\s++");
+					i++;
 				} else {
 					regexBuilder.append("\\s*+");
 					i++;
@@ -235,6 +259,8 @@ public final class BECRPattern {
 				regexBuilder.append(Pattern.literal(stringChar(pattern, i)));
 				i++;
 			}
+
+			isAfterGroup = false;
 		}
 
 		if (regexBuilder.length() > 0) {

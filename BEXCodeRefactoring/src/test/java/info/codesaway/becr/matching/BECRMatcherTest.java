@@ -27,7 +27,6 @@ class BECRMatcherTest {
 
 	@Test
 	void testBasicOptionalMatch() {
-		// TODO: seems like both regular and optional match the same - not sure if the regular shouldn't match the empty string
 		String pattern = "try :[?value] { :[stuff] }";
 		String text = "		try {\r\n" +
 				"\r\n" +
@@ -36,6 +35,17 @@ class BECRMatcherTest {
 				"";
 		String expectedValue = "";
 		testBECRMatch(pattern, text, expectedValue);
+	}
+
+	@Test
+	void testBasicMatchCannotBeEmpty() {
+		String pattern = "try :[value] { :[stuff] }";
+		String text = "		try {\r\n" +
+				"\r\n" +
+				"			sqlStatement.execute();\r\n" +
+				"		} catch (SQLException e) {\r\n" +
+				"";
+		testNoBECRMatch(pattern, text);
 	}
 
 	// TODO: need to support logic that expects the same group to match the same value
@@ -64,7 +74,7 @@ class BECRMatcherTest {
 	}
 
 	@Test
-	void testPatternStartsIsOnlyOneGroup() {
+	void testPatternSingleGroupMatchesAll() {
 		String pattern = ":[value]";
 		String text = "a = a";
 		testBECRMatch(pattern, text, "a = a");
@@ -118,6 +128,14 @@ class BECRMatcherTest {
 	}
 
 	@Test
+	void testInStringLiteralShouldIgnoreEvenWithoutEnding() {
+		String pattern = "try { }";
+		String text = "\"try { }";
+		// Note: doesn't have String literal ending, yet still should be ignored
+		testNoBECRMatch(pattern, text);
+	}
+
+	@Test
 	void testLineCommentShouldIgnore() {
 		String pattern = "try { }";
 		String text = "// try { }";
@@ -132,6 +150,17 @@ class BECRMatcherTest {
 				+ "{\n"
 				+ "}\n"
 				+ "*/";
+		testNoBECRMatch(pattern, text);
+	}
+
+	@Test
+	void testMultilineCommentShouldIgnoreEvenWithoutEnding() {
+		String pattern = "try { }";
+		String text = "/*\n"
+				+ "try\n"
+				+ "{\n"
+				+ "}\n";
+		// Note: doesn't have multiline comment ending, yet still should be ignored
 		testNoBECRMatch(pattern, text);
 	}
 
@@ -153,6 +182,24 @@ class BECRMatcherTest {
 		testBECRMatch(pattern, text, expectedValue);
 	}
 
+	@Test
+	void testSingleLineStarZeroOrMoreCharacters() {
+		// Doesn't check for balanced, since just getting characters
+		// like regex .+?
+		String pattern = "something :[value*] fun";
+		String text = "something cool(unbalanced fun";
+		String expectedValue = "cool(unbalanced";
+		testBECRMatch(pattern, text, expectedValue);
+	}
+
+	@Test
+	void testSingleLineEmptyStarZeroCharacters() {
+		String pattern = "something :[value*] fun";
+		String text = "something fun";
+		String expectedValue = "";
+		testBECRMatch(pattern, text, expectedValue);
+	}
+
 	// TODO: this test fails
 	// * Expecting to match "("
 	// * Currently, the code expects the match to have balanced parentheses
@@ -171,5 +218,57 @@ class BECRMatcherTest {
 		String pattern = ":[:]";
 		String text = ":";
 		testJustBECRMatch(pattern, text);
+	}
+
+	@Test
+	void testOptionalWhitespace() {
+		String pattern = "if (:[value])";
+		String text = "if(something)";
+		String expectedValue = "something";
+		testBECRMatch(pattern, text, expectedValue);
+	}
+
+	@Test
+	void testRequiredWhitespace() {
+		String pattern = "if  (:[value])";
+		String text = "if(something)";
+		testNoBECRMatch(pattern, text);
+	}
+
+	@Test
+	void testRequiredWhitespaceBeforeGroup() {
+		String pattern = "int :[value]";
+		String text = "integer";
+		testNoBECRMatch(pattern, text);
+	}
+
+	@Test
+	void testRequiredWhitespaceAfterGroup() {
+		String pattern = ":[value] int";
+		String text = "pint";
+		testNoBECRMatch(pattern, text);
+	}
+
+	@Test
+	void testRequiredWhitespaceBothBeforeAndAfterGroup() {
+		String pattern = "int :[value] ger";
+
+		testNoBECRMatch(pattern, "integer");
+		testNoBECRMatch(pattern, "int eger");
+		testNoBECRMatch(pattern, "inte ger");
+	}
+
+	@Test
+	void testRequiredWhitespaceBothBeforeAndAfterOptionalGroup() {
+		String pattern = "int :[?value] ger";
+
+		testBECRMatch(pattern, "int ger", "");
+	}
+
+	@Test
+	void testOptionalSpace() {
+		String pattern = "if (:[value])";
+		testBECRMatch(pattern, "if (something)", "something");
+		testBECRMatch(pattern, "if(something)", "something");
 	}
 }

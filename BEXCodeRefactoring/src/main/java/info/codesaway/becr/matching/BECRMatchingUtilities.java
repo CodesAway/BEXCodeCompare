@@ -138,6 +138,12 @@ public class BECRMatchingUtilities {
 		if (isInLineComment) {
 			textStateMap.put(startTextInfo,
 					new BECRTextState(BECRRange.of(startTextInfo, text.length()), IN_LINE_COMMENT));
+		} else if (isInMultilineComment) {
+			textStateMap.put(startTextInfo,
+					new BECRTextState(BECRRange.of(startTextInfo, text.length()), IN_MULTILINE_COMMENT));
+		} else if (isInStringLiteral) {
+			textStateMap.put(startTextInfo,
+					new BECRTextState(BECRRange.of(startTextInfo, text.length()), IN_STRING_LITERAL));
 		}
 
 		return Collections.unmodifiableNavigableMap(textStateMap);
