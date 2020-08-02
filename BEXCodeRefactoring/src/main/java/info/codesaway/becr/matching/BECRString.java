@@ -20,7 +20,7 @@ public final class BECRString implements CharSequence {
 	private final int offset;
 
 	/**
-	 * Creates a BECRString from the specified text using the {@link #extractJavaTextStates(CharSequence)}
+	 * Creates a BECRString from the specified text using the {@link BECRMatchingUtilities#extractJavaTextStates(CharSequence)}
 	 * @param text the Java source code
 	 */
 	public BECRString(final String text) {

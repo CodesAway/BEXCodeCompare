@@ -34,10 +34,15 @@ class BECRStringTest {
 				+ "Line 3";
 
 		// Get substring starting with line 2
-		BECRString becrString = new BECRString(text).substring(text.indexOf('"'), text.length());
+		int index = text.indexOf('"');
+		BECRString becrString = new BECRString(text).substring(index, text.length());
+
+		assertThat(becrString.getText()).isEqualTo(text.substring(index));
 
 		BECRPattern becrPattern = BECRPattern.compile(pattern);
 		BECRMatcher becrMatcher = becrPattern.matcher(becrString);
+
+		assertThat(becrMatcher.text()).isEqualTo(text.substring(index));
 
 		assertTrue(becrMatcher.find(), "Could not find match");
 
