@@ -8,6 +8,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2020-08-02
+### Added
+* Structured source matching (adopted some syntax from https://comby.dev)
+  * This will be used in a future release to help with refactoring
+  * Some syntax comes from Comby, other is new syntax (such as RegEx support)
+  * There is no guarantee that Comby and BECR will behave the same with the same syntax
+
+#### Classes and Interfaces
+* BECRRange
+* IntRange (interface)
+* BECRGroupMatchSetting (package private)
+* BECRPattern
+* BECRPatternFlag (enum)
+* BECRMatcher
+* BECRMatchResult (interface)
+* BECRMatchingUtilities
+
+#### Methods
+* IntPair.toIntBEXPair
+
+* MutableIntBEXPair
+  * set
+  * setLeft
+  * setRight
+
+* BEXUtilities
+  * isBetween
+  * getSubstring
+  * getSubSequence
+
+### Changed
+* Made some classes final
+
+### Fixed
+
 ## BECR Examples [0.2.1] - 2020-07-21
 * Fixed issues with long project names used as Excel sheet names ([#37](https://github.com/CodesAway/BEXCodeCompare/issues/37))
 * Fixed issues with large amount of text in Excel report  ([#36](https://github.com/CodesAway/BEXCodeCompare/issues/36))
