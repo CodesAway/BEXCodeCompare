@@ -18,12 +18,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Classes and Interfaces
 * BECRRange
 * IntRange (interface)
-* BECRGroupMatchSetting (package private)
+
+* BECRString
+* BECRTextState
+* BECRStateOption (enum)
+
 * BECRPattern
 * BECRPatternFlag (enum)
 * BECRMatcher
 * BECRMatchResult (interface)
+
+* BECRUtilities
 * BECRMatchingUtilities
+* ASTNodeUtilities
+
+* BECRGroupMatchSetting (package private)
+* BECRState (package private)
+
+* ParsingUtilities.getParser
 
 #### Methods
 * IntPair.toIntBEXPair
@@ -40,8 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 * Made some classes final
-
-### Fixed
+* Moved method ParsingUtilities.not to BEXUtilities
+* Renamed package info.codesaway.becr.examples to info.codesaway.becr.comparedirectories
 
 ## BECR Examples [0.2.1] - 2020-07-21
 * Fixed issues with long project names used as Excel sheet names ([#37](https://github.com/CodesAway/BEXCodeCompare/issues/37))
