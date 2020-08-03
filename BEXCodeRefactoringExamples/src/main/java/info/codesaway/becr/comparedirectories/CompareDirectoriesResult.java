@@ -1,4 +1,4 @@
-package info.codesaway.becr.examples;
+package info.codesaway.becr.comparedirectories;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -8,7 +8,7 @@ import java.util.Map;
 import info.codesaway.becr.parsing.ProjectPath;
 import info.codesaway.bex.BEXListPair;
 
-public class CompareDirectoriesResult {
+public final class CompareDirectoriesResult {
 	private final CompareDirectoriesDifferencesResult compareDirectoriesDifferencesResult;
 	private final BEXListPair<ProjectPath> javaPaths;
 	private final Map<ProjectPath, CompareJavaCodeInfo> javaParseResults;

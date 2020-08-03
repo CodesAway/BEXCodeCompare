@@ -1,6 +1,6 @@
 package info.codesaway.bex.util;
 
-public class BEXPluginUtilities {
+public final class BEXPluginUtilities {
 	private BEXPluginUtilities() {
 		throw new UnsupportedOperationException();
 	}

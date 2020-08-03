@@ -1,6 +1,6 @@
-package info.codesaway.becr.examples;
+package info.codesaway.becr.comparedirectories;
 
-import static info.codesaway.becr.examples.CompareDirectoriesOption.EXCLUDE_DEFAULT_SUBSTITUTIONS;
+import static info.codesaway.becr.comparedirectories.CompareDirectoriesOption.EXCLUDE_DEFAULT_SUBSTITUTIONS;
 import static info.codesaway.becr.util.ExcelUtilities.EXCEL_COLUMN_CHARACTER_MULTIPLIER;
 import static info.codesaway.bex.BEXSide.LEFT;
 import static info.codesaway.bex.BEXSide.RIGHT;

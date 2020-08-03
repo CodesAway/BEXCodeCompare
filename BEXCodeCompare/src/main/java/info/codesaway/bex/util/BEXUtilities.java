@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import info.codesaway.bex.IntPair;
+
 public final class BEXUtilities {
 	private BEXUtilities() {
 		throw new UnsupportedOperationException();
@@ -65,15 +67,14 @@ public final class BEXUtilities {
 	}
 
 	/**
-	 * Checks if the contents of the StringBuilder are equal
+	 * Checks if the contents of the <code>CharSequence</code>s are equal
 	 *
-	 * <p><b>Note</b>: The StringBuilder.equals method checks reference equality.</p>
-	 * @param s1 the first StringBuilder
-	 * @param s2 the second StringBuilder
-	 * @return <code>true</code> if the contents of the StringBuilder objects are equal
+	 * @param s1 the first CharSequence
+	 * @param s2 the second CharSequence
+	 * @return <code>true</code> if the contents of the <code>CharSequence</code>s are equal
 	 * @since 0.4
 	 */
-	public static boolean contentEquals(final StringBuilder s1, final StringBuilder s2) {
+	public static boolean contentEquals(final CharSequence s1, final CharSequence s2) {
 		// Check length as fast check
 		if (s1.length() != s2.length()) {
 			return false;
@@ -87,5 +88,26 @@ public final class BEXUtilities {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Indicates if the specified <code>number</code> is between the specified <code>start</code> and <code>end</code> (inclusive)
+	 *
+	 * @param number
+	 * @param start
+	 * @param end
+	 * @return
+	 * @since 0.5
+	 */
+	public static boolean isBetween(final int number, final int start, final int end) {
+		return number >= start && number <= end;
+	}
+
+	public static String getSubstring(final CharSequence text, final IntPair startEnd) {
+		return getSubSequence(text, startEnd).toString();
+	}
+
+	public static CharSequence getSubSequence(final CharSequence text, final IntPair startEnd) {
+		return text.subSequence(startEnd.getLeft(), startEnd.getRight());
 	}
 }

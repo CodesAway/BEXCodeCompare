@@ -8,7 +8,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -114,13 +113,25 @@ public final class ParsingUtilities {
 		return result.toString();
 	}
 
-	// Suggestion for a utility method, once we go to Java 8
-	// (makes it easy to negate a predicate; why this isn't in core Java is anyone's guess)
-	// Added in Java 11 to Predicate class
-	public static <T> Predicate<T> not(final Predicate<T> predicate) {
-		return predicate.negate();
+	/**
+	 * Gets a parser to parse Java files in the workspace
+	 *
+	 * <p>For the JRE path, it uses</p>
+	 * <pre>private final String jrePathname = System.getenv("JAVA_HOME");</pre>
+	 * @param workspace the workspace
+	 * @return
+	 */
+	public static ASTParser getParser(final String workspace) {
+		String jrePathname = System.getenv("JAVA_HOME");
+		return getParser(workspace, jrePathname);
 	}
 
+	/**
+	 * Gets a parser to parse
+	 * @param workspace
+	 * @param jrePathname
+	 * @return
+	 */
 	public static ASTParser getParser(final String workspace, final String jrePathname) {
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
 		parser.setResolveBindings(true);

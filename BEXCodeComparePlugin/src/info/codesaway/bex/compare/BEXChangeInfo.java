@@ -1,6 +1,6 @@
 package info.codesaway.bex.compare;
 
-public class BEXChangeInfo {
+public final class BEXChangeInfo {
 	private final boolean isImportantChange;
 	private final String info;
 

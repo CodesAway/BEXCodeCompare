@@ -1,4 +1,4 @@
-package info.codesaway.becr.examples;
+package info.codesaway.becr.comparedirectories;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;

@@ -18,4 +18,16 @@ public interface IntPair {
 		return new BEXPairValue<>(this.getLeft(), this.getRight());
 	}
 
+	/**
+	 * Returns an IntBEXPair (immutable) for this IntPair
+	 * @return an IntBEXPair (immutable) for this IntPair
+	 * @since 0.5
+	 */
+	public default IntBEXPair toIntBEXPair() {
+		if (this instanceof IntBEXPair) {
+			return (IntBEXPair) this;
+		}
+
+		return IntBEXPair.of(this.getLeft(), this.getRight());
+	}
 }

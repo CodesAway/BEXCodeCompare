@@ -7,7 +7,7 @@ import org.eclipse.ui.handlers.HandlerUtil;
 
 import info.codesaway.bex.views.BEXView;
 
-public class EnhancedCompareHandler extends AbstractHandler {
+public final class EnhancedCompareHandler extends AbstractHandler {
 	/**
 	 * the command has been executed, so extract extract the needed information
 	 * from the application context.

@@ -52,7 +52,7 @@ import info.codesaway.eclipse.compare.contentmergeviewer.TextMergeViewer;
  * <p>
  */
 
-public class BEXView extends ViewPart {
+public final class BEXView extends ViewPart {
 	// TODO: odd diff when compare BEXView to 6/12/2020 6:55 AM
 	// (commented out code was shown as addition and didn't align correctly for some reason)
 

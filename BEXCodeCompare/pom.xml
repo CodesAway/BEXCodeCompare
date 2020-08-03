@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>info.codesaway</groupId>
 	<artifactId>bex</artifactId>
-	<version>0.4.0</version>
+	<version>0.6.0</version>
 	<name>BEX Code Compare</name>
 	<description>Be Enhanced Code Compare</description>
 	<properties>
@@ -22,7 +22,7 @@
 		<dependency>
 			<groupId>info.codesaway</groupId>
 			<artifactId>regexplus</artifactId>
-			<version>1.1.0</version>
+			<version>1.2.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.spotbugs</groupId>

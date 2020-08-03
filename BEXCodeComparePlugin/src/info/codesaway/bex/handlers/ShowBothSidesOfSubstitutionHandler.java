@@ -7,7 +7,7 @@ import org.eclipse.ui.handlers.HandlerUtil;
 
 import info.codesaway.bex.views.BEXView;
 
-public class ShowBothSidesOfSubstitutionHandler extends AbstractHandler {
+public final class ShowBothSidesOfSubstitutionHandler extends AbstractHandler {
 	@Override
 	public Object execute(final ExecutionEvent event) throws ExecutionException {
 		// Toggle the command we just clicked and refresh the compare

@@ -1,4 +1,4 @@
-package info.codesaway.becr.examples;
+package info.codesaway.becr.comparedirectories;
 
 import java.util.List;
 
@@ -6,7 +6,7 @@ import com.google.common.collect.BiMap;
 
 import info.codesaway.becr.parsing.CodeInfoWithLineInfo;
 
-public class CorrespondingCodeResult {
+public final class CorrespondingCodeResult {
 	// TODO: see if can refactor to not use BiMap (so can put into BECR instead of BECR examples
 	private final BiMap<CodeInfoWithLineInfo, CodeInfoWithLineInfo> codeBlocksMap;
 	private final List<CodeInfoWithLineInfo> deletedBlocks;

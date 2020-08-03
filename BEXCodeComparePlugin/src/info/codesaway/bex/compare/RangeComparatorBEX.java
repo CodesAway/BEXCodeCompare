@@ -45,7 +45,7 @@ import info.codesaway.eclipse.compare.internal.DocLineComparator;
 import info.codesaway.eclipse.compare.rangedifferencer.AbstractRangeDifferenceFactory;
 import info.codesaway.eclipse.compare.rangedifferencer.RangeDifference;
 
-public class RangeComparatorBEX {
+public final class RangeComparatorBEX {
 	private final DocLineComparator comparator1, comparator2;
 	private final boolean ignoreWhitespace;
 	private final boolean isMirrored;

@@ -1,4 +1,4 @@
-package info.codesaway.becr.examples;
+package info.codesaway.becr.comparedirectories;
 
 import java.nio.file.Path;
 import java.util.List;
