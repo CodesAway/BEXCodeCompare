@@ -749,6 +749,11 @@ public final class BEXMatcher implements BEXMatchResult {
 			} else if (nextChar == ':' && hasText(replacement, cursor + 1, "[:]")) {
 				result.append(nextChar);
 				cursor += 4;
+			} else if (nextChar == ':' && hasText(replacement, cursor + 1, "[*]")) {
+				result.append(this.group());
+				cursor += 4;
+			} else if (nextChar == ':' && nextChar(replacement, cursor) == '[') {
+				throw new IllegalArgumentException("Unexpected group syntax: " + replacement.substring(cursor));
 			} else {
 				result.append(nextChar);
 				cursor++;

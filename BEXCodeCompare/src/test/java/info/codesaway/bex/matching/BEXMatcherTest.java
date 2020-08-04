@@ -271,4 +271,35 @@ class BEXMatcherTest {
 		testBEXMatch(pattern, "if (something)", "something");
 		testBEXMatch(pattern, "if(something)", "something");
 	}
+
+	@Test
+	void testGreedyDotThenOptionalGroup() {
+		String pattern = ":[value.]:[?digits]";
+		BEXMatcher bexMatcher = testBEXMatch(pattern, "matcher123", "matcher123");
+		assertThat(bexMatcher.group("digits")).isEmpty();
+	}
+
+	@Test
+	void testGreedyDotLeavesNothing() {
+		String pattern = ":[value.]:[digits]";
+		testNoBEXMatch(pattern, "matcher123");
+	}
+
+	@Test
+	void testWordGroup() {
+		String pattern = ":[value:w]";
+		testBEXMatch(pattern, "matcher123;", "matcher123");
+	}
+
+	@Test
+	void testDigitGroup() {
+		String pattern = ":[value:d]";
+		testBEXMatch(pattern, "matcher123;", "123");
+	}
+
+	@Test
+	void testStarGroup() {
+		BEXMatcher bexMatcher = testBEXMatch("blah :[value]", "blah fun", "fun");
+		assertThat(bexMatcher.group("*")).isEqualTo("blah fun");
+	}
 }

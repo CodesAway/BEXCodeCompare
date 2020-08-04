@@ -52,4 +52,12 @@ class BEXMatcherReplacementTest {
 
 		assertThat(m.replaceFirst("cat")).isEqualTo("zzzcatzzzdogzzz");
 	}
+
+	@Test
+	void testReplaceFirstStar() {
+		BEXPattern p = BEXPattern.compile("dog");
+		BEXMatcher m = p.matcher("zzzdogzzzdogzzz");
+
+		assertThat(m.replaceFirst("cat:[*]")).isEqualTo("zzzcatdogzzzdogzzz");
+	}
 }
