@@ -10,19 +10,19 @@ import org.eclipse.jdt.core.dom.Comment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.NodeFinder;
 
-import info.codesaway.becr.BECRRange;
-import info.codesaway.becr.matching.BECRMatchResult;
+import info.codesaway.bex.IntBEXRange;
+import info.codesaway.bex.matching.BEXMatchResult;
 
 public final class ASTNodeUtilities {
 	private ASTNodeUtilities() {
 		throw new UnsupportedOperationException();
 	}
 
-	public static BECRRange getStartEnd(final ASTNode node) {
+	public static IntBEXRange getStartEnd(final ASTNode node) {
 		int start = node.getStartPosition();
 		int end = start + node.getLength();
 
-		return BECRRange.of(start, end);
+		return IntBEXRange.of(start, end);
 	}
 
 	/**
@@ -36,11 +36,11 @@ public final class ASTNodeUtilities {
 	 * @param cu the CompilationUnit
 	 * @return the comment ranges
 	 */
-	public static NavigableMap<Integer, BECRRange> getCommentRanges(final CompilationUnit cu) {
+	public static NavigableMap<Integer, IntBEXRange> getCommentRanges(final CompilationUnit cu) {
 		@SuppressWarnings("unchecked")
 		List<Comment> commentList = cu.getCommentList();
 
-		TreeMap<Integer, BECRRange> commentRanges = new TreeMap<>();
+		TreeMap<Integer, IntBEXRange> commentRanges = new TreeMap<>();
 
 		for (Comment comment : commentList) {
 			commentRanges.put(comment.getStartPosition(), getStartEnd(comment));
@@ -49,7 +49,7 @@ public final class ASTNodeUtilities {
 		return Collections.unmodifiableNavigableMap(commentRanges);
 	}
 
-	public static ASTNode findNode(final CompilationUnit cu, final BECRMatchResult match) {
+	public static ASTNode findNode(final CompilationUnit cu, final BEXMatchResult match) {
 		int start = match.start();
 		int end = match.end();
 		String text = match.text();

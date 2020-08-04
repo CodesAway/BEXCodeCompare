@@ -1,4 +1,4 @@
-package info.codesaway.becr;
+package info.codesaway.bex;
 
 import info.codesaway.bex.IntPair;
 

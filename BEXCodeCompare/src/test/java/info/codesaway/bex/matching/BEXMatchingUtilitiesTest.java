@@ -1,12 +1,12 @@
-package info.codesaway.becr.matching;
+package info.codesaway.bex.matching;
 
-import static info.codesaway.becr.matching.BECRMatchingUtilities.hasText;
+import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-class BECRMatchingUtilitiesTest {
+class BEXMatchingUtilitiesTest {
 
 	@Test
 	void testHasTextCornerCase() {
