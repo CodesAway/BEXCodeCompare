@@ -20,18 +20,18 @@ The library has no dependency on Eclipse and can be used in commercial or privat
     <dependency>
         <groupId>info.codesaway</groupId>
         <artifactId>bex</artifactId>
-        <version>0.5.0</version>
+        <version>0.6.0</version>
     </dependency>
     <dependency>
         <groupId>info.codesaway</groupId>
         <artifactId>becr</artifactId>
-        <version>0.5.0</version>
+        <version>0.6.0</version>
     </dependency>
     
     <dependency>
         <groupId>info.codesaway</groupId>
         <artifactId>becr.examples</artifactId>
-        <version>0.3.0</version>
+        <version>0.4.0</version>
     </dependency>
 
 <a name="screenshots"></a>
