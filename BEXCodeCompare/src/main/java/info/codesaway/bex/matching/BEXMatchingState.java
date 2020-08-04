@@ -1,27 +1,27 @@
-package info.codesaway.becr.matching;
+package info.codesaway.bex.matching;
 
-import static info.codesaway.becr.matching.BECRStateOption.IN_LINE_COMMENT;
-import static info.codesaway.becr.matching.BECRStateOption.IN_MULTILINE_COMMENT;
-import static info.codesaway.becr.matching.BECRStateOption.IN_STRING_LITERAL;
-import static info.codesaway.becr.matching.BECRStateOption.MISMATCHED_BRACKETS;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_LINE_COMMENT;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_MULTILINE_COMMENT;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_STRING_LITERAL;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.MISMATCHED_BRACKETS;
 
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 
-final class BECRState {
+final class BEXMatchingState {
 	private final int position;
 	private final String brackets;
-	private final Set<BECRStateOption> options;
+	private final Set<BEXMatchingStateOption> options;
 
-	public static final BECRState DEFAULT = new BECRState(-1, "");
+	public static final BEXMatchingState DEFAULT = new BEXMatchingState(-1, "");
 
-	public BECRState(final int position, final String brackets, final BECRStateOption... options) {
+	public BEXMatchingState(final int position, final String brackets, final BEXMatchingStateOption... options) {
 		this.position = position;
 		this.brackets = brackets;
-		EnumSet<BECRStateOption> optionSet = EnumSet.noneOf(BECRStateOption.class);
+		EnumSet<BEXMatchingStateOption> optionSet = EnumSet.noneOf(BEXMatchingStateOption.class);
 
-		for (BECRStateOption option : options) {
+		for (BEXMatchingStateOption option : options) {
 			if (option != null) {
 				optionSet.add(option);
 			}
@@ -38,7 +38,7 @@ final class BECRState {
 		return this.brackets;
 	}
 
-	public Set<BECRStateOption> getOptions() {
+	public Set<BEXMatchingStateOption> getOptions() {
 		return this.options;
 	}
 
@@ -62,8 +62,8 @@ final class BECRState {
 		return this.isValid(expectedPosition, Collections.emptySet());
 	}
 
-	public boolean isValid(final int expectedPosition, final Set<BECRStateOption> ignoreOptions) {
-		Set<BECRStateOption> compareOptions;
+	public boolean isValid(final int expectedPosition, final Set<BEXMatchingStateOption> ignoreOptions) {
+		Set<BEXMatchingStateOption> compareOptions;
 		if (ignoreOptions.isEmpty() || this.options.isEmpty()) {
 			compareOptions = this.options;
 		} else {
@@ -78,6 +78,7 @@ final class BECRState {
 
 	@Override
 	public String toString() {
-		return String.format("BECRState[%s, %s, %s", this.position, this.brackets, this.options);
+		// TODO: fix this
+		return String.format("BEXMatchingState[%s, %s, %s", this.position, this.brackets, this.options);
 	}
 }

@@ -1,11 +1,11 @@
-package info.codesaway.becr.matching;
+package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.util.BEXUtilities.getSubstring;
 
 import info.codesaway.bex.IntPair;
 
-public interface BECRMatchResult {
-	public BECRPattern pattern();
+public interface BEXMatchResult {
+	public BEXPattern pattern();
 
 	public String text();
 

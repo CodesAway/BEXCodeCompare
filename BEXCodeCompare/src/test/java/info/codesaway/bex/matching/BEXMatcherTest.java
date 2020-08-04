@@ -1,20 +1,20 @@
-package info.codesaway.becr.matching;
+package info.codesaway.bex.matching;
 
-import static info.codesaway.becr.matching.MatcherTestHelper.testBECRMatch;
-import static info.codesaway.becr.matching.MatcherTestHelper.testJustBECRMatch;
-import static info.codesaway.becr.matching.MatcherTestHelper.testNoBECRMatch;
+import static info.codesaway.bex.matching.MatcherTestHelper.testBEXMatch;
+import static info.codesaway.bex.matching.MatcherTestHelper.testJustBEXMatch;
+import static info.codesaway.bex.matching.MatcherTestHelper.testNoBEXMatch;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-class BECRMatcherTest {
+class BEXMatcherTest {
 
 	@Test
 	void testMatchStringText() {
 		String pattern = "\"User:[value]\"";
 		String text = "request.addChildTag(\"Users\", \"a\", null)";
 		String expectedValue = "s";
-		testBECRMatch(pattern, text, expectedValue);
+		testBEXMatch(pattern, text, expectedValue);
 	}
 
 	@Test
@@ -22,7 +22,7 @@ class BECRMatcherTest {
 		String pattern = "\":[value](\"";
 		String text = "webView.loadUrl(\"javascript:showDetail(\"+m.getId()+\")\");";
 		String expectedValue = "javascript:showDetail";
-		testBECRMatch(pattern, text, expectedValue);
+		testBEXMatch(pattern, text, expectedValue);
 	}
 
 	@Test
@@ -34,7 +34,7 @@ class BECRMatcherTest {
 				"		} catch (SQLException e) {\r\n" +
 				"";
 		String expectedValue = "";
-		testBECRMatch(pattern, text, expectedValue);
+		testBEXMatch(pattern, text, expectedValue);
 	}
 
 	@Test
@@ -45,7 +45,7 @@ class BECRMatcherTest {
 				"			sqlStatement.execute();\r\n" +
 				"		} catch (SQLException e) {\r\n" +
 				"";
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	// TODO: need to support logic that expects the same group to match the same value
@@ -56,42 +56,42 @@ class BECRMatcherTest {
 	void testSameMatchGroupMustBeEqual() {
 		String pattern = ":[x] = :[x]";
 		String text = "a = b";
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	@Test
 	void testUnderscoreGroupMayBeDifferent() {
 		String pattern = ":[_] = :[_]";
 		String text = "a = b";
-		testJustBECRMatch(pattern, text);
+		testJustBEXMatch(pattern, text);
 	}
 
 	@Test
 	void testSameMatchGroupAreEqual() {
 		String pattern = ":[value] = :[value]";
 		String text = "a = a";
-		testBECRMatch(pattern, text, "a");
+		testBEXMatch(pattern, text, "a");
 	}
 
 	@Test
 	void testPatternSingleGroupMatchesAll() {
 		String pattern = ":[value]";
 		String text = "a = a";
-		testBECRMatch(pattern, text, "a = a");
+		testBEXMatch(pattern, text, "a = a");
 	}
 
 	@Test
 	void testAngleBracketsOkayNotBalanced() {
 		String pattern = ":[value]";
 		String text = "1 < 2";
-		testBECRMatch(pattern, text, "1 < 2");
+		testBEXMatch(pattern, text, "1 < 2");
 	}
 
 	@Test
 	void testOptionAngleBracketsMustBeBalanced() {
 		String pattern = ":[value<>]";
 		String text = "1 < 2";
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	@Test
@@ -99,9 +99,9 @@ class BECRMatcherTest {
 		String pattern = "List:[value<>] :[variable:w]";
 		String text = "List<String, List<Integer>> values";
 		String expectedValue = "<String, List<Integer>>";
-		BECRMatcher becrMatcher = testBECRMatch(pattern, text, expectedValue);
+		BEXMatcher bexMatcher = testBEXMatch(pattern, text, expectedValue);
 
-		assertThat(becrMatcher)
+		assertThat(bexMatcher)
 				.extracting(m -> m.get("variable"))
 				.isEqualTo("values");
 	}
@@ -110,21 +110,21 @@ class BECRMatcherTest {
 	void testEmptyDoesNotMatch() {
 		String pattern = ":[value]";
 		String text = "";
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	@Test
 	void testEmptyOptionalMatch() {
 		String pattern = ":[?value]";
 		String text = "";
-		testJustBECRMatch(pattern, text);
+		testJustBEXMatch(pattern, text);
 	}
 
 	@Test
 	void testInStringLiteralShouldIgnore() {
 		String pattern = "try { }";
 		String text = "\"try { }\"";
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	@Test
@@ -132,14 +132,14 @@ class BECRMatcherTest {
 		String pattern = "try { }";
 		String text = "\"try { }";
 		// Note: doesn't have String literal ending, yet still should be ignored
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	@Test
 	void testLineCommentShouldIgnore() {
 		String pattern = "try { }";
 		String text = "// try { }";
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	@Test
@@ -150,7 +150,7 @@ class BECRMatcherTest {
 				+ "{\n"
 				+ "}\n"
 				+ "*/";
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	@Test
@@ -161,7 +161,7 @@ class BECRMatcherTest {
 				+ "{\n"
 				+ "}\n";
 		// Note: doesn't have multiline comment ending, yet still should be ignored
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	@Test
@@ -169,7 +169,7 @@ class BECRMatcherTest {
 		String pattern = "\":[value]\"";
 		String text = "\"some text ( with a \\\" in it\"";
 		String expectedValue = "some text ( with a \\\" in it";
-		testBECRMatch(pattern, text, expectedValue);
+		testBEXMatch(pattern, text, expectedValue);
 	}
 
 	@Test
@@ -179,7 +179,7 @@ class BECRMatcherTest {
 		String pattern = "something :[value+] fun";
 		String text = "something cool(unbalanced fun";
 		String expectedValue = "cool(unbalanced";
-		testBECRMatch(pattern, text, expectedValue);
+		testBEXMatch(pattern, text, expectedValue);
 	}
 
 	@Test
@@ -189,7 +189,7 @@ class BECRMatcherTest {
 		String pattern = "something :[value*] fun";
 		String text = "something cool(unbalanced fun";
 		String expectedValue = "cool(unbalanced";
-		testBECRMatch(pattern, text, expectedValue);
+		testBEXMatch(pattern, text, expectedValue);
 	}
 
 	@Test
@@ -197,7 +197,7 @@ class BECRMatcherTest {
 		String pattern = "something :[value*] fun";
 		String text = "something fun";
 		String expectedValue = "";
-		testBECRMatch(pattern, text, expectedValue);
+		testBEXMatch(pattern, text, expectedValue);
 	}
 
 	// TODO: this test fails
@@ -210,14 +210,14 @@ class BECRMatcherTest {
 	//		String pattern = "\"javascript:showDetail:[value]\"";
 	//		String text = "mWebView.loadUrl(\"javascript:showDetail(\"+mWare.getId()+\")\");";
 	//		String expectedValue = "(";
-	//		testBECRMatch(pattern, text, expectedValue);
+	//		testBEXMatch(pattern, text, expectedValue);
 	//	}
 
 	@Test
 	void testEscapeColonInPattern() {
 		String pattern = ":[:]";
 		String text = ":";
-		testJustBECRMatch(pattern, text);
+		testJustBEXMatch(pattern, text);
 	}
 
 	@Test
@@ -225,50 +225,50 @@ class BECRMatcherTest {
 		String pattern = "if (:[value])";
 		String text = "if(something)";
 		String expectedValue = "something";
-		testBECRMatch(pattern, text, expectedValue);
+		testBEXMatch(pattern, text, expectedValue);
 	}
 
 	@Test
 	void testRequiredWhitespace() {
 		String pattern = "if  (:[value])";
 		String text = "if(something)";
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	@Test
 	void testRequiredWhitespaceBeforeGroup() {
 		String pattern = "int :[value]";
 		String text = "integer";
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	@Test
 	void testRequiredWhitespaceAfterGroup() {
 		String pattern = ":[value] int";
 		String text = "pint";
-		testNoBECRMatch(pattern, text);
+		testNoBEXMatch(pattern, text);
 	}
 
 	@Test
 	void testRequiredWhitespaceBothBeforeAndAfterGroup() {
 		String pattern = "int :[value] ger";
 
-		testNoBECRMatch(pattern, "integer");
-		testNoBECRMatch(pattern, "int eger");
-		testNoBECRMatch(pattern, "inte ger");
+		testNoBEXMatch(pattern, "integer");
+		testNoBEXMatch(pattern, "int eger");
+		testNoBEXMatch(pattern, "inte ger");
 	}
 
 	@Test
 	void testRequiredWhitespaceBothBeforeAndAfterOptionalGroup() {
 		String pattern = "int :[?value] ger";
 
-		testBECRMatch(pattern, "int ger", "");
+		testBEXMatch(pattern, "int ger", "");
 	}
 
 	@Test
 	void testOptionalSpace() {
 		String pattern = "if (:[value])";
-		testBECRMatch(pattern, "if (something)", "something");
-		testBECRMatch(pattern, "if(something)", "something");
+		testBEXMatch(pattern, "if (something)", "something");
+		testBEXMatch(pattern, "if(something)", "something");
 	}
 }

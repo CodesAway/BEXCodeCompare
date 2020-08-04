@@ -1,6 +1,6 @@
-package info.codesaway.becr.matching;
+package info.codesaway.bex.matching;
 
-public enum BECRPatternFlag {
+public enum BEXPatternFlag {
 	// TODO: add support for flags
 	/**
 	 * Enables case-insensitive matching.

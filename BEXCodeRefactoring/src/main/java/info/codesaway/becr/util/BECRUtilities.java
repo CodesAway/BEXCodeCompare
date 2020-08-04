@@ -4,7 +4,7 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Optional;
 
-import info.codesaway.becr.IntRange;
+import info.codesaway.bex.IntRange;
 
 public final class BECRUtilities {
 	private BECRUtilities() {

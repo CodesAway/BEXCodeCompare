@@ -1,31 +1,31 @@
-package info.codesaway.becr.matching;
+package info.codesaway.bex.matching;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * BECR group match settings
+ * BEX group match settings
  *
  * <p>Instances of this class are immutable and cached.
  * Methods which turn on or off flags return a different settings object (from cache when possible) with the specified settings changed</p>
  */
-final class BECRGroupMatchSetting {
-	private static final Map<Integer, BECRGroupMatchSetting> CACHE = new HashMap<>();
+final class BEXGroupMatchSetting {
+	private static final Map<Integer, BEXGroupMatchSetting> CACHE = new HashMap<>();
 
 	private final int flags;
 
-	static final BECRGroupMatchSetting DEFAULT = new BECRGroupMatchSetting(0);
+	static final BEXGroupMatchSetting DEFAULT = new BEXGroupMatchSetting(0);
 
 	static final int STOP_WHEN_VALID = 0x01;
 	static final int OPTIONAL = 0x02;
 	static final int MATCH_ANGLE_BRACKETS = 0x04;
 
-	private BECRGroupMatchSetting(final int flags) {
+	private BEXGroupMatchSetting(final int flags) {
 		this.flags = flags;
 	}
 
-	BECRGroupMatchSetting valueOf(final int flags) {
-		return CACHE.computeIfAbsent(flags, BECRGroupMatchSetting::new);
+	BEXGroupMatchSetting valueOf(final int flags) {
+		return CACHE.computeIfAbsent(flags, BEXGroupMatchSetting::new);
 	}
 
 	public boolean isDefault() {
@@ -50,7 +50,7 @@ final class BECRGroupMatchSetting {
 	 * @param flag the flag to turn on
 	 * @return a different settings object (from cache when possible) with the specified settings turned on
 	 */
-	BECRGroupMatchSetting turnOn(final int flag) {
+	BEXGroupMatchSetting turnOn(final int flag) {
 		return this.valueOf(this.flags | flag);
 	}
 
@@ -60,7 +60,7 @@ final class BECRGroupMatchSetting {
 	 * @param flag the flag to turn off
 	 * @return a different settings object (from cache when possible) with the specified settings turned off
 	 */
-	BECRGroupMatchSetting turnOff(final int flag) {
+	BEXGroupMatchSetting turnOff(final int flag) {
 		return this.valueOf(this.flags & ~flag);
 	}
 

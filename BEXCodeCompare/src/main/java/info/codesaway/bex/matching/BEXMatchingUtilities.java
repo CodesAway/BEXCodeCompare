@@ -1,21 +1,27 @@
-package info.codesaway.becr.matching;
+package info.codesaway.bex.matching;
 
-import static info.codesaway.becr.matching.BECRStateOption.IN_LINE_COMMENT;
-import static info.codesaway.becr.matching.BECRStateOption.IN_MULTILINE_COMMENT;
-import static info.codesaway.becr.matching.BECRStateOption.IN_STRING_LITERAL;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_LINE_COMMENT;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_MULTILINE_COMMENT;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_STRING_LITERAL;
 
 import java.util.Collections;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
-import info.codesaway.becr.BECRRange;
+import info.codesaway.bex.BEXIntRange;
 
-public class BECRMatchingUtilities {
+public class BEXMatchingUtilities {
 	public static String stringChar(final String text, final int index) {
 		return text.substring(index, index + 1);
 	}
 
-	public static char prevChar(final CharSequence text, final int index) {
+	/**
+	 * Gets the previous character
+	 * @param text the text
+	 * @param index the index
+	 * @return the previous character or \0, null character, if there is no character before the specified index
+	 */
+	public static char previousChar(final CharSequence text, final int index) {
 		if (index > 0) {
 			return text.charAt(index - 1);
 		} else {
@@ -24,9 +30,31 @@ public class BECRMatchingUtilities {
 		}
 	}
 
+	/**
+	 * Gets the next character
+	 * @param text the text
+	 * @param index the index
+	 * @return the next character or \0, null character, if there is no character after the specified index
+	 */
 	public static char nextChar(final CharSequence text, final int index) {
 		if (index < text.length() - 1) {
 			return text.charAt(index + 1);
+		} else {
+			// Return null character to indicate nothing found
+			return '\0';
+		}
+	}
+
+	/**
+	 * Gets the current character
+	 * @param text the text
+	 * @param index the index
+	 * @return the current character or \0, null character, if there is no character at the specified index
+	 * @since 0.6
+	 */
+	public static char currentChar(final CharSequence text, final int index) {
+		if (index < text.length() && index >= 0) {
+			return text.charAt(index);
 		} else {
 			// Return null character to indicate nothing found
 			return '\0';
@@ -64,11 +92,11 @@ public class BECRMatchingUtilities {
 	}
 
 	/**
-	 * Extracts <code>BECRTextState</code>s from the specified Java text
+	 * Extracts <code>BEXMatchingTextState</code>s from the specified Java text
 	 * @param text the Java text
-	 * @return an unmodifiable map from the range start to the BECRTextState
+	 * @return an unmodifiable map from the range start to the BEXMatchingTextState
 	 */
-	public static NavigableMap<Integer, BECRTextState> extractJavaTextStates(final CharSequence text) {
+	public static NavigableMap<Integer, BEXMatchingTextState> extractJavaTextStates(final CharSequence text) {
 		// Parse text to get states
 		// * Block comment
 		// * Line comment
@@ -76,9 +104,9 @@ public class BECRMatchingUtilities {
 		// * Other stuff?
 
 		/**
-		 * Map from range start to BECRTextState (contains range and text state)
+		 * Map from range start to BEXMatchingTextState (contains range and text state)
 		 */
-		NavigableMap<Integer, BECRTextState> textStateMap = new TreeMap<>();
+		NavigableMap<Integer, BEXMatchingTextState> textStateMap = new TreeMap<>();
 
 		boolean isInStringLiteral = false;
 		boolean isInLineComment = false;
@@ -102,7 +130,7 @@ public class BECRMatchingUtilities {
 					isInStringLiteral = false;
 
 					textStateMap.put(startTextInfo,
-							new BECRTextState(BECRRange.of(startTextInfo, i), IN_STRING_LITERAL));
+							new BEXMatchingTextState(BEXIntRange.of(startTextInfo, i), IN_STRING_LITERAL));
 				}
 				// Other characters don't matter??
 				// TODO: handle unicode and other escaping in String literal
@@ -110,7 +138,7 @@ public class BECRMatchingUtilities {
 				if (c == '\n' || c == '\r') {
 					isInLineComment = false;
 					textStateMap.put(startTextInfo,
-							new BECRTextState(BECRRange.of(startTextInfo, i), IN_LINE_COMMENT));
+							new BEXMatchingTextState(BEXIntRange.of(startTextInfo, i), IN_LINE_COMMENT));
 				}
 				// Other characters don't matter?
 			} else if (isInMultilineComment) {
@@ -118,7 +146,7 @@ public class BECRMatchingUtilities {
 					isInMultilineComment = false;
 					i++;
 					textStateMap.put(startTextInfo,
-							new BECRTextState(BECRRange.of(startTextInfo, i), IN_MULTILINE_COMMENT));
+							new BEXMatchingTextState(BEXIntRange.of(startTextInfo, i), IN_MULTILINE_COMMENT));
 				}
 			} else if (c == '/' && nextChar(text, i) == '/') {
 				isInLineComment = true;
@@ -137,13 +165,13 @@ public class BECRMatchingUtilities {
 
 		if (isInLineComment) {
 			textStateMap.put(startTextInfo,
-					new BECRTextState(BECRRange.of(startTextInfo, text.length()), IN_LINE_COMMENT));
+					new BEXMatchingTextState(BEXIntRange.of(startTextInfo, text.length()), IN_LINE_COMMENT));
 		} else if (isInMultilineComment) {
 			textStateMap.put(startTextInfo,
-					new BECRTextState(BECRRange.of(startTextInfo, text.length()), IN_MULTILINE_COMMENT));
+					new BEXMatchingTextState(BEXIntRange.of(startTextInfo, text.length()), IN_MULTILINE_COMMENT));
 		} else if (isInStringLiteral) {
 			textStateMap.put(startTextInfo,
-					new BECRTextState(BECRRange.of(startTextInfo, text.length()), IN_STRING_LITERAL));
+					new BEXMatchingTextState(BEXIntRange.of(startTextInfo, text.length()), IN_STRING_LITERAL));
 		}
 
 		return Collections.unmodifiableNavigableMap(textStateMap);
