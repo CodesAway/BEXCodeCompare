@@ -8,6 +8,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2020-08-03
+### Added
+* BEXPattern
+  * Syntax
+    * :[@] to escape @ symbol (rarely needed, mainly useful for BEXPattern.literal
+    * :[group:d] to to have group consisting of only digits (similar to :[group:w] which is group consisting of only word characters)
+  * In group / get method, can specify group name as "\*" to get the entire match (similar to group 0 for regex) 
+  * Methods
+    * literal (use to specify literal text in pattern)
+    * compile (method that just takes String pattern, makes easier to use in IDE)
+    
+* BEXMatcher
+  * Replacement functionality (similar to what's provided in regex's Matcher class
+  * Can specify :[group] for a specific group's value or :[\*] for the entire match's value  
+  * Methods
+    * replaceAll (including method which takes Function<BEXMatchResult, String>
+    * replaceFirst
+    * getReplacement
+    * appendReplacement / appendTail
+    * quoteReplacement (use to specify literal text in replacement)
+    * reset
+
+* IntBEXPair / IntBEXRange equals and hashCode method
+
+### Changed
+* BEX will contain all code that doesn't require the Eclipse JDT dependency (such as the new structured matching functionality)
+
+* Moved info.codesaway.becr.matching package to info.codesaway.bex.matching
+  * Moved from BECR to BEX project
+  * Renamed classes to mention BEX instead of BECR
+  * Renamed classes to clarify that they were used for matching
+  
+* Moved IntRange from BECR to BEX project
+* Moved functions in BECRUtilities to BEXUtilities
+
 ## [0.5.0] - 2020-08-02
 ### Added
 * Structured source matching (adopted some syntax from https://comby.dev)
