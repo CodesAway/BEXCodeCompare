@@ -2,6 +2,7 @@ package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.MATCH_ANGLE_BRACKETS;
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.OPTIONAL;
+import static info.codesaway.bex.matching.BEXMatchingUtilities.hasNextChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.isWordCharacter;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.nextChar;
@@ -54,6 +55,24 @@ public final class BEXPattern {
 	private static final String REGEX_BLOCK_START = "@--";
 	private static final String REGEX_BLOCK_END = "--!";
 
+	private static final BEXPatternFlag[] NO_FLAGS = {};
+
+	/**
+	 *
+	 * @param pattern
+	 * @return
+	 * @since 0.6
+	 */
+	// Added to make easier when using Autocomplete, so this version occurs first
+	public static BEXPattern compile(final String pattern) {
+		return compile(pattern, NO_FLAGS);
+	}
+
+	/**
+	 * @param pattern
+	 * @param flags
+	 * @return
+	 */
 	public static BEXPattern compile(final String pattern, final BEXPatternFlag... flags) {
 		// Allow duplicate names in capture groups
 		// (this way, don't cause error if specify the same group name twice)
@@ -106,6 +125,9 @@ public final class BEXPattern {
 				i = end + REGEX_BLOCK_END.length();
 			} else if (hasText(pattern, i, ":[:]")) {
 				regexBuilder.append(":");
+				i += 4;
+			} else if (hasText(pattern, i, ":[@]")) {
+				regexBuilder.append("@");
 				i += 4;
 			} else if (c == ':' && nextChar(pattern, i) == '['
 					&& isNextCharStartOfGroup(pattern, i + 1)) {
@@ -305,5 +327,43 @@ public final class BEXPattern {
 
 	Map<Integer, BEXGroupMatchSetting> getGroupMatchSettings() {
 		return this.groupMatchSettings;
+	}
+
+	/**
+	 * Returns a literal pattern <code>String</code> for the specified
+	 * <code>String</code>.
+	 *
+	 * <p>This method produces a <code>String</code> that can be used to
+	 * create a <code>BEXPattern</code> that would match the string <code>s</code> as
+	 * if it were a literal pattern.</p>
+	 *
+	 * @param s
+	 *            The string to be literalized
+	 * @return A literal string pattern
+	 * @since 0.6
+	 */
+	public static String literal(final String s) {
+		if (!s.endsWith(":") && !s.endsWith("@") && !s.endsWith("@-")
+				&& s.indexOf(":[") == -1 && s.indexOf("@--") == -1) {
+			return s;
+		}
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			if (c == ':' && (nextChar(s, i) == '[' || !hasNextChar(s, i))) {
+				sb.append(":[:]");
+			} else if (c == '@') {
+				if (nextChar(s, i) == '-' && (nextChar(s, i + 1) == '-' || !hasNextChar(s, i + 1))) {
+					sb.append(":[@]");
+				} else if (!hasNextChar(s, i)) {
+					sb.append(":[@]");
+				} else {
+					sb.append(c);
+				}
+			} else {
+				sb.append(c);
+			}
+		}
+		return sb.toString();
 	}
 }

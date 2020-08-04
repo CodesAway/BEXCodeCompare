@@ -8,11 +8,22 @@ import java.util.Collections;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
-import info.codesaway.bex.BEXIntRange;
+import info.codesaway.bex.IntBEXRange;
 
 public class BEXMatchingUtilities {
 	public static String stringChar(final String text, final int index) {
 		return text.substring(index, index + 1);
+	}
+
+	/**
+	 * Indicates whether there is a previous character before the specified index
+	 * @param text the text
+	 * @param index the index
+	 * @return <code>true</code> if there is a previous character before the specified index; <code>false</code> otherwise
+	 * @since 0.6
+	 */
+	public static boolean hasPreviousChar(final CharSequence text, final int index) {
+		return index > 0;
 	}
 
 	/**
@@ -22,12 +33,23 @@ public class BEXMatchingUtilities {
 	 * @return the previous character or \0, null character, if there is no character before the specified index
 	 */
 	public static char previousChar(final CharSequence text, final int index) {
-		if (index > 0) {
+		if (hasPreviousChar(text, index)) {
 			return text.charAt(index - 1);
 		} else {
 			// Return null character to indicate nothing found
 			return '\0';
 		}
+	}
+
+	/**
+	 * Indicates whether there is a next character after the specified index
+	 * @param text the text
+	 * @param index the index
+	 * @return <code>true</code> if there is a next character after the specified index; <code>false</code> otherwise
+	 * @since 0.6
+	 */
+	public static boolean hasNextChar(final CharSequence text, final int index) {
+		return index < text.length() - 1;
 	}
 
 	/**
@@ -37,7 +59,7 @@ public class BEXMatchingUtilities {
 	 * @return the next character or \0, null character, if there is no character after the specified index
 	 */
 	public static char nextChar(final CharSequence text, final int index) {
-		if (index < text.length() - 1) {
+		if (hasNextChar(text, index)) {
 			return text.charAt(index + 1);
 		} else {
 			// Return null character to indicate nothing found
@@ -130,7 +152,7 @@ public class BEXMatchingUtilities {
 					isInStringLiteral = false;
 
 					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(BEXIntRange.of(startTextInfo, i), IN_STRING_LITERAL));
+							new BEXMatchingTextState(IntBEXRange.of(startTextInfo, i), IN_STRING_LITERAL));
 				}
 				// Other characters don't matter??
 				// TODO: handle unicode and other escaping in String literal
@@ -138,7 +160,7 @@ public class BEXMatchingUtilities {
 				if (c == '\n' || c == '\r') {
 					isInLineComment = false;
 					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(BEXIntRange.of(startTextInfo, i), IN_LINE_COMMENT));
+							new BEXMatchingTextState(IntBEXRange.of(startTextInfo, i), IN_LINE_COMMENT));
 				}
 				// Other characters don't matter?
 			} else if (isInMultilineComment) {
@@ -146,7 +168,7 @@ public class BEXMatchingUtilities {
 					isInMultilineComment = false;
 					i++;
 					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(BEXIntRange.of(startTextInfo, i), IN_MULTILINE_COMMENT));
+							new BEXMatchingTextState(IntBEXRange.of(startTextInfo, i), IN_MULTILINE_COMMENT));
 				}
 			} else if (c == '/' && nextChar(text, i) == '/') {
 				isInLineComment = true;
@@ -165,13 +187,13 @@ public class BEXMatchingUtilities {
 
 		if (isInLineComment) {
 			textStateMap.put(startTextInfo,
-					new BEXMatchingTextState(BEXIntRange.of(startTextInfo, text.length()), IN_LINE_COMMENT));
+					new BEXMatchingTextState(IntBEXRange.of(startTextInfo, text.length()), IN_LINE_COMMENT));
 		} else if (isInMultilineComment) {
 			textStateMap.put(startTextInfo,
-					new BEXMatchingTextState(BEXIntRange.of(startTextInfo, text.length()), IN_MULTILINE_COMMENT));
+					new BEXMatchingTextState(IntBEXRange.of(startTextInfo, text.length()), IN_MULTILINE_COMMENT));
 		} else if (isInStringLiteral) {
 			textStateMap.put(startTextInfo,
-					new BEXMatchingTextState(BEXIntRange.of(startTextInfo, text.length()), IN_STRING_LITERAL));
+					new BEXMatchingTextState(IntBEXRange.of(startTextInfo, text.length()), IN_STRING_LITERAL));
 		}
 
 		return Collections.unmodifiableNavigableMap(textStateMap);

@@ -1,7 +1,8 @@
 package info.codesaway.bex.matching;
 
-import static info.codesaway.bex.util.BEXUtilities.contentEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +16,7 @@ class BEXMatcherReplacementTest {
 			m.appendReplacement(sb, "dog");
 		}
 		m.appendTail(sb);
-		assertTrue(contentEquals(sb, "one dog two dogs in the yard"));
+		assertThat(sb).asString().isEqualTo("one dog two dogs in the yard");
 	}
 
 	@Test
@@ -23,7 +24,7 @@ class BEXMatcherReplacementTest {
 		BEXPattern p = BEXPattern.compile("cat");
 		BEXMatcher m = p.matcher("one cat two cats in the yard");
 
-		assertTrue(contentEquals(m.replaceAll("dog"), "one dog two dogs in the yard"));
+		assertThat(m.replaceAll("dog")).isEqualTo("one dog two dogs in the yard");
 	}
 
 	@Test
@@ -31,7 +32,7 @@ class BEXMatcherReplacementTest {
 		BEXPattern p = BEXPattern.compile("cat");
 		BEXMatcher m = p.matcher("one cat two cats in the yard");
 
-		assertTrue(contentEquals(m.replaceAll(x -> "dog"), "one dog two dogs in the yard"));
+		assertThat(m.replaceAll(x -> "dog")).isEqualTo("one dog two dogs in the yard");
 	}
 
 	@Test
@@ -39,9 +40,16 @@ class BEXMatcherReplacementTest {
 		BEXPattern pattern = BEXPattern.compile(":[num:d]");
 		BEXMatcher matcher = pattern.matcher("123 cats 456 dogs and 789 birds");
 
-		assertTrue(contentEquals(
-				matcher.replaceAll(m -> new StringBuilder(m.group("num")).reverse().toString()),
-				"321 cats 654 dogs and 987 birds"));
+		Function<BEXMatchResult, String> reverseMatches = m -> new StringBuilder(m.group("num")).reverse().toString();
+
+		assertThat(matcher.replaceAll(reverseMatches)).isEqualTo("321 cats 654 dogs and 987 birds");
 	}
 
+	@Test
+	void testReplaceFirstJavadocExample() {
+		BEXPattern p = BEXPattern.compile("dog");
+		BEXMatcher m = p.matcher("zzzdogzzzdogzzz");
+
+		assertThat(m.replaceFirst("cat")).isEqualTo("zzzcatzzzdogzzz");
+	}
 }

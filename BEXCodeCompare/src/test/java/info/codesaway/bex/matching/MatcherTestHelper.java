@@ -4,8 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import info.codesaway.bex.matching.BEXMatcher;
-import info.codesaway.bex.matching.BEXPattern;
+import info.codesaway.bex.IntBEXRange;
 
 public final class MatcherTestHelper {
 	private MatcherTestHelper() {
@@ -42,5 +41,27 @@ public final class MatcherTestHelper {
 				.isEqualTo(expectedValue);
 
 		return bexMatcher;
+	}
+
+	static void testQuoteReplacement(final String replacement, final String expectedValue) {
+		BEXPattern bexPattern = BEXPattern.compile("blah");
+		BEXMatcher bexMatcher = bexPattern.matcher("blah");
+
+		String quoteReplacement = BEXMatcher.quoteReplacement(replacement);
+
+		assertThat(quoteReplacement).isEqualTo(expectedValue);
+		assertThat(bexMatcher.replaceFirst(quoteReplacement)).isEqualTo(replacement);
+	}
+
+	static void testPatternLiteral(final String pattern, final String expectedValue) {
+		String literalPattern = BEXPattern.literal(pattern);
+		BEXPattern bexPattern = BEXPattern.compile(literalPattern);
+		BEXMatcher bexMatcher = bexPattern.matcher(pattern);
+
+		assertThat(literalPattern).isEqualTo(expectedValue);
+
+		boolean result = bexMatcher.find();
+		assertTrue(result);
+		assertThat(bexMatcher.startEndPair()).isEqualTo(IntBEXRange.of(0, pattern.length()));
 	}
 }

@@ -10,7 +10,7 @@ import org.eclipse.jdt.core.dom.Comment;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.NodeFinder;
 
-import info.codesaway.bex.BEXIntRange;
+import info.codesaway.bex.IntBEXRange;
 import info.codesaway.bex.matching.BEXMatchResult;
 
 public final class ASTNodeUtilities {
@@ -18,11 +18,11 @@ public final class ASTNodeUtilities {
 		throw new UnsupportedOperationException();
 	}
 
-	public static BEXIntRange getStartEnd(final ASTNode node) {
+	public static IntBEXRange getStartEnd(final ASTNode node) {
 		int start = node.getStartPosition();
 		int end = start + node.getLength();
 
-		return BEXIntRange.of(start, end);
+		return IntBEXRange.of(start, end);
 	}
 
 	/**
@@ -36,11 +36,11 @@ public final class ASTNodeUtilities {
 	 * @param cu the CompilationUnit
 	 * @return the comment ranges
 	 */
-	public static NavigableMap<Integer, BEXIntRange> getCommentRanges(final CompilationUnit cu) {
+	public static NavigableMap<Integer, IntBEXRange> getCommentRanges(final CompilationUnit cu) {
 		@SuppressWarnings("unchecked")
 		List<Comment> commentList = cu.getCommentList();
 
-		TreeMap<Integer, BEXIntRange> commentRanges = new TreeMap<>();
+		TreeMap<Integer, IntBEXRange> commentRanges = new TreeMap<>();
 
 		for (Comment comment : commentList) {
 			commentRanges.put(comment.getStartPosition(), getStartEnd(comment));

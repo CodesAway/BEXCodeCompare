@@ -1,5 +1,7 @@
 package info.codesaway.bex;
 
+import java.util.Objects;
+
 /**
  * Immutable pair of left / right int values
  */
@@ -31,5 +33,25 @@ public final class IntBEXPair implements IntPair {
 	@Override
 	public String toString() {
 		return "(" + this.getLeft() + "," + this.getRight() + ")";
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(this.left, this.right);
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (this.getClass() != obj.getClass()) {
+			return false;
+		}
+		IntBEXPair other = (IntBEXPair) obj;
+		return this.left == other.left && this.right == other.right;
 	}
 }

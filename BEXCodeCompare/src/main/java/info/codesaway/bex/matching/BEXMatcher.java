@@ -6,6 +6,7 @@ import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_LINE_COMMENT
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_MULTILINE_COMMENT;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_STRING_LITERAL;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.extractJavaTextStates;
+import static info.codesaway.bex.matching.BEXMatchingUtilities.hasNextChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.isWordCharacter;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.lastChar;
@@ -20,7 +21,7 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.function.Function;
 
-import info.codesaway.bex.BEXIntRange;
+import info.codesaway.bex.IntBEXRange;
 import info.codesaway.bex.MutableIntBEXPair;
 import info.codesaway.util.regex.Matcher;
 import info.codesaway.util.regex.Pattern;
@@ -57,12 +58,12 @@ public final class BEXMatcher implements BEXMatchResult {
 	/**
 	 * Most groups will have only one value, so stored here
 	 */
-	private final Map<String, BEXIntRange> singleValues = new HashMap<>();
+	private final Map<String, IntBEXRange> singleValues = new HashMap<>();
 
 	/**
 	 * Groups with multiple values are stored here
 	 */
-	private final Map<String, List<BEXIntRange>> multipleValues = new HashMap<>();
+	private final Map<String, List<IntBEXRange>> multipleValues = new HashMap<>();
 
 	BEXMatcher(final BEXPattern parent, final CharSequence text) {
 		this(parent, text, extractJavaTextStates(text), 0);
@@ -301,7 +302,7 @@ public final class BEXMatcher implements BEXMatchResult {
 			// (unless it's an unnamed group)
 			if (!group.equals("_")) {
 				// TODO: what if group was matched as part of regex, does normal group have to match?
-				BEXIntRange startEnd = this.getInternal(group);
+				IntBEXRange startEnd = this.getInternal(group);
 
 				if (startEnd != null && startEnd != NOT_FOUND) {
 					// Verify the content equals; otherwise, don't match
@@ -329,7 +330,7 @@ public final class BEXMatcher implements BEXMatchResult {
 				}
 			}
 
-			this.put(group, BEXIntRange.of(start, end));
+			this.put(group, IntBEXRange.of(start, end));
 			this.putCaptureGroups(nextMatcher);
 
 			//			System.out.printf("%s: @%s@%n", group, value);
@@ -471,15 +472,15 @@ public final class BEXMatcher implements BEXMatchResult {
 				groupName = groupName.substring(0, occurrenceStart);
 			}
 
-			this.put(groupName, BEXIntRange.of(matcher.start(i), matcher.end(i)));
+			this.put(groupName, IntBEXRange.of(matcher.start(i), matcher.end(i)));
 		}
 	}
 
 	// TODO: instead of putting text value, just put int pair (start / end)
 	// Can use (-1, -1) to indicate not found
 	// This way, only convert to String value when requested (in case text passed isn't a String but for example a StringBuilder)
-	private void put(final String group, final BEXIntRange value) {
-		List<BEXIntRange> existingValues = this.multipleValues.get(group);
+	private void put(final String group, final IntBEXRange value) {
+		List<IntBEXRange> existingValues = this.multipleValues.get(group);
 
 		if (existingValues != null) {
 			// Already has existing values, so add to the collection
@@ -487,7 +488,7 @@ public final class BEXMatcher implements BEXMatchResult {
 			return;
 		}
 
-		BEXIntRange existingValue = this.singleValues.get(group);
+		IntBEXRange existingValue = this.singleValues.get(group);
 
 		if (existingValue == null) {
 			// First time seeing the specified group
@@ -495,7 +496,7 @@ public final class BEXMatcher implements BEXMatchResult {
 		} else {
 			// Put existing value and new value into a collection in multipleValues
 			this.singleValues.remove(group);
-			List<BEXIntRange> newValues = new ArrayList<>();
+			List<IntBEXRange> newValues = new ArrayList<>();
 			newValues.add(existingValue);
 			newValues.add(value);
 			this.multipleValues.put(group, newValues);
@@ -503,13 +504,13 @@ public final class BEXMatcher implements BEXMatchResult {
 	}
 
 	@Override
-	public BEXIntRange startEndPair() {
-		return BEXIntRange.of(this.matchStartEnd.getLeft(), this.matchStartEnd.getRight());
+	public IntBEXRange startEndPair() {
+		return IntBEXRange.of(this.matchStartEnd.getLeft(), this.matchStartEnd.getRight());
 	}
 
 	@Override
-	public BEXIntRange startEndPair(final String group) {
-		BEXIntRange startEnd = this.getInternal(group);
+	public IntBEXRange startEndPair(final String group) {
+		IntBEXRange startEnd = this.getInternal(group);
 
 		// Intentionally using identity equals
 		if (startEnd == NOT_FOUND) {
@@ -519,11 +520,11 @@ public final class BEXMatcher implements BEXMatchResult {
 		return startEnd;
 	}
 
-	private static BEXIntRange NOT_FOUND = BEXIntRange.of(Integer.MIN_VALUE, Integer.MIN_VALUE);
-	private static BEXIntRange NULL_PAIR = BEXIntRange.of(-1, -1);
+	private static IntBEXRange NOT_FOUND = IntBEXRange.of(Integer.MIN_VALUE, Integer.MIN_VALUE);
+	private static IntBEXRange NULL_PAIR = IntBEXRange.of(-1, -1);
 
-	private BEXIntRange getInternal(final String group) {
-		List<BEXIntRange> existingValues = this.multipleValues.get(group);
+	private IntBEXRange getInternal(final String group) {
+		List<IntBEXRange> existingValues = this.multipleValues.get(group);
 
 		if (existingValues != null) {
 			// Return first non-null value or return null if all values are null
@@ -597,7 +598,7 @@ public final class BEXMatcher implements BEXMatchResult {
 
 	/**
 	 *
-	 * @param replacementFunction function that takes the BEXMatchResult for the current match and returns the replacement (supports referencing group)
+	 * @param replacement the replacement string
 	 * @return The string constructed by replacing each matching subsequence by
 	 *         the replacement string (return from applying replacementFunction), substituting captured subsequences as
 	 *         needed
@@ -639,6 +640,46 @@ public final class BEXMatcher implements BEXMatchResult {
 			return sb.toString();
 		}
 		return this.text.toString();
+	}
+
+	/**
+	 * Replaces the first subsequence of the input sequence that matches the
+	 * pattern with the given replacement string.
+	 *
+	 * <p>This method first resets this matcher. It then scans the input
+	 * sequence looking for a match of the pattern. Characters that are not part
+	 * of the match are appended directly to the result string; the match is
+	 * replaced in the result by the replacement string. The replacement string
+	 * may contain references to captured subsequences as in the {@link #appendReplacement appendReplacement} method.</p>
+	 *
+	 * <p>Given the pattern <tt>dog</tt>, the input
+	 * <tt>"zzzdogzzzdogzzz"</tt>, and the replacement string <tt>"cat"</tt>, an
+	 * invocation of this method on a matcher for that expression would yield
+	 * the string <tt>"zzzcatzzzdogzzz"</tt>.</p>
+	 *
+	 * <p>Invoking this method changes this matcher's state. If the matcher
+	 * is to be used in further matching operations then it should first be
+	 * reset.</p>
+	 *
+	 * @param replacement
+	 *            The replacement string
+	 * @return The string constructed by replacing the first matching
+	 *         subsequence by the replacement string, substituting captured
+	 *         subsequences as needed
+	 * @since 0.6
+	 */
+	public String replaceFirst(final String replacement) {
+		if (replacement == null) {
+			throw new NullPointerException("replacement");
+		}
+		this.reset();
+		if (!this.find()) {
+			return this.text.toString();
+		}
+		StringBuffer sb = new StringBuffer();
+		this.appendReplacement(sb, replacement);
+		this.appendTail(sb);
+		return sb.toString();
 	}
 
 	/**
@@ -705,6 +746,9 @@ public final class BEXMatcher implements BEXMatchResult {
 					throw new IllegalArgumentException(
 							"Invalid syntax: " + replacement.substring(originalStart, cursor + 1));
 				}
+			} else if (nextChar == ':' && hasText(replacement, cursor + 1, "[:]")) {
+				result.append(nextChar);
+				cursor += 4;
 			} else {
 				result.append(nextChar);
 				cursor++;
@@ -712,6 +756,7 @@ public final class BEXMatcher implements BEXMatchResult {
 		}
 
 		return result.toString();
+
 	}
 
 	/**
@@ -822,4 +867,33 @@ public final class BEXMatcher implements BEXMatchResult {
 		return this.text.length();
 	}
 
+	/**
+	 * Returns a literal replacement <code>String</code> for the specified
+	 * <code>String</code>.
+	 *
+	 * This method produces a <code>String</code> that will work
+	 * as a literal replacement <code>s</code> in the
+	 * <code>appendReplacement</code> method of the {@link BEXMatcher} class.
+	 * The <code>String</code> produced will match the sequence of characters
+	 * in <code>s</code> treated as a literal sequence.
+	 *
+	 * @param  s The string to be literalized
+	 * @return  A literal string replacement
+	 * @since 0.6
+	 */
+	public static String quoteReplacement(final String s) {
+		if (!s.endsWith(":") && s.indexOf(":[") == -1) {
+			return s;
+		}
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			if (c == ':' && (nextChar(s, i) == '[' || !hasNextChar(s, i))) {
+				sb.append(":[:]");
+			} else {
+				sb.append(c);
+			}
+		}
+		return sb.toString();
+	}
 }
