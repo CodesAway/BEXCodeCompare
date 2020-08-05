@@ -1,7 +1,5 @@
 package info.codesaway.bex.matching;
 
-import static info.codesaway.bex.matching.BEXMatchingUtilities.extractJavaTextStates;
-
 import java.util.Collections;
 import java.util.NavigableMap;
 import java.util.TreeMap;
@@ -24,7 +22,11 @@ public final class BEXString implements CharSequence {
 	 * @param text the Java source code
 	 */
 	public BEXString(final String text) {
-		this(text, extractJavaTextStates(text), 0);
+		this(text, BEXMatchingLanguage.JAVA);
+	}
+
+	public BEXString(final String text, final BEXMatchingLanguage language) {
+		this(text, language.extract(text), 0);
 	}
 
 	/**

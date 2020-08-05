@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>info.codesaway</groupId>
 	<artifactId>becr.examples</artifactId>
-	<version>0.4.0</version>
+	<version>0.5.0</version>
 	<name>BECR Examples</name>
 	<description>Examples of BECR - Be Enhanced Code Refactoring</description>
 	<properties>
@@ -22,7 +22,7 @@
 		<dependency>
 			<groupId>info.codesaway</groupId>
 			<artifactId>becr</artifactId>
-			<version>0.6.0</version>
+			<version>0.7.0</version>
 		</dependency>
 		<!-- Used for making Excel report -->
 		<dependency>

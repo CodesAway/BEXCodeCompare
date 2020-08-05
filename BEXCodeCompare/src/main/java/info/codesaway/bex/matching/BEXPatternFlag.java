@@ -33,5 +33,11 @@ public enum BEXPatternFlag {
 	 */
 	UNICODE,
 
+	/**
+	 * By default, spaces in the pattern represent optional spaces in the matched text (except in certain circumstances)
+	 *
+	 * <p>When this flag is specified, then spaces in the pattern will <b>always</b> represent <b>required</b> spaces in the matched text</p>
+	 */
+	REQUIRE_SPACE,
 	;
 }

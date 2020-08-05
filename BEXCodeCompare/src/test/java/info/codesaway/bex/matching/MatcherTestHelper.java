@@ -11,15 +11,15 @@ public final class MatcherTestHelper {
 		throw new UnsupportedOperationException();
 	}
 
-	static void testNoBEXMatch(final String pattern, final String text) {
-		BEXPattern bexPattern = BEXPattern.compile(pattern);
+	static void testNoBEXMatch(final String pattern, final String text, final BEXPatternFlag... flags) {
+		BEXPattern bexPattern = BEXPattern.compile(pattern, flags);
 		BEXMatcher bexMatcher = bexPattern.matcher(text);
 
 		assertFalse(bexMatcher.find(), "Should not find match");
 	}
 
-	static BEXMatcher testJustBEXMatch(final String pattern, final String text) {
-		BEXPattern bexPattern = BEXPattern.compile(pattern);
+	static BEXMatcher testJustBEXMatch(final String pattern, final String text, final BEXPatternFlag... flags) {
+		BEXPattern bexPattern = BEXPattern.compile(pattern, flags);
 		BEXMatcher bexMatcher = bexPattern.matcher(text);
 
 		assertTrue(bexMatcher.find(), "Could not find match");

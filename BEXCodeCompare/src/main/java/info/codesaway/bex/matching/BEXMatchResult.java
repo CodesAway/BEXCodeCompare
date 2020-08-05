@@ -34,6 +34,10 @@ public interface BEXMatchResult {
 	}
 
 	public default String group(final String group) {
+		if (group.equals("*")) {
+			return this.group();
+		}
+
 		IntPair startEndPair = this.startEndPair(group);
 		if (startEndPair.getLeft() == -1 || startEndPair.getRight() == -1) {
 			return null;

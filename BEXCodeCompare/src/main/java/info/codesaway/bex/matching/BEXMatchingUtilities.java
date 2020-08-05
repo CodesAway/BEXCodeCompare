@@ -1,9 +1,12 @@
 package info.codesaway.bex.matching;
 
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_EXPRESSION_BLOCK;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_LINE_COMMENT;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_MULTILINE_COMMENT;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_SECONDARY_STRING_LITERAL;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_STRING_LITERAL;
 
+import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.NavigableMap;
 import java.util.TreeMap;
@@ -125,21 +128,14 @@ public class BEXMatchingUtilities {
 		// * In String literal
 		// * Other stuff?
 
-		/**
-		 * Map from range start to BEXMatchingTextState (contains range and text state)
-		 */
 		NavigableMap<Integer, BEXMatchingTextState> textStateMap = new TreeMap<>();
-
-		boolean isInStringLiteral = false;
-		boolean isInLineComment = false;
-		boolean isInMultilineComment = false;
-
-		int startTextInfo = -1;
+		ArrayDeque<BEXMatchingStateOption> stateStack = new ArrayDeque<>();
+		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
 
 		for (int i = 0; i < text.length(); i++) {
 			char c = text.charAt(i);
 
-			if (isInStringLiteral) {
+			if (stateStack.peek() == IN_STRING_LITERAL) {
 				if (c == '\\') {
 					// Escape next character
 					if (nextChar(text, i) == '\0') {
@@ -149,51 +145,198 @@ public class BEXMatchingUtilities {
 					i++;
 				} else if (c == '"') {
 					// End of String literal
-					isInStringLiteral = false;
-
+					int startTextInfo = startTextInfoStack.pop();
 					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.of(startTextInfo, i), IN_STRING_LITERAL));
+							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
 				}
 				// Other characters don't matter??
 				// TODO: handle unicode and other escaping in String literal
-			} else if (isInLineComment) {
-				if (c == '\n' || c == '\r') {
-					isInLineComment = false;
+			} else if (stateStack.peek() == IN_SECONDARY_STRING_LITERAL) {
+				if (c == '\\') {
+					// Escape next character
+					if (nextChar(text, i) == '\0') {
+						break;
+					}
+
+					i++;
+				} else if (c == '\'') {
+					// End of String literal
+					int startTextInfo = startTextInfoStack.pop();
 					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.of(startTextInfo, i), IN_LINE_COMMENT));
+							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+				}
+				// Other characters don't matter??
+			} else if (stateStack.peek() == IN_LINE_COMMENT) {
+				if (c == '\n' || c == '\r') {
+					int startTextInfo = startTextInfoStack.pop();
+					textStateMap.put(startTextInfo,
+							new BEXMatchingTextState(IntBEXRange.of(startTextInfo, i), stateStack.pop()));
 				}
 				// Other characters don't matter?
-			} else if (isInMultilineComment) {
+			} else if (stateStack.peek() == IN_MULTILINE_COMMENT) {
 				if (hasText(text, i, "*/")) {
-					isInMultilineComment = false;
 					i++;
+					int startTextInfo = startTextInfoStack.pop();
 					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.of(startTextInfo, i), IN_MULTILINE_COMMENT));
+							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
 				}
 			} else if (c == '/' && nextChar(text, i) == '/') {
-				isInLineComment = true;
-				startTextInfo = i;
+				stateStack.push(IN_LINE_COMMENT);
+				startTextInfoStack.push(i);
 				i++;
 			} else if (c == '/' && nextChar(text, i) == '*') {
-				isInMultilineComment = true;
-				startTextInfo = i;
+				stateStack.push(IN_MULTILINE_COMMENT);
+				startTextInfoStack.push(i);
 				i++;
 			} else if (c == '"') {
-				// String literal
-				isInStringLiteral = true;
-				startTextInfo = i;
+				stateStack.push(IN_STRING_LITERAL);
+				startTextInfoStack.push(i);
+			} else if (c == '\'') {
+				stateStack.push(IN_SECONDARY_STRING_LITERAL);
+				startTextInfoStack.push(i);
 			}
 		}
 
-		if (isInLineComment) {
+		if (!stateStack.isEmpty()) {
+			// TODO: what if there are multiple entries?
+			// (this would suggest improperly formatted code)
+			int startTextInfo = startTextInfoStack.pop();
 			textStateMap.put(startTextInfo,
-					new BEXMatchingTextState(IntBEXRange.of(startTextInfo, text.length()), IN_LINE_COMMENT));
-		} else if (isInMultilineComment) {
+					new BEXMatchingTextState(IntBEXRange.of(startTextInfo, text.length()), stateStack.pop()));
+		}
+
+		return Collections.unmodifiableNavigableMap(textStateMap);
+	}
+
+	/**
+	 * Extracts <code>BEXMatchingTextState</code>s from the specified JSP text
+	 * @param text the JSP text
+	 * @return an unmodifiable map from the range start to the BEXMatchingTextState
+	 */
+	public static NavigableMap<Integer, BEXMatchingTextState> extractJSPTextStates(final CharSequence text) {
+		// TODO: used Java as a basic and need to enhance
+		// For example, to handle JSP Expression
+		// https://www.tutorialspoint.com/jsp/jsp_syntax.htm
+
+		// TODO: need to make RangeMap class and correctly and nested ranges
+		// Currently, doesn't work as expected
+		// "stuff <%= expression%> more stuff"
+		// "More stuff" after the expression should be seen as part of the String literal,
+		// but isn't since it gets the last range, which is the expression, which is over
+		// Think can fix by end the state when go into a inner state
+		// Then, when leave inner state, start a new state based on the outer state
+
+		// TODO: make RangeMap class to handle this
+		// When adding a new record, check for overlap using the below logic
+		// + An overlap occurs if and only if
+		// a) The added range's start in part of an existing range
+		// * Can check by finding existing range in map and seeing if the added range's start is in the middle
+		// * BEXUtilities.getEntryInRanges
+		// b) An existing range's start is contained in the new range
+		// * Can do a subRange check on the existing NavigableMap and see if there are any entries
+		// If there's an overlap, handle by breaking apart ranges in pieces
+
+		// Parse text to get states
+		// * Block comment
+		// * Line comment
+		// * In String literal
+		// * Other stuff?
+
+		NavigableMap<Integer, BEXMatchingTextState> textStateMap = new TreeMap<>();
+		ArrayDeque<BEXMatchingStateOption> stateStack = new ArrayDeque<>();
+		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
+
+		for (int i = 0; i < text.length(); i++) {
+			char c = text.charAt(i);
+
+			if (stateStack.peek() == IN_STRING_LITERAL) {
+				if (c == '\\') {
+					// Escape next character
+					if (nextChar(text, i) == '\0') {
+						break;
+					}
+
+					i++;
+				} else if (c == '"') {
+					int startTextInfo = startTextInfoStack.pop();
+					textStateMap.put(startTextInfo,
+							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+				} else if (hasText(text, i, "<%=")) {
+					stateStack.push(IN_EXPRESSION_BLOCK);
+					startTextInfoStack.push(i);
+					i += 2;
+				}
+
+				// Other characters don't matter??
+				// TODO: handle unicode and other escaping in String literal
+			} else if (stateStack.peek() == IN_SECONDARY_STRING_LITERAL) {
+				if (c == '\\') {
+					// Escape next character
+					if (nextChar(text, i) == '\0') {
+						break;
+					}
+
+					i++;
+				} else if (c == '\'') {
+					int startTextInfo = startTextInfoStack.pop();
+					textStateMap.put(startTextInfo,
+							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+				} else if (hasText(text, i, "<%=")) {
+					stateStack.push(IN_EXPRESSION_BLOCK);
+					startTextInfoStack.push(i);
+					i += 2;
+				}
+
+				// Other characters don't matter??
+				// TODO: handle unicode and other escaping in String literal
+			} else if (stateStack.peek() == IN_LINE_COMMENT) {
+				if (c == '\n' || c == '\r') {
+					int startTextInfo = startTextInfoStack.pop();
+					textStateMap.put(startTextInfo,
+							new BEXMatchingTextState(IntBEXRange.of(startTextInfo, i), stateStack.pop()));
+				}
+				// Other characters don't matter?
+			} else if (stateStack.peek() == IN_MULTILINE_COMMENT) {
+				if (hasText(text, i, "*/")) {
+					i++;
+					int startTextInfo = startTextInfoStack.pop();
+					textStateMap.put(startTextInfo,
+							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+				}
+			} else if (stateStack.peek() == IN_EXPRESSION_BLOCK) {
+				if (hasText(text, i, "%>")) {
+					i++;
+					int startTextInfo = startTextInfoStack.pop();
+					textStateMap.put(startTextInfo,
+							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+				}
+			} else if (c == '/' && nextChar(text, i) == '/') {
+				stateStack.push(IN_LINE_COMMENT);
+				startTextInfoStack.push(i);
+				i++;
+			} else if (c == '/' && nextChar(text, i) == '*') {
+				stateStack.push(IN_MULTILINE_COMMENT);
+				startTextInfoStack.push(i);
+				i++;
+			} else if (c == '"') {
+				stateStack.push(IN_STRING_LITERAL);
+				startTextInfoStack.push(i);
+			} else if (c == '\'') {
+				stateStack.push(IN_SECONDARY_STRING_LITERAL);
+				startTextInfoStack.push(i);
+			} else if (hasText(text, i, "<%=")) {
+				stateStack.push(IN_EXPRESSION_BLOCK);
+				startTextInfoStack.push(i);
+				i += 2;
+			}
+		}
+
+		if (!stateStack.isEmpty()) {
+			// TODO: what if there are multiple entries?
+			// (this would suggest improperly formatted code)
+			int startTextInfo = startTextInfoStack.pop();
 			textStateMap.put(startTextInfo,
-					new BEXMatchingTextState(IntBEXRange.of(startTextInfo, text.length()), IN_MULTILINE_COMMENT));
-		} else if (isInStringLiteral) {
-			textStateMap.put(startTextInfo,
-					new BEXMatchingTextState(IntBEXRange.of(startTextInfo, text.length()), IN_STRING_LITERAL));
+					new BEXMatchingTextState(IntBEXRange.of(startTextInfo, text.length()), stateStack.pop()));
 		}
 
 		return Collections.unmodifiableNavigableMap(textStateMap);
