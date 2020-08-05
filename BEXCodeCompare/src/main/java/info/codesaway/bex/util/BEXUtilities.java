@@ -115,11 +115,11 @@ public final class BEXUtilities {
 		return text.subSequence(startEnd.getLeft(), startEnd.getRight());
 	}
 
-	public static <T extends IntRange> Optional<Entry<Integer, T>> getEntryInRanges(final int start,
+	public static <T extends IntRange> Optional<Entry<Integer, T>> getEntryInRanges(final int index,
 			final NavigableMap<Integer, T> ranges) {
-		Entry<Integer, T> entry = ranges.floorEntry(start);
+		Entry<Integer, T> entry = ranges.floorEntry(index);
 
-		if (entry != null && entry.getValue().contains(start)) {
+		if (entry != null && entry.getValue().contains(index)) {
 			return Optional.of(entry);
 		} else {
 			return Optional.empty();

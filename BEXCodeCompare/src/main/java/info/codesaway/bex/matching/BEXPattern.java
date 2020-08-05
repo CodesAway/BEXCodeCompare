@@ -77,6 +77,7 @@ public final class BEXPattern {
 		// Allow duplicate names in capture groups
 		// (this way, don't cause error if specify the same group name twice)
 		int regexPatternFlags = Pattern.DUPLICATE_NAMES;
+		boolean requireSpace = false;
 
 		if (flags != null) {
 			for (BEXPatternFlag flag : flags) {
@@ -86,6 +87,9 @@ public final class BEXPattern {
 					break;
 				case UNICODE:
 					regexPatternFlags |= Pattern.UNICODE_CHARACTER_CLASS;
+					break;
+				case REQUIRE_SPACE:
+					requireSpace = true;
 					break;
 				default:
 					break;
@@ -257,7 +261,7 @@ public final class BEXPattern {
 					// If space is between 2 alphanumeric, then space is required
 					regexBuilder.append("\\s++");
 					i++;
-				} else if (isAfterGroup) {
+				} else if (isAfterGroup && isWordCharacter(nextChar(pattern, i))) {
 					// TODO: need to handle if group in middle is optional and has space before group
 					// In this case, the space after the group must be optional (otherwise, will always fail)
 					// (since would have captured space before, the group is empty, and there is no space after to get)
@@ -265,11 +269,12 @@ public final class BEXPattern {
 					// Space after group is required
 					regexBuilder.append("\\s*+(?<=\\s)");
 					i++;
-				} else if (hasText(pattern, i + 1, ":[")) {
+				} else if (hasText(pattern, i + 1, ":[") && isWordCharacter(previousChar(pattern, i))) {
 					// Space before group is required
-					//					regexBuilder.append("(?:\\s++|(?<=\\s)\\s*+)");
 					regexBuilder.append("\\s*+(?<=\\s)");
-					//					regexBuilder.append("\\s++");
+					i++;
+				} else if (requireSpace) {
+					regexBuilder.append("\\s++");
 					i++;
 				} else {
 					regexBuilder.append("\\s*+");

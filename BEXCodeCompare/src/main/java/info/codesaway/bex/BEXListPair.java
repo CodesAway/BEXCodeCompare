@@ -23,17 +23,28 @@ public final class BEXListPair<E> implements BEXPair<List<E>> {
 		this(supplier.get(), supplier.get());
 	}
 
+	/**
+	 * Creates a new BEXListPair using the specified left and right list
+	 * @param left the left list
+	 * @param right the right list
+	 */
 	public BEXListPair(final List<E> left, final List<E> right) {
 		this(new BEXPairValue<>(left, right));
 	}
 
+	/**
+	 * Creates a new BEXListPair using the specified pair of lists
+	 * @param listPair the pair of lists
+	 */
 	public BEXListPair(final BEXPair<List<E>> listPair) {
 		this.pair = listPair;
 	}
 
 	/**
 	 * Creates a new BEXListPair using the results of applying the specified function for both {@link BEXSide#LEFT} and {@link BEXSide#RIGHT}
+	 * @param <E> the element type
 	 * @param function the function to apply
+	 * @return BEXListPair
 	 */
 	// Implementation note: made "from" method instead of constructor due to Java compiler ambiguity
 	// (doesn't show as compile error until consumer code tries to use it, then shows as compile error)
@@ -62,7 +73,7 @@ public final class BEXListPair<E> implements BEXPair<List<E>> {
 	/**
 	 * Gets the list on the specified side
 	 * @param side the side
-	 * @return
+	 * @return the list on the specified side
 	 */
 	@Override
 	public List<E> get(final BEXSide side) {
@@ -78,26 +89,42 @@ public final class BEXListPair<E> implements BEXPair<List<E>> {
 		this.getRight().add(pair.getRight());
 	}
 
+	/**
+	 *
+	 * @return <code>true</code> if the left list is empty
+	 */
 	public boolean isLeftEmpty() {
 		return this.getLeft().isEmpty();
 	}
 
+	/**
+	 *
+	 * @return <code>true</code> if the right list is empty
+	 */
 	public boolean isRightEmpty() {
 		return this.getRight().isEmpty();
 	}
 
+	/**
+	 *
+	 * @return the size of the left list
+	 */
 	public int leftSize() {
 		return this.getLeft().size();
 	}
 
+	/**
+	 *
+	 * @return the size of the right list
+	 */
 	public int rightSize() {
 		return this.getRight().size();
 	}
 
 	/**
 	 *
-	 * @param index
-	 * @return
+	 * @param index the index in the list
+	 * @return a pair of values getting the specified value from each the left and right list
 	 * @throws IndexOutOfBoundsException if the index is out of range for either the left or right list
 	 */
 	public BEXPair<E> get(final int index) {
@@ -106,8 +133,8 @@ public final class BEXListPair<E> implements BEXPair<List<E>> {
 
 	/**
 	 *
-	 * @param index
-	 * @return
+	 * @param index the index in the list
+	 * @return a pair of values using the left / right index in the pair to get the corresponding element in each list
 	 * @throws IndexOutOfBoundsException if the index is out of range for either the left or right list
 	 */
 	public BEXPair<E> get(final IntPair index) {

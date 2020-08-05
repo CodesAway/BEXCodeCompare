@@ -1,7 +1,5 @@
 package info.codesaway.bex;
 
-import info.codesaway.bex.IntPair;
-
 public interface IntRange extends IntPair {
 	/**
 	 * Gets the start
@@ -25,17 +23,23 @@ public interface IntRange extends IntPair {
 		return this.getEnd();
 	}
 
-	public default boolean hasInclusiveStart() {
-		return true;
-	}
+	public boolean hasInclusiveStart();
 
-	public default boolean hasInclusiveEnd() {
-		return false;
-	}
+	public boolean hasInclusiveEnd();
 
 	public default boolean contains(final int value) {
 		return value > this.getStart() && value < this.getEnd()
 				|| this.hasInclusiveStart() && value == this.getStart()
 				|| this.hasInclusiveEnd() && value == this.getEnd();
+	}
+
+	public default IntRange canonical() {
+		if (this.hasInclusiveStart() && !this.hasInclusiveEnd()) {
+			return this;
+		}
+
+		int start = this.hasInclusiveStart() ? this.getStart() : this.getStart() + 1;
+		int end = this.hasInclusiveEnd() ? this.getEnd() + 1 : this.getEnd();
+		return IntBEXRange.of(start, end);
 	}
 }

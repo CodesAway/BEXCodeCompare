@@ -79,6 +79,6 @@ final class BEXMatchingState {
 	@Override
 	public String toString() {
 		// TODO: fix this
-		return String.format("BEXMatchingState[%s, %s, %s", this.position, this.brackets, this.options);
+		return String.format("BEXMatchingState[%s, %s, %s]", this.position, this.brackets, this.options);
 	}
 }

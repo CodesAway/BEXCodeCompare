@@ -200,18 +200,13 @@ class BEXMatcherTest {
 		testBEXMatch(pattern, text, expectedValue);
 	}
 
-	// TODO: this test fails
-	// * Expecting to match "("
-	// * Currently, the code expects the match to have balanced parentheses
-	// * However, this isn't required, since it's part of a String
-	// Noticed that Comby is only happy if has trailing quote, so this is a niche scenario that I don't plan to handle yet
-	//	@Test
-	//	void testMatchStringBracketTest() {
-	//		String pattern = "\"javascript:showDetail:[value]\"";
-	//		String text = "mWebView.loadUrl(\"javascript:showDetail(\"+mWare.getId()+\")\");";
-	//		String expectedValue = "(";
-	//		testBEXMatch(pattern, text, expectedValue);
-	//	}
+	@Test
+	void testMatchStringBracketTest() {
+		String pattern = "\"javascript:showDetail:[value]\"";
+		String text = "mWebView.loadUrl(\"javascript:showDetail(\"+mWare.getId()+\")\");";
+		String expectedValue = "(";
+		testBEXMatch(pattern, text, expectedValue);
+	}
 
 	@Test
 	void testEscapeColonInPattern() {
@@ -243,10 +238,38 @@ class BEXMatcherTest {
 	}
 
 	@Test
+	void testOptionalWhitespaceBeforeGroupIfNotWord() {
+		String pattern = "method(:[1], :[2])";
+		String text = "method(1,2)";
+		testJustBEXMatch(pattern, text);
+	}
+
+	@Test
 	void testRequiredWhitespaceAfterGroup() {
 		String pattern = ":[value] int";
 		String text = "pint";
 		testNoBEXMatch(pattern, text);
+	}
+
+	@Test
+	void testOptionalWhitespaceAfterGroupIfNotWord() {
+		String pattern = "method(:[1] ,:[2])";
+		String text = "method(1,2)";
+		testJustBEXMatch(pattern, text);
+	}
+
+	@Test
+	void testOptionalWhitespaceBeforeAndAfterGroupIfNotWord() {
+		String pattern = "method(:[1] , :[2])";
+		String text = "method(1,2)";
+		testJustBEXMatch(pattern, text);
+	}
+
+	@Test
+	void testRequireWhitespaceIfRequireSpaceFlagIsSet() {
+		String pattern = "method(:[1] , :[2])";
+		String text = "method(1,2)";
+		testNoBEXMatch(pattern, text, BEXPatternFlag.REQUIRE_SPACE);
 	}
 
 	@Test
@@ -301,5 +324,29 @@ class BEXMatcherTest {
 	void testStarGroup() {
 		BEXMatcher bexMatcher = testBEXMatch("blah :[value]", "blah fun", "fun");
 		assertThat(bexMatcher.group("*")).isEqualTo("blah fun");
+	}
+
+	@Test
+	void testHasCommentAndParenthesesInMatch() {
+		String pattern = "method(:[1], :[2])";
+		String text = "method(1, (2/* comment) */))";
+
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text);
+		assertThat(bexMatcher.get("1")).isEqualTo("1");
+		assertThat(bexMatcher.get("2")).isEqualTo("(2/* comment) */)");
+	}
+
+	@Test
+	void testOkayNotBalancedBracketInStringLiteral() {
+		String pattern = "method(:[value])";
+		String text = "method(\"(\")";
+		testBEXMatch(pattern, text, "\"(\"");
+	}
+
+	@Test
+	void testOkayNotBalancedBracketInOtherStringLiteral() {
+		String pattern = "method(:[value])";
+		String text = "method('(')";
+		testBEXMatch(pattern, text, "'('");
 	}
 }

@@ -2,15 +2,13 @@ package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.DEFAULT;
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.STOP_WHEN_VALID;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_LINE_COMMENT;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_MULTILINE_COMMENT;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_STRING_LITERAL;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.extractJavaTextStates;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasNextChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.isWordCharacter;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.lastChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.nextChar;
+import static info.codesaway.bex.util.BEXUtilities.getEntryInRanges;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,9 +17,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 
 import info.codesaway.bex.IntBEXRange;
+import info.codesaway.bex.IntRange;
 import info.codesaway.bex.MutableIntBEXPair;
 import info.codesaway.util.regex.Matcher;
 import info.codesaway.util.regex.Pattern;
@@ -133,10 +133,10 @@ public final class BEXMatcher implements BEXMatchResult {
 
 			int start = currentMatcher.start();
 			int startWithOffset = start + this.offset;
-			// TODO: refactor to use helper method in BEXUtilities
-			Entry<Integer, BEXMatchingTextState> entry = this.textStateMap.floorEntry(startWithOffset);
-			if (entry != null && entry.getValue().getRange().contains(startWithOffset)
-					&& startWithOffset != entry.getKey()) {
+			Optional<Entry<Integer, BEXMatchingTextState>> entry = getEntryInRanges(startWithOffset, this.textStateMap);
+
+			if (entry.isPresent() && startWithOffset != entry.get().getKey()
+					&& !entry.get().getValue().getStateOption().isCode()) {
 				// Don't count as match, since part of string literal or comment
 				// If match starts with the block, then okay to match
 				// TODO: when else would it be okay to match?
@@ -150,7 +150,7 @@ public final class BEXMatcher implements BEXMatchResult {
 					} else {
 						System.out.printf("Found match! %d (%d)%n", start, startWithOffset);
 					}
-					System.out.println(this.textStateMap);
+					System.out.println("Text states: " + this.textStateMap);
 				}
 			}
 		} while (!foundMatch);
@@ -170,6 +170,7 @@ public final class BEXMatcher implements BEXMatchResult {
 			Matcher nextMatcher = nextPattern.matcher(this.text);
 
 			if (DEBUG) {
+				System.out.println("Trying matcher " + (i + 1));
 				System.out.println("Region start: " + regionStart);
 			}
 
@@ -192,35 +193,24 @@ public final class BEXMatcher implements BEXMatchResult {
 			int start = regionStart;
 			int end = nextMatcher.start();
 
-			// If match starts with " and prior character is \ then ignore
-			// (trying to handle match within string, while ignoring escaped double quote)
-			// TODO: is there a better way to do this?
-			// Doesn't work, since regionStart is used to determine when the capture group starts
-			// Instead, when building the pattern, if see double quote character, need to ensure not escaped
-			//			if (hasText(this.text, end, "\"") && prevChar(this.text, end) == '\\') {
-			//				// Redo the current pattern
-			//				i--;
-			//
-			//				// Start with the character after the double quote
-			//				regionStart = end + 1;
-			//
-			//				continue;
-			//			}
-
 			int startWithOffset = start + this.offset;
-			// TODO: refactor to use helper in BEXUtilities
-			Entry<Integer, BEXMatchingTextState> entry = this.textStateMap.floorEntry(startWithOffset);
+			Optional<Entry<Integer, BEXMatchingTextState>> entry = getEntryInRanges(startWithOffset, this.textStateMap);
 			BEXMatchingState initialState;
-			if (entry != null && entry.getValue().getRange().contains(startWithOffset)) {
-				initialState = new BEXMatchingState(-1, "", entry.getValue().getStateOption());
+			if (entry.isPresent() && startWithOffset != entry.get().getKey()
+					&& !entry.get().getValue().getStateOption().isCode()) {
+				initialState = new BEXMatchingState(-1, "", entry.get().getValue().getStateOption());
 			} else {
 				initialState = BEXMatchingState.DEFAULT;
+			}
+
+			if (DEBUG) {
+				System.out.println("Performing search with initialState " + initialState);
 			}
 
 			BEXGroupMatchSetting groupMatchSetting = this.parentPattern.getGroupMatchSettings()
 					.getOrDefault(i, DEFAULT);
 
-			BEXMatchingState state = search(this.text, start, end, groupMatchSetting, initialState);
+			BEXMatchingState state = this.search(start, end, groupMatchSetting, initialState);
 
 			while (!state.isValid(end, initialState.getOptions())) {
 				// TODO: if has mismatched brackets, start over and try to find after this?
@@ -235,9 +225,10 @@ public final class BEXMatcher implements BEXMatchResult {
 				// TODO: handle what if not valid (in this case, expand group)
 				if (DEBUG) {
 					System.out.printf("Not valid group value: @%s@%n", this.text.subSequence(start, end));
+					System.out.println("State: " + state);
 				}
 
-				BEXMatchingState validState = search(this.text, state.getPosition(), this.text.length(),
+				BEXMatchingState validState = this.search(state.getPosition(), this.text.length(),
 						groupMatchSetting.turnOn(STOP_WHEN_VALID), state);
 
 				// TODO: should I ignore the initialState options?
@@ -284,7 +275,7 @@ public final class BEXMatcher implements BEXMatchResult {
 					}
 					//					return false;
 					// TODO: what should I pass for initial state
-					state = search(this.text, position, end, groupMatchSetting);
+					state = this.search(position, end, groupMatchSetting);
 				} else {
 					break;
 				}
@@ -349,18 +340,22 @@ public final class BEXMatcher implements BEXMatchResult {
 		return true;
 	}
 
-	private static BEXMatchingState search(final CharSequence text, final int start, final int end,
+	private BEXMatchingState search(final int start, final int end,
 			final BEXGroupMatchSetting groupMatchSetting) {
-		return search(text, start, end, groupMatchSetting, null);
+		return this.search(start, end, groupMatchSetting, null);
 	}
 
-	private static BEXMatchingState search(final CharSequence text, final int start, final int end,
+	private BEXMatchingState search(final int start, final int end,
 			final BEXGroupMatchSetting groupMatchSetting, final BEXMatchingState state) {
 		// Verify parentheses / brackets are balanced
 		// TODO: handle string (what if group is in String??)
 		// TODO: handle comments (what if group is in comments??)
 
 		boolean shouldStopWhenValid = groupMatchSetting.shouldStopWhenValid();
+
+		if (DEBUG && shouldStopWhenValid) {
+			System.out.println("Should stop when valid!");
+		}
 
 		// By default, don't include angled brackets <> as part of balancing (unless specified)
 		String bracketStarts;
@@ -375,85 +370,59 @@ public final class BEXMatcher implements BEXMatchResult {
 		}
 
 		StringBuilder brackets = new StringBuilder();
-		boolean isInStringLiteral = false;
-		boolean isInLineComment = false;
-		boolean isInMultilineComment = false;
+		// TODO: how to handle multiple levels? Currently, only get top most level
+		// For example, JSP expression within String literal gets JSP expression, but doesn't know about String literal outside
+
+		BEXMatchingStateOption stateOption = null;
 
 		if (state != null) {
 			brackets.append(state.getBrackets());
-			isInStringLiteral = state.isInStringLiteral();
-			isInLineComment = state.isInLineComment();
-			isInMultilineComment = state.isInMultilineComment();
+			stateOption = state.getOptions().stream().findFirst().orElse(null);
 		}
 
 		for (int i = start; i < end; i++) {
-			char c = text.charAt(i);
+			int indexWithOffset = i + this.offset;
+			Optional<Entry<Integer, BEXMatchingTextState>> entry = getEntryInRanges(indexWithOffset,
+					this.textStateMap);
 
-			if (isInStringLiteral) {
-				if (c == '\\') {
-					// Escape next character
-					if (nextChar(text, i) == '\0') {
-						// If there is no next character, return false since not valid
-						return new BEXMatchingState(i, brackets.toString(), IN_STRING_LITERAL);
-					}
+			if (entry.isPresent() && !entry.get().getValue().getStateOption().isCode()) {
+				// Has a state option
+				BEXMatchingTextState textState = entry.get().getValue();
 
-					i++;
-				} else if (c == '"') {
-					// End of String literal
-					isInStringLiteral = false;
+				IntRange canonical = textState.getRange().canonical();
+				boolean isEndOfRange = indexWithOffset == canonical.getRight() - 1;
 
-					if (shouldStopWhenValid && brackets.length() == 0) {
-						return new BEXMatchingState(i + 1, "");
-					}
+				stateOption = isEndOfRange ? null : textState.getStateOption();
+
+				if (shouldStopWhenValid && brackets.length() == 0 && isEndOfRange) {
+					// TODO: need to write unit test to verify this should be plus 1
+					return new BEXMatchingState(i + 1, "");
 				}
-				// Other characters don't matter??
-				// TODO: handle unicode and other escaping in String literal
-			} else if (isInLineComment) {
-				if (c == '\n' || c == '\r') {
-					isInLineComment = false;
-				}
-				// Other characters don't matter?
-			} else if (isInMultilineComment) {
-				if (hasText(text, i, "*/")) {
-					isInMultilineComment = false;
-					i++;
-				}
-			} else if (c == '/' && nextChar(text, i) == '/') {
-				isInLineComment = true;
-				i++;
-			} else if (c == '/' && nextChar(text, i) == '*') {
-				isInMultilineComment = true;
-				i++;
-			} else if (bracketStarts.indexOf(c) != -1) {
-				brackets.append(c);
-			} else if (c == '"') {
-				// String literal
-				isInStringLiteral = true;
 			} else {
-				int bracketEndIndex = bracketEnds.indexOf(c);
+				char c = this.text.charAt(i);
+				if (bracketStarts.indexOf(c) != -1) {
+					brackets.append(c);
+				} else {
+					int bracketEndIndex = bracketEnds.indexOf(c);
 
-				if (bracketEndIndex != -1) {
-					char bracketStart = bracketStarts.charAt(bracketEndIndex);
-					if (lastChar(brackets) != bracketStart) {
-						return new BEXMatchingState(i, brackets.toString());
-					} else {
-						// Remove last character
-						brackets.setLength(brackets.length() - 1);
+					if (bracketEndIndex != -1) {
+						char bracketStart = bracketStarts.charAt(bracketEndIndex);
+						if (lastChar(brackets) != bracketStart) {
+							return new BEXMatchingState(i, brackets.toString());
+						} else {
+							// Remove last character
+							brackets.setLength(brackets.length() - 1);
 
-						if (shouldStopWhenValid && brackets.length() == 0) {
-							return new BEXMatchingState(i + 1, "");
+							if (shouldStopWhenValid && brackets.length() == 0) {
+								return new BEXMatchingState(i + 1, "");
+							}
 						}
 					}
 				}
 			}
 		}
 
-		//		System.out.println("inStringLiteral? " + inStringLiteral + "\t" + brackets);
-
-		return new BEXMatchingState(end, brackets.toString(),
-				isInStringLiteral ? IN_STRING_LITERAL : null,
-				isInLineComment ? IN_LINE_COMMENT : null,
-				isInMultilineComment ? IN_MULTILINE_COMMENT : null);
+		return new BEXMatchingState(end, brackets.toString(), stateOption);
 	}
 
 	private void putCaptureGroups(final Matcher matcher) {
