@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2020-08-05
+### Added
+* Initial support for matching JSP
+  * Added BEXMatchingLanguage enum
+  * Passes function to extract the necessary information (used in BEXString)
+  * BEXMatchingUtilities has the methods 
+ 
+* BEXPatternFlag to REQUIRE_SPACE
+  * When this flag is passed, spaces in the pattern are always required
+  * By default, spaces are usually optional (except in certain circumstancances - to allow matching without regard to exact formatting in the code)
+
+* Improvements to IntBEXRange (can created closed range)
+* Method IntRange.canonical to "normalize" the int range
+
+### Changed
+* Simplified BEXMatcher code and removed repeated code
+* BEXMatchingTextState now implements IntRange
+
+### Fixed
+* 0.6.0 didn't have all the code checked in (such as supporting star group to indicate the entire match)
+* Whitespace before and after group in match is optional if not next to word character
+  * For example, the pattern ```method(:[1] ,  :[2])``` now allows the space before and after the comma to be optional
+  * If want to always require space, can use the new flag REQUIRE_SPACE
+  * If want just this specific space to be required, can put two spaces in the pattern
+
 ## [0.6.0] - 2020-08-03
 ### Added
 * BEXPattern
