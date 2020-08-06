@@ -7,10 +7,8 @@ import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_SECONDARY_ST
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_STRING_LITERAL;
 
 import java.util.ArrayDeque;
-import java.util.Collections;
-import java.util.NavigableMap;
-import java.util.TreeMap;
 
+import info.codesaway.bex.ImmutableIntRangeMap;
 import info.codesaway.bex.IntBEXRange;
 
 public class BEXMatchingUtilities {
@@ -121,14 +119,18 @@ public class BEXMatchingUtilities {
 	 * @param text the Java text
 	 * @return an unmodifiable map from the range start to the BEXMatchingTextState
 	 */
-	public static NavigableMap<Integer, BEXMatchingTextState> extractJavaTextStates(final CharSequence text) {
+	public static ImmutableIntRangeMap<BEXMatchingStateOption> extractJavaTextStates(final CharSequence text) {
+		if (text.length() == 0) {
+			return ImmutableIntRangeMap.of();
+		}
+
 		// Parse text to get states
 		// * Block comment
 		// * Line comment
 		// * In String literal
 		// * Other stuff?
 
-		NavigableMap<Integer, BEXMatchingTextState> textStateMap = new TreeMap<>();
+		ImmutableIntRangeMap.Builder<BEXMatchingStateOption> builder = ImmutableIntRangeMap.builder();
 		ArrayDeque<BEXMatchingStateOption> stateStack = new ArrayDeque<>();
 		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
 
@@ -146,8 +148,7 @@ public class BEXMatchingUtilities {
 				} else if (c == '"') {
 					// End of String literal
 					int startTextInfo = startTextInfoStack.pop();
-					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
 				}
 				// Other characters don't matter??
 				// TODO: handle unicode and other escaping in String literal
@@ -162,23 +163,20 @@ public class BEXMatchingUtilities {
 				} else if (c == '\'') {
 					// End of String literal
 					int startTextInfo = startTextInfoStack.pop();
-					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
 				}
 				// Other characters don't matter??
 			} else if (stateStack.peek() == IN_LINE_COMMENT) {
 				if (c == '\n' || c == '\r') {
 					int startTextInfo = startTextInfoStack.pop();
-					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.of(startTextInfo, i), stateStack.pop()));
+					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.pop());
 				}
 				// Other characters don't matter?
 			} else if (stateStack.peek() == IN_MULTILINE_COMMENT) {
 				if (hasText(text, i, "*/")) {
 					i++;
 					int startTextInfo = startTextInfoStack.pop();
-					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
 				}
 			} else if (c == '/' && nextChar(text, i) == '/') {
 				stateStack.push(IN_LINE_COMMENT);
@@ -201,11 +199,10 @@ public class BEXMatchingUtilities {
 			// TODO: what if there are multiple entries?
 			// (this would suggest improperly formatted code)
 			int startTextInfo = startTextInfoStack.pop();
-			textStateMap.put(startTextInfo,
-					new BEXMatchingTextState(IntBEXRange.of(startTextInfo, text.length()), stateStack.pop()));
+			builder.put(IntBEXRange.of(startTextInfo, text.length()), stateStack.pop());
 		}
 
-		return Collections.unmodifiableNavigableMap(textStateMap);
+		return builder.build();
 	}
 
 	/**
@@ -213,7 +210,7 @@ public class BEXMatchingUtilities {
 	 * @param text the JSP text
 	 * @return an unmodifiable map from the range start to the BEXMatchingTextState
 	 */
-	public static NavigableMap<Integer, BEXMatchingTextState> extractJSPTextStates(final CharSequence text) {
+	public static ImmutableIntRangeMap<BEXMatchingStateOption> extractJSPTextStates(final CharSequence text) {
 		// TODO: used Java as a basic and need to enhance
 		// For example, to handle JSP Expression
 		// https://www.tutorialspoint.com/jsp/jsp_syntax.htm
@@ -242,7 +239,7 @@ public class BEXMatchingUtilities {
 		// * In String literal
 		// * Other stuff?
 
-		NavigableMap<Integer, BEXMatchingTextState> textStateMap = new TreeMap<>();
+		ImmutableIntRangeMap.Builder<BEXMatchingStateOption> builder = ImmutableIntRangeMap.builder();
 		ArrayDeque<BEXMatchingStateOption> stateStack = new ArrayDeque<>();
 		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
 
@@ -259,9 +256,12 @@ public class BEXMatchingUtilities {
 					i++;
 				} else if (c == '"') {
 					int startTextInfo = startTextInfoStack.pop();
-					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
 				} else if (hasText(text, i, "<%=")) {
+					// Going into second level, so end current level
+					int startTextInfo = startTextInfoStack.pop();
+					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
+
 					stateStack.push(IN_EXPRESSION_BLOCK);
 					startTextInfoStack.push(i);
 					i += 2;
@@ -279,9 +279,12 @@ public class BEXMatchingUtilities {
 					i++;
 				} else if (c == '\'') {
 					int startTextInfo = startTextInfoStack.pop();
-					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
 				} else if (hasText(text, i, "<%=")) {
+					// Going into second level, so end current level
+					int startTextInfo = startTextInfoStack.pop();
+					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
+
 					stateStack.push(IN_EXPRESSION_BLOCK);
 					startTextInfoStack.push(i);
 					i += 2;
@@ -292,23 +295,25 @@ public class BEXMatchingUtilities {
 			} else if (stateStack.peek() == IN_LINE_COMMENT) {
 				if (c == '\n' || c == '\r') {
 					int startTextInfo = startTextInfoStack.pop();
-					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.of(startTextInfo, i), stateStack.pop()));
+					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.pop());
 				}
 				// Other characters don't matter?
 			} else if (stateStack.peek() == IN_MULTILINE_COMMENT) {
 				if (hasText(text, i, "*/")) {
 					i++;
 					int startTextInfo = startTextInfoStack.pop();
-					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
 				}
 			} else if (stateStack.peek() == IN_EXPRESSION_BLOCK) {
 				if (hasText(text, i, "%>")) {
 					i++;
 					int startTextInfo = startTextInfoStack.pop();
-					textStateMap.put(startTextInfo,
-							new BEXMatchingTextState(IntBEXRange.closed(startTextInfo, i), stateStack.pop()));
+					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
+
+					if (!stateStack.isEmpty()) {
+						// Inside a first level, so add startTextInfo for after expression blocks ends
+						startTextInfoStack.push(i + 1);
+					}
 				}
 			} else if (c == '/' && nextChar(text, i) == '/') {
 				stateStack.push(IN_LINE_COMMENT);
@@ -335,10 +340,9 @@ public class BEXMatchingUtilities {
 			// TODO: what if there are multiple entries?
 			// (this would suggest improperly formatted code)
 			int startTextInfo = startTextInfoStack.pop();
-			textStateMap.put(startTextInfo,
-					new BEXMatchingTextState(IntBEXRange.of(startTextInfo, text.length()), stateStack.pop()));
+			builder.put(IntBEXRange.of(startTextInfo, text.length()), stateStack.pop());
 		}
 
-		return Collections.unmodifiableNavigableMap(textStateMap);
+		return builder.build();
 	}
 }

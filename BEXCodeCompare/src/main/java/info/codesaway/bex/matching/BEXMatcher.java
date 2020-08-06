@@ -8,18 +8,16 @@ import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.isWordCharacter;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.lastChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.nextChar;
-import static info.codesaway.bex.util.BEXUtilities.getEntryInRanges;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.NavigableMap;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Function;
 
+import info.codesaway.bex.ImmutableIntRangeMap;
 import info.codesaway.bex.IntBEXRange;
 import info.codesaway.bex.IntRange;
 import info.codesaway.bex.MutableIntBEXPair;
@@ -44,12 +42,12 @@ public final class BEXMatcher implements BEXMatchResult {
 	private CharSequence text;
 
 	/**
-	 * Map from range start to BEXMatchingTextState (contains range and text state)
+	 * Map from range to text state
 	 */
-	private NavigableMap<Integer, BEXMatchingTextState> textStateMap;
+	private ImmutableIntRangeMap<BEXMatchingStateOption> textStateMap;
 
 	/**
-	 * Offset used when resoulving indexes in textStateMap (allows sharing textStateMap such as in BEXString)
+	 * Offset used when resolving indexes in textStateMap (allows sharing textStateMap such as in BEXString)
 	 */
 	private int offset;
 
@@ -70,7 +68,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	}
 
 	BEXMatcher(final BEXPattern parent, final CharSequence text,
-			final NavigableMap<Integer, BEXMatchingTextState> textStateMap, final int offset) {
+			final ImmutableIntRangeMap<BEXMatchingStateOption> textStateMap, final int offset) {
 		this.parentPattern = parent;
 		this.text = text;
 		this.textStateMap = textStateMap;
@@ -80,6 +78,28 @@ public final class BEXMatcher implements BEXMatchResult {
 	@Override
 	public BEXPattern pattern() {
 		return this.parentPattern;
+	}
+
+	/**
+	 * Returns the match state of this matcher as a {@link BEXMatchResult}.
+	 * The result is unaffected by subsequent operations performed upon this
+	 * matcher.
+	 *
+	 * @return  a <code>BEXMatchResult</code> with the state of this matcher
+	 * @since 0.8
+	 */
+	public BEXMatchResult toMatchResult() {
+		BEXMatcher result = new BEXMatcher(this.pattern(), this.text(), this.textStateMap, this.offset);
+		result.matchStartEnd.set(this.matchStartEnd);
+		result.singleValues.putAll(this.singleValues);
+
+		if (!this.multipleValues.isEmpty()) {
+			for (Entry<String, List<IntBEXRange>> entry : this.multipleValues.entrySet()) {
+				result.multipleValues.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+			}
+		}
+
+		return result;
 	}
 
 	@Override
@@ -133,10 +153,10 @@ public final class BEXMatcher implements BEXMatchResult {
 
 			int start = currentMatcher.start();
 			int startWithOffset = start + this.offset;
-			Optional<Entry<Integer, BEXMatchingTextState>> entry = getEntryInRanges(startWithOffset, this.textStateMap);
+			Entry<IntRange, BEXMatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
 
-			if (entry.isPresent() && startWithOffset != entry.get().getKey()
-					&& !entry.get().getValue().getStateOption().isCode()) {
+			if (entry != null && startWithOffset != entry.getKey().getStart()
+					&& !entry.getValue().isCode()) {
 				// Don't count as match, since part of string literal or comment
 				// If match starts with the block, then okay to match
 				// TODO: when else would it be okay to match?
@@ -194,11 +214,12 @@ public final class BEXMatcher implements BEXMatchResult {
 			int end = nextMatcher.start();
 
 			int startWithOffset = start + this.offset;
-			Optional<Entry<Integer, BEXMatchingTextState>> entry = getEntryInRanges(startWithOffset, this.textStateMap);
+			Entry<IntRange, BEXMatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
+
 			BEXMatchingState initialState;
-			if (entry.isPresent() && startWithOffset != entry.get().getKey()
-					&& !entry.get().getValue().getStateOption().isCode()) {
-				initialState = new BEXMatchingState(-1, "", entry.get().getValue().getStateOption());
+			if (entry != null && startWithOffset != entry.getKey().getStart()
+					&& !entry.getValue().isCode()) {
+				initialState = new BEXMatchingState(-1, "", entry.getValue());
 			} else {
 				initialState = BEXMatchingState.DEFAULT;
 			}
@@ -382,17 +403,14 @@ public final class BEXMatcher implements BEXMatchResult {
 
 		for (int i = start; i < end; i++) {
 			int indexWithOffset = i + this.offset;
-			Optional<Entry<Integer, BEXMatchingTextState>> entry = getEntryInRanges(indexWithOffset,
-					this.textStateMap);
+			Entry<IntRange, BEXMatchingStateOption> entry = this.textStateMap.getEntry(indexWithOffset);
 
-			if (entry.isPresent() && !entry.get().getValue().getStateOption().isCode()) {
+			if (entry != null && !entry.getValue().isCode()) {
 				// Has a state option
-				BEXMatchingTextState textState = entry.get().getValue();
-
-				IntRange canonical = textState.getRange().canonical();
+				IntRange canonical = entry.getKey().canonical();
 				boolean isEndOfRange = indexWithOffset == canonical.getRight() - 1;
 
-				stateOption = isEndOfRange ? null : textState.getStateOption();
+				stateOption = isEndOfRange ? null : entry.getValue();
 
 				if (shouldStopWhenValid && brackets.length() == 0 && isEndOfRange) {
 					// TODO: need to write unit test to verify this should be plus 1

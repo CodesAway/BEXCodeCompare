@@ -1,7 +1,8 @@
 package info.codesaway.bex.matching;
 
-import java.util.NavigableMap;
 import java.util.function.Function;
+
+import info.codesaway.bex.ImmutableIntRangeMap;
 
 public enum BEXMatchingLanguage {
 	JAVA(BEXMatchingUtilities::extractJavaTextStates),
@@ -10,14 +11,14 @@ public enum BEXMatchingLanguage {
 	// End of enum
 	;
 
-	private final Function<CharSequence, NavigableMap<Integer, BEXMatchingTextState>> extractFunction;
+	private final Function<CharSequence, ImmutableIntRangeMap<BEXMatchingStateOption>> extractFunction;
 
 	private BEXMatchingLanguage(
-			final Function<CharSequence, NavigableMap<Integer, BEXMatchingTextState>> extractFunction) {
+			final Function<CharSequence, ImmutableIntRangeMap<BEXMatchingStateOption>> extractFunction) {
 		this.extractFunction = extractFunction;
 	}
 
-	public NavigableMap<Integer, BEXMatchingTextState> extract(final CharSequence text) {
+	public ImmutableIntRangeMap<BEXMatchingStateOption> extract(final CharSequence text) {
 		return this.extractFunction.apply(text);
 	}
 }
