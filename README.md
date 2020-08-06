@@ -62,9 +62,23 @@ BECR, pronounced Beccer, is **B**e **E**nhanced **C**ode **R**efactoring
 <a name="how"></a>
 ## How does it work?
 
+### BEX Code Compare
 First we use Patience sort / Myers diff (similar to how GitHub does a compare). Then, we take the resulting diff and do some post diff processing to group the differences into groups of changes.
 
+### BEX Code Matching
+BEX Matching performs structured code matching to offen an enhanced to find and replace for your code
+
+For example Match an **if**branch with a simple pattern.
+
+    if (:[condition]) { :[stuff] )
+    
+BEX will ensure the parentheses and braces are balanced, and that you're not looking at commented out code. I like to this of it as a code friendly regular expression. Of coures, if you want to mix regex in your pattern, that's supported too.
+
+### BEX Code Refactoring
 BECR uses BEX and Eclipe's JDT to parse Java code and provide parsing and refactoring functionality. There are examples available to show how BECR could be used.
+
+### Learn more on the wiki
+Check out the [Wiki](https://github.com/CodesAway/BEXCodeCompare/wiki) to learn more
 
 <a name="how-plugin"></a>
 ## How does the Eclipse plugin work?
