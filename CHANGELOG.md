@@ -8,6 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2020-08-06
+### Added
+* ImmutableIntRangeMap
+* IntRange / IntBEXRange methods
+
+* BEXPattern
+  * Basic caching of BEXPattern (done behind the scenes)
+  * Method getThreadLocalMatcher
+  * matcher method which takes no arguments (can then call reset to set text)
+
+* BEXMatcher methods
+  * toMatchResult
+
+### Changed
+* Refactored matching code to use ImmutableIntRangeMap
+
+### Removed
+* Code no longer needed after change to use ImmutableIntRangeMap
+  * Class BEXMatchingTextState
+  * BEXUtilities methods
+    * getEntryInRanges
+    * hasEntryInRanges
+
+* In BECR, ASTNodeUtilities, removed methods which aren't used (may be added back if a need arises)
+    * getCommentRanges
+    * findNode
+
 ## [0.7.0] - 2020-08-05
 ### Added
 * Initial support for matching JSP
