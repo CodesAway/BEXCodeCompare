@@ -33,6 +33,11 @@ public interface IntRange extends IntPair {
 				|| this.hasInclusiveEnd() && value == this.getEnd();
 	}
 
+	public default boolean isEmpty() {
+		return this.getStart() == this.getEnd()
+				&& !(this.hasInclusiveStart() && this.hasInclusiveEnd());
+	}
+
 	public default IntRange canonical() {
 		if (this.hasInclusiveStart() && !this.hasInclusiveEnd()) {
 			return this;
@@ -41,5 +46,18 @@ public interface IntRange extends IntPair {
 		int start = this.hasInclusiveStart() ? this.getStart() : this.getStart() + 1;
 		int end = this.hasInclusiveEnd() ? this.getEnd() + 1 : this.getEnd();
 		return IntBEXRange.of(start, end);
+	}
+
+	/**
+	 * Returns an IntBEXRange (immutable) for this IntRange
+	 * @return an IntBEXRange (immutable) for this IntRange
+	 * @since 0.8
+	 */
+	public default IntBEXRange toIntBEXRange() {
+		if (this instanceof IntBEXRange) {
+			return (IntBEXRange) this;
+		}
+
+		return new IntBEXRange(this.getStart(), this.hasInclusiveStart(), this.getEnd(), this.hasInclusiveEnd());
 	}
 }

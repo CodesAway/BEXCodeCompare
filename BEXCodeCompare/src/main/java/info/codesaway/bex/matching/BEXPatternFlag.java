@@ -12,7 +12,7 @@ public enum BEXPatternFlag {
 	 *
 	 * <p> Specifying this flag may impose a slight performance penalty.  </p>
 	 */
-	CASE_INSENSITIVE,
+	CASE_INSENSITIVE(0x01),
 
 	/**
 	 * Enables Unicode-aware case folding and matching.
@@ -31,13 +31,29 @@ public enum BEXPatternFlag {
 	 *
 	 * <p>Specifying this flag may impose a performance penalty.</p>
 	 */
-	UNICODE,
+	UNICODE(0x02),
 
 	/**
 	 * By default, spaces in the pattern represent optional spaces in the matched text (except in certain circumstances)
 	 *
 	 * <p>When this flag is specified, then spaces in the pattern will <b>always</b> represent <b>required</b> spaces in the matched text</p>
 	 */
-	REQUIRE_SPACE,
+	REQUIRE_SPACE(0x04),
 	;
+
+	private final int value;
+
+	private BEXPatternFlag(final int value) {
+		this.value = value;
+	}
+
+	static int encodeFlags(final BEXPatternFlag... flags) {
+		int result = 0;
+
+		for (BEXPatternFlag flag : flags) {
+			result |= flag.value;
+		}
+
+		return result;
+	}
 }

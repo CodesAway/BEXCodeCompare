@@ -1,16 +1,14 @@
 package info.codesaway.bex.matching;
 
-import java.util.Collections;
-import java.util.NavigableMap;
-import java.util.TreeMap;
+import info.codesaway.bex.ImmutableIntRangeMap;
 
 public final class BEXString implements CharSequence {
 	private final String text;
 
 	/**
-	 * Map from range start to BEXMatchingTextState (contains range and text state)
+	 * Map from range to text state
 	 */
-	private final NavigableMap<Integer, BEXMatchingTextState> textStateMap;
+	private final ImmutableIntRangeMap<BEXMatchingStateOption> textStateMap;
 
 	/**
 	 * The offset, so can resolve indexes in text to indexes in textStateMap (such as if use BEXString.substring)
@@ -32,19 +30,13 @@ public final class BEXString implements CharSequence {
 	/**
 	 * Creates a BEXString from the specified text and text state map
 	 * @param text the text
-	 * @param textStateMap the text state map (key is start index for range)
-	 * @param isUnmodifiable indicates whether the textStateMap is unmodifiable; if <code>false</code> a copy will be created and made unmodifiable
+	 * @param textStateMap the text state map
 	 */
-	public BEXString(final String text, final NavigableMap<Integer, BEXMatchingTextState> textStateMap,
-			final boolean isUnmodifiable) {
-		this(text,
-				isUnmodifiable
-						? textStateMap
-						: Collections.unmodifiableNavigableMap(new TreeMap<>(textStateMap)),
-				0);
+	public BEXString(final String text, final ImmutableIntRangeMap<BEXMatchingStateOption> textStateMap) {
+		this(text, textStateMap, 0);
 	}
 
-	private BEXString(final String text, final NavigableMap<Integer, BEXMatchingTextState> textStateMap,
+	private BEXString(final String text, final ImmutableIntRangeMap<BEXMatchingStateOption> textStateMap,
 			final int offset) {
 		this.text = text;
 		this.textStateMap = textStateMap;
@@ -55,7 +47,7 @@ public final class BEXString implements CharSequence {
 		return this.text;
 	}
 
-	public NavigableMap<Integer, BEXMatchingTextState> getTextStateMap() {
+	public ImmutableIntRangeMap<BEXMatchingStateOption> getTextStateMap() {
 		return this.textStateMap;
 	}
 
@@ -80,5 +72,10 @@ public final class BEXString implements CharSequence {
 	@Override
 	public BEXString subSequence(final int start, final int end) {
 		return this.substring(start, end);
+	}
+
+	@Override
+	public String toString() {
+		return this.getText();
 	}
 }

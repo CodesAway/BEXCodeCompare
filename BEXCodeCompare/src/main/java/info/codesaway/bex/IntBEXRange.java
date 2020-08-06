@@ -7,6 +7,7 @@ import java.util.Objects;
  */
 public final class IntBEXRange implements IntRange {
 	private final int start;
+	private final boolean hasInclusiveStart;
 	private final int end;
 	private final boolean hasInclusiveEnd;
 
@@ -16,9 +17,18 @@ public final class IntBEXRange implements IntRange {
 	 * @param end the end (exclusive)
 	 */
 	private IntBEXRange(final int start, final int end, final boolean hasInclusiveEnd) {
+		this(start, true, end, hasInclusiveEnd);
+	}
+
+	IntBEXRange(final int start, final boolean hasInclusiveStart, final int end, final boolean hasInclusiveEnd) {
 		this.start = start;
+		this.hasInclusiveStart = hasInclusiveStart;
 		this.end = end;
 		this.hasInclusiveEnd = hasInclusiveEnd;
+
+		if (end < start) {
+			throw new IllegalArgumentException(String.format("Invalid range start = %d, end = %d", start, end));
+		}
 	}
 
 	/**
@@ -40,7 +50,7 @@ public final class IntBEXRange implements IntRange {
 	}
 
 	public static IntBEXRange of(final int start, final int end) {
-		return new IntBEXRange(start, end, false);
+		return closedOpen(start, end);
 	}
 
 	/**
@@ -54,9 +64,20 @@ public final class IntBEXRange implements IntRange {
 		return new IntBEXRange(start, end, true);
 	}
 
+	/**
+	 *
+	 * @param start
+	 * @param end
+	 * @return
+	 * @since 0.8
+	 */
+	public static IntBEXRange closedOpen(final int start, final int end) {
+		return new IntBEXRange(start, end, false);
+	}
+
 	@Override
 	public boolean hasInclusiveStart() {
-		return true;
+		return this.hasInclusiveStart;
 	}
 
 	@Override
@@ -66,7 +87,7 @@ public final class IntBEXRange implements IntRange {
 
 	@Override
 	public String toString() {
-		return "[" + this.getStart() + "," + this.getEnd()
+		return "[" + this.getStart() + ".." + this.getEnd()
 				+ (this.hasInclusiveEnd ? "]" : ")");
 	}
 

@@ -4,14 +4,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.NavigableMap;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Predicate;
 
 import info.codesaway.bex.IntPair;
-import info.codesaway.bex.IntRange;
 
 public final class BEXUtilities {
 	private BEXUtilities() {
@@ -115,19 +111,19 @@ public final class BEXUtilities {
 		return text.subSequence(startEnd.getLeft(), startEnd.getRight());
 	}
 
-	public static <T extends IntRange> Optional<Entry<Integer, T>> getEntryInRanges(final int index,
-			final NavigableMap<Integer, T> ranges) {
-		Entry<Integer, T> entry = ranges.floorEntry(index);
-
-		if (entry != null && entry.getValue().contains(index)) {
-			return Optional.of(entry);
-		} else {
-			return Optional.empty();
-		}
-	}
-
-	public static <T extends IntRange> boolean hasEntryInRanges(final int start,
-			final NavigableMap<Integer, T> ranges) {
-		return getEntryInRanges(start, ranges).isPresent();
-	}
+	//	public static <T extends IntRange> Optional<Entry<Integer, T>> getEntryInRanges(final int index,
+	//			final NavigableMap<Integer, T> ranges) {
+	//		Entry<Integer, T> entry = ranges.floorEntry(index);
+	//
+	//		if (entry != null && entry.getValue().contains(index)) {
+	//			return Optional.of(entry);
+	//		} else {
+	//			return Optional.empty();
+	//		}
+	//	}
+	//
+	//	public static <T extends IntRange> boolean hasEntryInRanges(final int start,
+	//			final NavigableMap<Integer, T> ranges) {
+	//		return getEntryInRanges(start, ranges).isPresent();
+	//	}
 }

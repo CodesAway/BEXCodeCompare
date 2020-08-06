@@ -27,6 +27,17 @@ public final class MatcherTestHelper {
 		return bexMatcher;
 	}
 
+	static BEXMatcher testJustBEXMatch(final String pattern, final String text, final BEXMatchingLanguage language,
+			final BEXPatternFlag... flags) {
+		BEXPattern bexPattern = BEXPattern.compile(pattern, flags);
+		BEXString bexString = new BEXString(text, language);
+		BEXMatcher bexMatcher = bexPattern.matcher(bexString);
+
+		assertTrue(bexMatcher.find(), "Could not find match");
+
+		return bexMatcher;
+	}
+
 	/**
 	 * Test that a match occurred and that the group named "value" matches the expectedValue
 	 * @param pattern the pattern to match

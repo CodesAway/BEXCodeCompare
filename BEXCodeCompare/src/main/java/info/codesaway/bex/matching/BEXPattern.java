@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import info.codesaway.util.regex.Pattern;
 
@@ -27,7 +28,21 @@ public final class BEXPattern {
 	private final List<String> groups;
 	private final Map<Integer, BEXGroupMatchSetting> groupMatchSettings;
 
-	//	private final int regexPatternFlags;
+	private static final String REGEX_BLOCK_START = "@--";
+	private static final String REGEX_BLOCK_END = "--!";
+
+	private static final BEXPatternFlag[] NO_FLAGS = {};
+
+	/**
+	 * Cache patterns for later reuse
+	 */
+	private static final Map<PatternCacheKey, BEXPattern> CACHE_MAP = new ConcurrentHashMap<>();
+
+	// Once the cache is larger than the max size, it's cleared
+	// TODO: see if can implement LRU cache in simple way without adding dependencies on 3rd party tools
+	// LRU cache ConcurrentHashMap using doubly linked list (though Java doesn't have a built in collection)
+	// For our needs, this simple cache should surfice, since it will handle the common use case
+	private static final int MAX_CACHE_SIZE = 100;
 
 	private BEXPattern(final List<Pattern> patterns, final List<String> groups,
 			final Map<Integer, BEXGroupMatchSetting> groupMatchSettings) {
@@ -52,10 +67,60 @@ public final class BEXPattern {
 		//		this.regexPatternFlags = regexPatternFlags;
 	}
 
-	private static final String REGEX_BLOCK_START = "@--";
-	private static final String REGEX_BLOCK_END = "--!";
+	private static class PatternCacheKey {
+		private final String pattern;
+		private final int flags;
 
-	private static final BEXPatternFlag[] NO_FLAGS = {};
+		public PatternCacheKey(final String pattern, final int flags) {
+			this.pattern = pattern;
+			this.flags = flags;
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + this.flags;
+			result = prime * result + ((this.pattern == null) ? 0 : this.pattern.hashCode());
+			return result;
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		@Override
+		public boolean equals(final Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (this.getClass() != obj.getClass()) {
+				return false;
+			}
+			PatternCacheKey other = (PatternCacheKey) obj;
+			if (this.flags != other.flags) {
+				return false;
+			}
+			if (this.pattern == null) {
+				if (other.pattern != null) {
+					return false;
+				}
+			} else if (!this.pattern.equals(other.pattern)) {
+				return false;
+			}
+			return true;
+		}
+
+		@Override
+		public String toString() {
+			return this.flags + ": " + this.pattern;
+		}
+	}
 
 	/**
 	 *
@@ -74,6 +139,16 @@ public final class BEXPattern {
 	 * @return
 	 */
 	public static BEXPattern compile(final String pattern, final BEXPatternFlag... flags) {
+		// https://stackoverflow.com/a/54140147
+		// Use Java 8 to make an easy cache
+		if (CACHE_MAP.size() > MAX_CACHE_SIZE) {
+			CACHE_MAP.clear();
+		}
+		PatternCacheKey key = new PatternCacheKey(pattern, BEXPatternFlag.encodeFlags(flags));
+		return CACHE_MAP.computeIfAbsent(key, k -> internalCompile(pattern, flags));
+	}
+
+	private static BEXPattern internalCompile(final String pattern, final BEXPatternFlag... flags) {
 		// Allow duplicate names in capture groups
 		// (this way, don't cause error if specify the same group name twice)
 		int regexPatternFlags = Pattern.DUPLICATE_NAMES;
@@ -314,6 +389,15 @@ public final class BEXPattern {
 		return isWordCharacter(nextChar) || nextChar == ' ' || nextChar == '?';
 	}
 
+	/**
+	 * Creates an empty matcher
+	 * @return an empty matcher
+	 * @since 0.8
+	 */
+	public BEXMatcher matcher() {
+		return this.matcher("");
+	}
+
 	public BEXMatcher matcher(final CharSequence text) {
 		return new BEXMatcher(this, text);
 	}
@@ -370,5 +454,18 @@ public final class BEXPattern {
 			}
 		}
 		return sb.toString();
+	}
+
+	/**
+	 * Get ThreadLocal for matcher
+	 *
+	 * <p>This is to help handle the fact that the BEXMatcher is not thread-safe</p>
+	 * @param pattern The pattern to be compiled
+	 * @return a ThreadLocal matcher for the specified pattern
+	 * @since 0.8
+	 */
+	public static ThreadLocal<BEXMatcher> getThreadLocalMatcher(final String pattern) {
+		BEXPattern bexPattern = BEXPattern.compile(pattern);
+		return ThreadLocal.withInitial(bexPattern::matcher);
 	}
 }
