@@ -68,7 +68,7 @@ First we use Patience sort / Myers diff (similar to how GitHub does a compare). 
 ### BEX Code Matching
 BEX Matching performs structured code matching to offen an enhanced find and replace for your code
 
-For example Match an **if**branch with a simple pattern.
+For example Match an **if** branch with a simple pattern.
 
     if (:[condition]) { :[stuff] )
     
