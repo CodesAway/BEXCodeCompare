@@ -66,7 +66,7 @@ BECR, pronounced Beccer, is **B**e **E**nhanced **C**ode **R**efactoring
 First we use Patience sort / Myers diff (similar to how GitHub does a compare). Then, we take the resulting diff and do some post diff processing to group the differences into groups of changes.
 
 ### BEX Code Matching
-BEX Matching performs structured code matching to offen an enhanced find and replace for your code
+BEX Matching performs structured code matching to offer an enhanced find and replace for your code
 
 For example Match an **if** branch with a simple pattern.
 
