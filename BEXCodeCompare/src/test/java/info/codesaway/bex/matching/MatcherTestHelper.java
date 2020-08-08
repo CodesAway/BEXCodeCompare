@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Map.Entry;
+
 import info.codesaway.bex.IntBEXRange;
 
 public final class MatcherTestHelper {
@@ -11,11 +13,21 @@ public final class MatcherTestHelper {
 		throw new UnsupportedOperationException();
 	}
 
+	private static final BEXPatternFlag[] NO_FLAGS = {};
+
+	static void testNoBEXMatch(final String pattern, final String text) {
+		testNoBEXMatch(pattern, text, NO_FLAGS);
+	}
+
 	static void testNoBEXMatch(final String pattern, final String text, final BEXPatternFlag... flags) {
 		BEXPattern bexPattern = BEXPattern.compile(pattern, flags);
 		BEXMatcher bexMatcher = bexPattern.matcher(text);
 
 		assertFalse(bexMatcher.find(), "Should not find match");
+	}
+
+	static BEXMatcher testJustBEXMatch(final String pattern, final String text) {
+		return testJustBEXMatch(pattern, text, NO_FLAGS);
 	}
 
 	static BEXMatcher testJustBEXMatch(final String pattern, final String text, final BEXPatternFlag... flags) {
@@ -51,6 +63,14 @@ public final class MatcherTestHelper {
 				.extracting(m -> m.get("value"))
 				.isEqualTo(expectedValue);
 
+		return bexMatcher;
+	}
+
+	@SafeVarargs
+	static BEXMatcher testBEXMatchEntries(final String pattern, final String text,
+			final Entry<String, String>... entries) {
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text);
+		assertThat(bexMatcher.entrySet()).containsExactly(entries);
 		return bexMatcher;
 	}
 

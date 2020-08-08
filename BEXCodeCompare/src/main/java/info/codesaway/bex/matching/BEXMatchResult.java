@@ -2,6 +2,9 @@ package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.util.BEXUtilities.getSubstring;
 
+import java.util.Map.Entry;
+import java.util.Set;
+
 import info.codesaway.bex.IntPair;
 
 public interface BEXMatchResult {
@@ -62,4 +65,6 @@ public interface BEXMatchResult {
 	public default String get(final String group) {
 		return this.group(group);
 	}
+
+	public Set<Entry<String, String>> entrySet();
 }

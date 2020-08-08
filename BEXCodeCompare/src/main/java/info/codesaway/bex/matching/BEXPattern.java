@@ -336,7 +336,7 @@ public final class BEXPattern {
 					// If space is between 2 alphanumeric, then space is required
 					regexBuilder.append("\\s++");
 					i++;
-				} else if (isAfterGroup && isWordCharacter(nextChar(pattern, i))) {
+				} else if (isAfterGroup && (isWordCharacter(nextChar(pattern, i)) || hasText(pattern, i + 1, ":["))) {
 					// TODO: need to handle if group in middle is optional and has space before group
 					// In this case, the space after the group must be optional (otherwise, will always fail)
 					// (since would have captured space before, the group is empty, and there is no space after to get)

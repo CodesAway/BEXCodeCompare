@@ -260,7 +260,11 @@ public class BEXMatchingUtilities {
 				} else if (hasText(text, i, "<%=")) {
 					// Going into second level, so end current level
 					int startTextInfo = startTextInfoStack.pop();
-					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
+					if (startTextInfo != i) {
+						// Only add if not empty range
+						// Would be empty for example if ended one expression then immediately started next one
+						builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
+					}
 
 					stateStack.push(IN_EXPRESSION_BLOCK);
 					startTextInfoStack.push(i);
