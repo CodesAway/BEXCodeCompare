@@ -206,7 +206,7 @@ public final class ImmutableIntRangeMap<V> {
 	}
 
 	/**
-	 * Returns an immutable view of this map as a Map<IntRange, V>
+	 * Returns an immutable view of this map as a Map&lt;IntRange, V&gt;
 	 * @since 0.9
 	 */
 	public Map<IntRange, V> asMapOfRanges() {

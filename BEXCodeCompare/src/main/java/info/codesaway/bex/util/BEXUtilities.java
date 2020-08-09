@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -116,8 +115,6 @@ public final class BEXUtilities {
 
 	/**
 	* Returns an immutable {@link Entry} containing the given key and value.
-	* These entries are suitable for populating {@code Map} instances using the
-	* {@link Map#ofEntries Map.ofEntries()} method.
 	* The {@code Entry} instances created by this method have the following characteristics:
 	*
 	* <ul>
@@ -133,10 +130,6 @@ public final class BEXUtilities {
 	* identity hash code, and synchronization) are unreliable and should be avoided.
 	* </ul>
 	*
-	* @apiNote
-	* For a serializable {@code Entry}, see {@link AbstractMap.SimpleEntry} or
-	* {@link AbstractMap.SimpleImmutableEntry}.
-	*
 	* @param <K> the key's type
 	* @param <V> the value's type
 	* @param k the key
@@ -150,7 +143,7 @@ public final class BEXUtilities {
 	public static <K, V> Entry<K, V> entry(final K k, final V v) {
 		Objects.requireNonNull(k);
 		Objects.requireNonNull(v);
-		return new AbstractMap.SimpleImmutableEntry(k, v);
+		return new AbstractMap.SimpleImmutableEntry<>(k, v);
 	}
 
 	//	public static <T extends IntRange> Optional<Entry<Integer, T>> getEntryInRanges(final int index,
