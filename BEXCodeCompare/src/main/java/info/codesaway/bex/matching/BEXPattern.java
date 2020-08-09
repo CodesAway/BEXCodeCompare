@@ -210,8 +210,11 @@ public final class BEXPattern {
 			} else if (hasText(pattern, i, ":[@]")) {
 				regexBuilder.append("@");
 				i += 4;
-			} else if (c == ':' && nextChar(pattern, i) == '['
-					&& isNextCharStartOfGroup(pattern, i + 1)) {
+			} else if (c == ':' && nextChar(pattern, i) == '[') {
+				if (!isNextCharStartOfGroup(pattern, i + 1)) {
+					throw new IllegalArgumentException("Invalid group: " + pattern.substring(i, i + 3));
+				}
+
 				int originalStart = i;
 
 				// Start of group
@@ -429,7 +432,7 @@ public final class BEXPattern {
 	private static boolean isNextCharStartOfGroup(final String pattern, final int i) {
 		char nextChar = nextChar(pattern, i);
 
-		return isWordCharacter(nextChar) || nextChar == ' ' || nextChar == '?';
+		return isWordCharacter(nextChar) || nextChar == ' ' || nextChar == '?' || nextChar == '~';
 	}
 
 	/**

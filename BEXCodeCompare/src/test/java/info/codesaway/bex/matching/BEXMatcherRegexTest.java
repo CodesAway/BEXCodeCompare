@@ -3,8 +3,11 @@ package info.codesaway.bex.matching;
 import static info.codesaway.bex.matching.MatcherTestHelper.testBEXMatchEntries;
 import static info.codesaway.bex.matching.MatcherTestHelper.testBEXMatchReplaceAll;
 import static info.codesaway.bex.util.BEXUtilities.entry;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class BEXMatcherRegexTest {
 	// Reference: https://github.com/comby-tools/comby/blob/master/test/alpha/test_regex_holes.ml
@@ -166,6 +169,49 @@ public class BEXMatcherRegexTest {
 		testBEXMatchReplaceAll(pattern, text, replacement, expectedValue);
 	}
 
-	// TODO: add tests that throw error if missing end bracket
-	// TODO: add test of unnamed regex
+	@Test
+	void testRegexNoTrailingBracketThrowsException() {
+		String pattern = ":[x~no";
+		assertThatThrownBy(() -> BEXPattern.compile(pattern))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessage("Missing end bracket ']' necessary to end regex: no");
+	}
+
+	@Test
+	void testRegexWithoutGroupName() {
+		String pattern = ":[~[a-z]]";
+		String text = "abcd";
+		String replacement = "(:[*])";
+		String expectedValue = "(a)(b)(c)(d)";
+
+		testBEXMatchReplaceAll(pattern, text, replacement, expectedValue);
+	}
+
+	@Test
+	void testRegexWithCaptureGroup() {
+		String pattern = ":[~[a-z](?<digit>\\d)]";
+		String text = "a1b2c3d4";
+		String replacement = "(:[digit])";
+		String expectedValue = "(1)(2)(3)(4)";
+
+		testBEXMatchReplaceAll(pattern, text, replacement, expectedValue);
+	}
+
+	@Test
+	void testRegexOptionalMatch() {
+		String pattern = ":[~[a-z]]:[?digit~\\d]";
+		String text = "a1b2cd4";
+		String replacement = "(:[digit])";
+		String expectedValue = "(1)(2)()(4)";
+
+		testBEXMatchReplaceAll(pattern, text, replacement, expectedValue);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { ":[ group~\\w]", ":[group*~\\w]", ":[group.~\\w]" })
+	void testRegexCannotBeCombinedWithAnotherGroup(final String pattern) {
+		assertThatThrownBy(() -> BEXPattern.compile(pattern))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessage("Invalid syntax: " + pattern.substring(0, pattern.indexOf('~') + 1));
+	}
 }
