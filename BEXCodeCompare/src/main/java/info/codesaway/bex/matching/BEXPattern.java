@@ -2,6 +2,7 @@ package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.MATCH_ANGLE_BRACKETS;
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.OPTIONAL;
+import static info.codesaway.bex.matching.BEXMatchingUtilities.currentChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasNextChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.isWordCharacter;
@@ -151,7 +152,8 @@ public final class BEXPattern {
 	private static BEXPattern internalCompile(final String pattern, final BEXPatternFlag... flags) {
 		// Allow duplicate names in capture groups
 		// (this way, don't cause error if specify the same group name twice)
-		int regexPatternFlags = Pattern.DUPLICATE_NAMES;
+		// Starting with 0.9, added multiline flag, so ^ and $ will match start / end of each line, since this is how they will more commonly be used
+		int regexPatternFlags = Pattern.DUPLICATE_NAMES | Pattern.MULTILINE;
 		boolean requireSpace = false;
 
 		if (flags != null) {
@@ -244,6 +246,7 @@ public final class BEXPattern {
 				int groupNameEnd = i;
 
 				String regex = null;
+				boolean shouldSurroundRegexInNonCaptureGroup = false;
 				BEXGroupMatchSetting groupMatchSetting = BEXGroupMatchSetting.DEFAULT;
 
 				if (isSpace) {
@@ -275,8 +278,19 @@ public final class BEXPattern {
 					i++;
 				} else if (hasText(pattern, i, "+")) {
 					// Wildcard to match 1 or more characters (excludes line terminators)
+					// TODO: if group is optional, how should handle?
 					regex = ".+?";
 					i++;
+				} else if (currentChar(pattern, i) == '~') {
+					// Start of regex (Comby style syntax)
+					regex = extractRegexFromInGroup(pattern, ++i);
+					i += regex.length();
+
+					if (isOptional) {
+						regex = "(?:" + regex + ")?";
+					} else {
+						shouldSurroundRegexInNonCaptureGroup = true;
+					}
 				}
 
 				if (hasText(pattern, i, "]")) {
@@ -285,11 +299,13 @@ public final class BEXPattern {
 					if (regex != null) {
 						if (!groupName.isEmpty()) {
 							regexBuilder.append("(?<").append(groupName).append(">");
+						} else if (shouldSurroundRegexInNonCaptureGroup) {
+							regexBuilder.append("(?:");
 						}
 
 						regexBuilder.append(regex);
 
-						if (!groupName.isEmpty()) {
+						if (!groupName.isEmpty() || shouldSurroundRegexInNonCaptureGroup) {
 							regexBuilder.append(")");
 						}
 					} else {
@@ -381,6 +397,33 @@ public final class BEXPattern {
 		groups.trimToSize();
 
 		return new BEXPattern(patterns, groups, groupMatchSettings);
+	}
+
+	private static String extractRegexFromInGroup(final String pattern, final int index) {
+		int bracketDepth = 1;
+		boolean escapeNextCharacter = false;
+
+		for (int i = index; i < pattern.length(); i++) {
+			char c = pattern.charAt(i);
+
+			if (escapeNextCharacter) {
+				escapeNextCharacter = false;
+			} else if (c == '\\') {
+				escapeNextCharacter = true;
+			} else if (c == '[') {
+				bracketDepth++;
+			} else if (c == ']') {
+				bracketDepth--;
+
+				if (bracketDepth == 0) {
+					// Don't include current character, since this is the end bracket for the group
+					return pattern.substring(index, i);
+				}
+			}
+		}
+
+		throw new IllegalArgumentException(
+				"Missing end bracket ']' necessary to end regex: " + pattern.substring(index));
 	}
 
 	private static boolean isNextCharStartOfGroup(final String pattern, final int i) {

@@ -2,7 +2,9 @@ package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.matching.MatcherTestHelper.testBEXMatch;
 import static info.codesaway.bex.matching.MatcherTestHelper.testBEXMatchEntries;
+import static info.codesaway.bex.matching.MatcherTestHelper.testNoBEXMatch;
 import static info.codesaway.bex.util.BEXUtilities.entry;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
@@ -118,5 +120,54 @@ public class BEXOptionalMatchTest {
 		String pattern = "func :[?receiver] foo(:[args])";
 		String text = "func foo(bar) {}";
 		testBEXMatchEntries(pattern, text, entry("receiver", ""), entry("args", "bar"));
+	}
+
+	@Test
+	void testOptionalWithMatchAndSurroundingSpaces() {
+		String pattern = "func :[?receiver] foo(:[args])";
+		String text = "func (r *receiver) foo(bar) {}";
+		testBEXMatchEntries(pattern, text, entry("receiver", "(r *receiver)"), entry("args", "bar"));
+	}
+
+	@Test
+	void testOptionalNoMatch() {
+		String pattern = "func :[?value] foo()";
+		String text = "func foo()";
+		testBEXMatch(pattern, text, "");
+	}
+
+	@Test
+	void testNoMatchOptionalWithRandomLetters() {
+		String pattern = "a :[?b]asdfasdfsadf";
+		String text = "a l";
+		testNoBEXMatch(pattern, text);
+	}
+
+	@Test
+	void testOptionalInArgs() {
+		String pattern = "func :[?receiver] foo (1, :[?args] 3)";
+		String text = "func foo (1, 3)";
+		testBEXMatchEntries(pattern, text, entry("receiver", ""), entry("args", ""));
+	}
+
+	@Test
+	void testOptionalMultipleReplacement() {
+		String pattern = "<p:[?attrs]>";
+		String text = "<p>content</p><p attr=\"attr\">more content</p>";
+		// TODO: Comby supports (requires?) question mark in replacement
+		// (what's the purpose of this?)
+		String replacement = "<p{:[attrs]}>";
+		//		String replacement = "<p{:[?attrs]}>";
+
+		BEXPattern p = BEXPattern.compile(pattern);
+		BEXMatcher m = p.matcher(text);
+		assertThat(m.replaceAll(replacement)).isEqualTo("<p{}>content</p><p{ attr=\"attr\"}>more content</p>");
+	}
+
+	@Test
+	void testOptionalInStringLiteral() {
+		String pattern = "\"a :[?value] c\"";
+		String text = "\"a     c\"";
+		testBEXMatch(pattern, text, "");
 	}
 }

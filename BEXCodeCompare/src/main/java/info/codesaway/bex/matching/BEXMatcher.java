@@ -121,18 +121,29 @@ public final class BEXMatcher implements BEXMatchResult {
 		return this.text.toString();
 	}
 
+	private void clearGroups() {
+		this.valuesMap.clear();
+		this.multipleValuesMap.clear();
+	}
+
 	public boolean find() {
 		// Logic from regex Matcher.find
 		int nextSearchStart = this.end();
 		if (nextSearchStart == this.start()) {
 			nextSearchStart++;
 		}
+		// If next search starts beyond region then it fails
+		//        if (nextSearchStart > to) {
+		if (nextSearchStart > this.getTextLength()) {
+			this.clearGroups();
+			return false;
+		}
+
 		return this.search(nextSearchStart);
 	}
 
 	private boolean search(final int from) {
-		this.valuesMap.clear();
-		this.multipleValuesMap.clear();
+		this.clearGroups();
 
 		boolean foundMatch = this.match(from);
 		if (!foundMatch) {
@@ -586,8 +597,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 */
 	public BEXMatcher reset() {
 		this.matchStartEnd.set(-1, 0);
-		this.valuesMap.clear();
-		this.multipleValuesMap.clear();
+		this.clearGroups();
 		this.lastAppendPosition = 0;
 
 		// TODO: support region?
@@ -908,6 +918,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 * @return the group / value entries, in the order they appear in the pattern
 	 * @since 0.9
 	 */
+	@Override
 	public Set<Entry<String, String>> entrySet() {
 		return new EntrySet();
 	}

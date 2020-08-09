@@ -74,6 +74,13 @@ public final class MatcherTestHelper {
 		return bexMatcher;
 	}
 
+	static BEXMatcher testBEXMatchReplaceAll(final String pattern, final String text,
+			final String replacement, final String expectedValue) {
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text);
+		assertThat(bexMatcher.replaceAll(replacement)).isEqualTo(expectedValue);
+		return bexMatcher;
+	}
+
 	static void testQuoteReplacement(final String replacement, final String expectedValue) {
 		BEXPattern bexPattern = BEXPattern.compile("blah");
 		BEXMatcher bexMatcher = bexPattern.matcher("blah");
