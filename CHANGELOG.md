@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **NOTE**: The below change log references the version of the BEX library, since this is the version for the Maven artifact. The below change log will indicate when the Eclipse plugin is updated and its changes; this will be listed after the BEX library changes.
 
 ## [Unreleased]
+### Added
+* Added support for Comby style of regex ```:[groupName~regex]```
+* Added some unit tests from Comby (found and fixed several bugs as a result)
+* BEXMatcher / BEXMatchResult method entrySet()
+* ImmutableIntRangeMap.asMapOfRanges
+* Made AbstractImmutableSet public (used by ImmutableIntRangeMap and BEXMatcher)
 
 ## [0.8.0] - 2020-08-06
 ### Added
