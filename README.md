@@ -16,7 +16,7 @@ The library has no dependency on Eclipse and can be used in commercial or privat
 
 <a name="maven-dependency"></a>
 ## Maven Dependency
-**Tip**: you only need to specify one of the following. For example, if you include becr.examples, it has a transitive dependency for bex and becr.
+**Tip**: you only need to specify one of the following. For example, if you include **becr.examples**, it has a transitive dependency for **bex** and **becr**.
 
     <dependency>
         <groupId>info.codesaway</groupId>
