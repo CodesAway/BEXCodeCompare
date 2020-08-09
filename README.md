@@ -71,7 +71,7 @@ BEX Matching performs structured code matching to offer an enhanced find and rep
 
 For example, match an **if** branch with a simple pattern.
 
-    if (:[condition]) { :[stuff] )
+    if (:[condition]) { :[stuff] }
     
 BEX will ensure the parentheses and braces are balanced, and that you're not looking at commented out code. I like to think of it as a code friendly regular expression. Of course, if you want to mix regex in your pattern, that's supported too.
 
