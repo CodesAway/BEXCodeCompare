@@ -1,6 +1,7 @@
 package info.codesaway.bex.matching;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.function.Function;
 
@@ -60,4 +61,16 @@ class BEXMatcherReplacementTest {
 
 		assertThat(m.replaceFirst("cat:[*]")).isEqualTo("zzzcatdogzzzdogzzz");
 	}
+
+	@Test
+	void testReplaceWithGroup() {
+		BEXPattern p = BEXPattern.compile(":[a] :[b] :[c]");
+		BEXMatcher m = p.matcher("a b c");
+
+		assertTrue(m.find(), "Could not find match");
+
+		assertThat(m.getReplacement(":[a]/:[b]/:[c]")).isEqualTo("a/b/c");
+	}
+
+	// TODO: if didn't match, then shouldn't be able to get groups?
 }

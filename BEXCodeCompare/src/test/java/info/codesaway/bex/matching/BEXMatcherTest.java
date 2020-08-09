@@ -3,7 +3,9 @@ package info.codesaway.bex.matching;
 import static info.codesaway.bex.matching.MatcherTestHelper.testBEXMatch;
 import static info.codesaway.bex.matching.MatcherTestHelper.testJustBEXMatch;
 import static info.codesaway.bex.matching.MatcherTestHelper.testNoBEXMatch;
+import static info.codesaway.bex.util.BEXUtilities.entry;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,18 +24,6 @@ class BEXMatcherTest {
 		String pattern = "\":[value](\"";
 		String text = "webView.loadUrl(\"javascript:showDetail(\"+m.getId()+\")\");";
 		String expectedValue = "javascript:showDetail";
-		testBEXMatch(pattern, text, expectedValue);
-	}
-
-	@Test
-	void testBasicOptionalMatch() {
-		String pattern = "try :[?value] { :[stuff] }";
-		String text = "		try {\r\n" +
-				"\r\n" +
-				"			sqlStatement.execute();\r\n" +
-				"		} catch (SQLException e) {\r\n" +
-				"";
-		String expectedValue = "";
 		testBEXMatch(pattern, text, expectedValue);
 	}
 
@@ -111,13 +101,6 @@ class BEXMatcherTest {
 		String pattern = ":[value]";
 		String text = "";
 		testNoBEXMatch(pattern, text);
-	}
-
-	@Test
-	void testEmptyOptionalMatch() {
-		String pattern = ":[?value]";
-		String text = "";
-		testJustBEXMatch(pattern, text);
 	}
 
 	@Test
@@ -282,6 +265,23 @@ class BEXMatcherTest {
 	}
 
 	@Test
+	// Issue #68
+	void testRequiredSpaceBetweenGroups() {
+		String pattern = ":[1] :[2]";
+		String text = "integer";
+
+		testNoBEXMatch(pattern, text);
+	}
+
+	@Test
+	void testRequiredSpaceBetweenRequiredAndOptionalGroups() {
+		String pattern = ":[1] :[?2]";
+		String text = "integer";
+
+		testNoBEXMatch(pattern, text);
+	}
+
+	@Test
 	void testRequiredWhitespaceBothBeforeAndAfterOptionalGroup() {
 		String pattern = "int :[?value] ger";
 
@@ -348,5 +348,41 @@ class BEXMatcherTest {
 		String pattern = "method(:[value])";
 		String text = "method('(')";
 		testBEXMatch(pattern, text, "'('");
+	}
+
+	@Test
+	void testUnderscoreGroupNameNotStored() {
+		String pattern = "a :[_] c";
+		String text = "a b c";
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text);
+
+		assertThatThrownBy(() -> bexMatcher.get("_"))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessage("The specified group is not in the pattern: _");
+	}
+
+	@Test
+	void testDuplicateGroupNameInRegex() {
+		String pattern = ":[1] @--(?:(?<day>Sun)day|(?<day>Sat)urday)--! :[day]";
+		String text = "something Sunday Sun";
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text);
+
+		assertThat(bexMatcher.entrySet()).containsExactly(entry("1", "something"), entry("day", "Sun"));
+	}
+
+	@Test
+	void testDuplicateGroupNameInRegexToMatchResult() {
+		String pattern = ":[1] @--(?<day>Sun)day|(?<day>Sat)urday--! :[day]";
+		String text = "something Sunday Sun";
+		BEXMatchResult bexMatcher = testJustBEXMatch(pattern, text).toMatchResult();
+
+		assertThat(bexMatcher.entrySet()).containsExactly(entry("1", "something"), entry("day", "Sun"));
+	}
+
+	@Test
+	void testDuplicateGroupNameInRegexDoesNotMatchGroupValue() {
+		String pattern = ":[1] @--(?<day>Sun)day|(?<day>Sat)urday--! :[day]";
+		String text = "something Sunday Sat";
+		testNoBEXMatch(pattern, text);
 	}
 }

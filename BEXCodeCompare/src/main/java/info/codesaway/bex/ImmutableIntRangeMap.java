@@ -1,21 +1,26 @@
 package info.codesaway.bex;
 
 import static info.codesaway.bex.util.BEXUtilities.checkArgument;
+import static info.codesaway.bex.util.BEXUtilities.entry;
 
-import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 import java.util.StringJoiner;
 
 /**
  *
  * @param <V> type of value
  */
-public class ImmutableIntRangeMap<V> {
+public final class ImmutableIntRangeMap<V> {
 	// Referenced Guava's ImmutableRangeMap
 	// Based on usage in BEXMatchingUtilities
 	private final List<IntRange> ranges;
@@ -23,6 +28,8 @@ public class ImmutableIntRangeMap<V> {
 
 	private static final ImmutableIntRangeMap<Object> EMPTY = new ImmutableIntRangeMap<>(
 			Collections.emptyList(), Collections.emptyList());
+
+	private static final Comparator<IntRange> KEY_COMPARATOR = Comparator.comparingInt(IntRange::getStart);
 
 	/** Returns an empty immutable range map. */
 	@SuppressWarnings("unchecked")
@@ -59,7 +66,7 @@ public class ImmutableIntRangeMap<V> {
 			Objects.requireNonNull(range);
 			Objects.requireNonNull(value);
 			checkArgument(!range.isEmpty(), "Range must not be empty, but was " + range);
-			this.entries.add(new SimpleImmutableEntry<>(range.toIntBEXRange(), value));
+			this.entries.add(entry(range.toIntBEXRange(), value));
 
 			return this;
 		}
@@ -115,8 +122,28 @@ public class ImmutableIntRangeMap<V> {
 			return null;
 		} else {
 			IntRange range = this.ranges.get(index);
-			return range.contains(key) ? new SimpleImmutableEntry<>(range, this.values.get(index)) : null;
+			return range.contains(key) ? entry(range, this.values.get(index)) : null;
 		}
+	}
+
+	private int getIndexForRange(final IntRange range) {
+		int index = Collections.binarySearch(ImmutableIntRangeMap.this.ranges, range, KEY_COMPARATOR);
+
+		if (index < 0) {
+			return index;
+		}
+
+		if (this.ranges.get(index).equals(range)) {
+			return index;
+		} else {
+			return Integer.MIN_VALUE;
+		}
+	}
+
+	// TODO: would it be useful to cache these entries?
+	private Entry<IntRange, V> getEntryForIndex(final int index) {
+		IntRange range = this.ranges.get(index);
+		return entry(range, this.values.get(index));
 	}
 
 	private int getIndex(final int key) {
@@ -176,5 +203,147 @@ public class ImmutableIntRangeMap<V> {
 		}
 
 		return result.toString();
+	}
+
+	/**
+	 * Returns an immutable view of this map as a Map&lt;IntRange, V&gt;
+	 * @since 0.9
+	 */
+	public Map<IntRange, V> asMapOfRanges() {
+		return new MapOfRanges();
+	}
+
+	private final class KeySet extends AbstractImmutableSet<IntRange> {
+		@Override
+		public int size() {
+			return ImmutableIntRangeMap.this.ranges.size();
+		}
+
+		@Override
+		public boolean contains(final Object o) {
+			return o instanceof IntRange
+					? ImmutableIntRangeMap.this.getIndexForRange((IntRange) o) >= 0
+					: false;
+		}
+
+		@Override
+		public Iterator<IntRange> iterator() {
+			return ImmutableIntRangeMap.this.ranges.iterator();
+		}
+	}
+
+	private final class EntrySet extends AbstractImmutableSet<Entry<IntRange, V>> {
+		@Override
+		public int size() {
+			return ImmutableIntRangeMap.this.ranges.size();
+		}
+
+		@Override
+		public boolean contains(final Object o) {
+			if (o instanceof Entry) {
+				Entry<?, ?> entry = (Entry<?, ?>) o;
+
+				if (entry.getKey() instanceof IntRange) {
+					int index = ImmutableIntRangeMap.this.getIndexForRange((IntRange) entry.getKey());
+					if (index >= 0) {
+						return Objects.equals(ImmutableIntRangeMap.this.values.get(index), entry.getValue());
+					}
+				}
+			}
+
+			return false;
+		}
+
+		@Override
+		public Iterator<Entry<IntRange, V>> iterator() {
+			return new Iterator<Entry<IntRange, V>>() {
+				private int next = 0;
+
+				@Override
+				public boolean hasNext() {
+					return this.next < EntrySet.this.size();
+				}
+
+				@Override
+				public Entry<IntRange, V> next() {
+					if (this.next >= EntrySet.this.size()) {
+						throw new NoSuchElementException(String.valueOf(this.next));
+					}
+
+					return ImmutableIntRangeMap.this.getEntryForIndex(this.next++);
+				}
+			};
+		}
+	}
+
+	private final class MapOfRanges implements Map<IntRange, V> {
+		@Override
+		public int size() {
+			return ImmutableIntRangeMap.this.ranges.size();
+		}
+
+		@Override
+		public boolean isEmpty() {
+			return this.size() == 0;
+		}
+
+		@Override
+		public boolean containsKey(final Object key) {
+			return key instanceof IntRange && ImmutableIntRangeMap.this.getIndexForRange((IntRange) key) >= 0;
+		}
+
+		@Override
+		public boolean containsValue(final Object value) {
+			return ImmutableIntRangeMap.this.values
+					.stream()
+					.anyMatch(v -> Objects.equals(v, value));
+		}
+
+		@Override
+		public V get(final Object key) {
+			if (key instanceof IntRange) {
+				int index = ImmutableIntRangeMap.this.getIndexForRange((IntRange) key);
+				if (index >= 0) {
+					return ImmutableIntRangeMap.this.values.get(index);
+				}
+			}
+
+			return null;
+		}
+
+		@Override
+		public Set<IntRange> keySet() {
+			return new KeySet();
+		}
+
+		@Override
+		public Collection<V> values() {
+			return ImmutableIntRangeMap.this.values;
+		}
+
+		@Override
+		public Set<Entry<IntRange, V>> entrySet() {
+			return new EntrySet();
+		}
+
+		@Override
+		public final V put(final IntRange key, final V value) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public final V remove(final Object key) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public final void putAll(final Map<? extends IntRange, ? extends V> m) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public final void clear() {
+			throw new UnsupportedOperationException();
+		}
 	}
 }

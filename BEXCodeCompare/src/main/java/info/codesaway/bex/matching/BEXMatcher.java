@@ -8,15 +8,24 @@ import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.isWordCharacter;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.lastChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.nextChar;
+import static info.codesaway.bex.util.BEXUtilities.entry;
+import static info.codesaway.bex.util.BEXUtilities.getSubstring;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import info.codesaway.bex.AbstractImmutableSet;
 import info.codesaway.bex.ImmutableIntRangeMap;
 import info.codesaway.bex.IntBEXRange;
 import info.codesaway.bex.IntRange;
@@ -56,12 +65,17 @@ public final class BEXMatcher implements BEXMatchResult {
 	/**
 	 * Most groups will have only one value, so stored here
 	 */
-	private final Map<String, IntBEXRange> singleValues = new HashMap<>();
+	// In 0.9 changed to be LinkedHashMap, so keep the group order
+	private final Map<String, IntBEXRange> valuesMap = new LinkedHashMap<>();
 
 	/**
 	 * Groups with multiple values are stored here
 	 */
-	private final Map<String, List<IntBEXRange>> multipleValues = new HashMap<>();
+	// Initialize with emptyMap, since most of the time won't be used
+	// (reduce memory footprint of Matcher)
+	// If it ends up being used, then it will be initialized with an empty map and entries will be added
+	// (only used if specify pattern that contains regex which has multiple names with the same group name
+	private Map<String, List<IntBEXRange>> multipleValuesMap = Collections.emptyMap();
 
 	BEXMatcher(final BEXPattern parent, final CharSequence text) {
 		this(parent, text, extractJavaTextStates(text), 0);
@@ -91,12 +105,12 @@ public final class BEXMatcher implements BEXMatchResult {
 	public BEXMatchResult toMatchResult() {
 		BEXMatcher result = new BEXMatcher(this.pattern(), this.text(), this.textStateMap, this.offset);
 		result.matchStartEnd.set(this.matchStartEnd);
-		result.singleValues.putAll(this.singleValues);
+		result.valuesMap.putAll(this.valuesMap);
 
-		if (!this.multipleValues.isEmpty()) {
-			for (Entry<String, List<IntBEXRange>> entry : this.multipleValues.entrySet()) {
-				result.multipleValues.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-			}
+		if (!this.multipleValuesMap.isEmpty()) {
+			result.multipleValuesMap = this.multipleValuesMap.entrySet()
+					.stream()
+					.collect(Collectors.toMap(Entry::getKey, e -> new ArrayList<>(e.getValue())));
 		}
 
 		return result;
@@ -107,18 +121,29 @@ public final class BEXMatcher implements BEXMatchResult {
 		return this.text.toString();
 	}
 
+	private void clearGroups() {
+		this.valuesMap.clear();
+		this.multipleValuesMap.clear();
+	}
+
 	public boolean find() {
 		// Logic from regex Matcher.find
 		int nextSearchStart = this.end();
 		if (nextSearchStart == this.start()) {
 			nextSearchStart++;
 		}
+		// If next search starts beyond region then it fails
+		//        if (nextSearchStart > to) {
+		if (nextSearchStart > this.getTextLength()) {
+			this.clearGroups();
+			return false;
+		}
+
 		return this.search(nextSearchStart);
 	}
 
 	private boolean search(final int from) {
-		this.singleValues.clear();
-		this.multipleValues.clear();
+		this.clearGroups();
 
 		boolean foundMatch = this.match(from);
 		if (!foundMatch) {
@@ -166,7 +191,7 @@ public final class BEXMatcher implements BEXMatchResult {
 				foundMatch = true;
 				if (DEBUG) {
 					if (start == startWithOffset) {
-						System.out.printf("Found match! %d%n", start);
+						System.out.printf("Found match! %d\t|%s|%n", start, currentMatcher.group());
 					} else {
 						System.out.printf("Found match! %d (%d)%n", start, startWithOffset);
 					}
@@ -186,7 +211,6 @@ public final class BEXMatcher implements BEXMatchResult {
 
 		for (int i = 0; i < patterns.size() - 1; i++) {
 			Pattern nextPattern = patterns.get(i + 1);
-
 			Matcher nextMatcher = nextPattern.matcher(this.text);
 
 			if (DEBUG) {
@@ -194,7 +218,25 @@ public final class BEXMatcher implements BEXMatchResult {
 				System.out.println("Region start: " + regionStart);
 			}
 
-			nextMatcher.region(regionStart, this.text.length());
+			BEXGroupMatchSetting groupMatchSetting = this.parentPattern.getGroupMatchSettings()
+					.getOrDefault(i, DEFAULT);
+
+			// If the group isn't optional, start searching with next character
+			// (since group must match something, so match would be at least 1 character)
+			int matcherRegionStart = !groupMatchSetting.isOptional() && regionStart < this.getTextLength() - 1
+					//			int matcherRegionStart = !groupMatchSetting.isOptional()
+					? regionStart + 1
+					: regionStart;
+
+			//			if (matcherRegionStart > this.getTextLength()) {
+			//				if (DEBUG) {
+			//					System.out.println(
+			//							"Non-optional group, cannot find starting with next character since no more characters");
+			//				}
+			//				return false;
+			//			}
+
+			nextMatcher.region(matcherRegionStart, this.text.length());
 			nextMatcher.useTransparentBounds(true);
 
 			if (!nextMatcher.find()) {
@@ -207,7 +249,8 @@ public final class BEXMatcher implements BEXMatchResult {
 			}
 
 			if (DEBUG) {
-				System.out.printf("Matched next match %d %s\t%s%n", i + 1, nextMatcher.pattern(), nextMatcher.group());
+				System.out.printf("Matched next match %d %s\t|%s|%n", i + 1, nextMatcher.pattern(),
+						nextMatcher.group());
 			}
 
 			int start = regionStart;
@@ -227,9 +270,6 @@ public final class BEXMatcher implements BEXMatchResult {
 			if (DEBUG) {
 				System.out.println("Performing search with initialState " + initialState);
 			}
-
-			BEXGroupMatchSetting groupMatchSetting = this.parentPattern.getGroupMatchSettings()
-					.getOrDefault(i, DEFAULT);
 
 			BEXMatchingState state = this.search(start, end, groupMatchSetting, initialState);
 
@@ -304,11 +344,18 @@ public final class BEXMatcher implements BEXMatchResult {
 
 			if (start == end && !groupMatchSetting.isOptional()) {
 				// TODO: check if expanding group would allow to match
+				if (DEBUG) {
+					System.out.println("Empty group, yet not optional");
+				}
 				return false;
 			}
 
 			String group = this.parentPattern.getGroups().get(i);
 			//			String value = this.text.subSequence(start, end).toString();
+
+			if (DEBUG) {
+				System.out.printf("Matcher %d has group name %s%n", i + 1, group);
+			}
 
 			// If group is already specified, the values must match
 			// (unless it's an unnamed group)
@@ -316,6 +363,7 @@ public final class BEXMatcher implements BEXMatchResult {
 				// TODO: what if group was matched as part of regex, does normal group have to match?
 				IntBEXRange startEnd = this.getInternal(group);
 
+				// If group is already specified
 				if (startEnd != null && startEnd != NOT_FOUND) {
 					// Verify the content equals; otherwise, don't match
 					// TODO: should go to next match or something... need to implement
@@ -339,10 +387,11 @@ public final class BEXMatcher implements BEXMatchResult {
 							return false;
 						}
 					}
+				} else {
+					this.put(group, IntBEXRange.of(start, end));
 				}
 			}
 
-			this.put(group, IntBEXRange.of(start, end));
 			this.putCaptureGroups(nextMatcher);
 
 			//			System.out.printf("%s: @%s@%n", group, value);
@@ -467,7 +516,11 @@ public final class BEXMatcher implements BEXMatchResult {
 	// Can use (-1, -1) to indicate not found
 	// This way, only convert to String value when requested (in case text passed isn't a String but for example a StringBuilder)
 	private void put(final String group, final IntBEXRange value) {
-		List<IntBEXRange> existingValues = this.multipleValues.get(group);
+		if (DEBUG) {
+			System.out.printf("Put group %s with value %s%n", group, value);
+		}
+
+		List<IntBEXRange> existingValues = this.multipleValuesMap.get(group);
 
 		if (existingValues != null) {
 			// Already has existing values, so add to the collection
@@ -475,18 +528,27 @@ public final class BEXMatcher implements BEXMatchResult {
 			return;
 		}
 
-		IntBEXRange existingValue = this.singleValues.get(group);
+		IntBEXRange existingValue = this.valuesMap.get(group);
 
 		if (existingValue == null) {
 			// First time seeing the specified group
-			this.singleValues.put(group, value);
+			this.valuesMap.put(group, value);
 		} else {
+			// Keep values in singleValues, so can iterate over the groups in order and have correct group counts
+			// (put value of null as a placeholder to indicate that the value should come from multipleValues)
+			//			this.singleValues.remove(group);
+			this.valuesMap.put(group, null);
+
 			// Put existing value and new value into a collection in multipleValues
-			this.singleValues.remove(group);
 			List<IntBEXRange> newValues = new ArrayList<>();
 			newValues.add(existingValue);
 			newValues.add(value);
-			this.multipleValues.put(group, newValues);
+
+			if (this.multipleValuesMap.isEmpty()) {
+				this.multipleValuesMap = new HashMap<>();
+			}
+
+			this.multipleValuesMap.put(group, newValues);
 		}
 	}
 
@@ -511,7 +573,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	private static IntBEXRange NULL_PAIR = IntBEXRange.of(-1, -1);
 
 	private IntBEXRange getInternal(final String group) {
-		List<IntBEXRange> existingValues = this.multipleValues.get(group);
+		List<IntBEXRange> existingValues = this.multipleValuesMap.get(group);
 
 		if (existingValues != null) {
 			// Return first non-null value or return null if all values are null
@@ -521,7 +583,7 @@ public final class BEXMatcher implements BEXMatchResult {
 					.orElse(NULL_PAIR);
 		}
 
-		return this.singleValues.getOrDefault(group, NOT_FOUND);
+		return this.valuesMap.getOrDefault(group, NOT_FOUND);
 	}
 
 	/**
@@ -535,8 +597,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 */
 	public BEXMatcher reset() {
 		this.matchStartEnd.set(-1, 0);
-		this.singleValues.clear();
-		this.multipleValues.clear();
+		this.clearGroups();
 		this.lastAppendPosition = 0;
 
 		// TODO: support region?
@@ -726,6 +787,8 @@ public final class BEXMatcher implements BEXMatchResult {
 					if (value != null) {
 						result.append(value);
 					}
+
+					cursor++;
 				} else {
 					// Not valid group
 					// Throw error since likely intended to use group
@@ -851,6 +914,16 @@ public final class BEXMatcher implements BEXMatchResult {
 	}
 
 	/**
+	 * The group / value entries that make up the current match
+	 * @return the group / value entries, in the order they appear in the pattern
+	 * @since 0.9
+	 */
+	@Override
+	public Set<Entry<String, String>> entrySet() {
+		return new EntrySet();
+	}
+
+	/**
 	 * Returns the end index of the text.
 	 *
 	 * @return the index after the last character in the text
@@ -887,5 +960,57 @@ public final class BEXMatcher implements BEXMatchResult {
 			}
 		}
 		return sb.toString();
+	}
+
+	/**
+	 *
+	 * since 0.9
+	 */
+	private final class EntrySet extends AbstractImmutableSet<Entry<String, String>> {
+		@Override
+		public int size() {
+			return BEXMatcher.this.valuesMap.size();
+		}
+
+		@Override
+		public boolean contains(final Object o) {
+			if (o instanceof Entry) {
+				Entry<?, ?> entry = (Entry<?, ?>) o;
+
+				if (entry.getKey() instanceof String) {
+					String value = BEXMatcher.this.get((String) entry.getKey());
+					return Objects.equals(value, entry.getValue());
+				}
+			}
+
+			return false;
+		}
+
+		@Override
+		public Iterator<Entry<String, String>> iterator() {
+			Iterator<Entry<String, IntBEXRange>> groups = BEXMatcher.this.valuesMap.entrySet().iterator();
+
+			return new Iterator<Entry<String, String>>() {
+				@Override
+				public boolean hasNext() {
+					return groups.hasNext();
+				}
+
+				@Override
+				public Entry<String, String> next() {
+					if (!groups.hasNext()) {
+						throw new NoSuchElementException();
+					}
+
+					Entry<String, IntBEXRange> group = groups.next();
+					String groupName = group.getKey();
+					String groupValue = group.getValue() != null
+							? getSubstring(BEXMatcher.this.text(), group.getValue())
+							: BEXMatcher.this.get(groupName);
+
+					return entry(groupName, groupValue);
+				}
+			};
+		}
 	}
 }
