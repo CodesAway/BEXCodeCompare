@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * BEXMatcher / BEXMatchResult method entrySet()
 * ImmutableIntRangeMap.asMapOfRanges
 * Made AbstractImmutableSet public (used by ImmutableIntRangeMap and BEXMatcher)
+* BEXUtilities.entry method
+  * Creates an immutable entry (used lots in tests)
+  * Similar to Java 9 Map.entry method
+
+### Changed
+* In regex, added multiline flag by default, so ```^``` and ```$``` match for each separate line
+  * This should be more common
+  * Can always disable using the (?-m) remove multiline flag option in regex
 
 ## [0.8.0] - 2020-08-06
 ### Added
