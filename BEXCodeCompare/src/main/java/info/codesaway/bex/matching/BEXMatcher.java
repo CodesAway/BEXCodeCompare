@@ -2,6 +2,7 @@ package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.DEFAULT;
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.STOP_WHEN_VALID;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.MISMATCHED_BRACKETS;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.extractJavaTextStates;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasNextChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
@@ -475,7 +476,7 @@ public final class BEXMatcher implements BEXMatchResult {
 					if (bracketEndIndex != -1) {
 						char bracketStart = bracketStarts.charAt(bracketEndIndex);
 						if (lastChar(brackets) != bracketStart) {
-							return new BEXMatchingState(i, brackets.toString());
+							return new BEXMatchingState(i, brackets.toString(), MISMATCHED_BRACKETS);
 						} else {
 							// Remove last character
 							brackets.setLength(brackets.length() - 1);

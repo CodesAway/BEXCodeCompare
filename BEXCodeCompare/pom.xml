@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>info.codesaway</groupId>
 	<artifactId>bex</artifactId>
-	<version>0.10.0</version>
+	<version>0.9.1</version>
 	<name>BEX Code Compare</name>
 	<description>Be Enhanced Code Compare</description>
 	<properties>
