@@ -6,6 +6,9 @@ import static info.codesaway.bex.matching.MatcherTestHelper.testNoBEXMatch;
 import static info.codesaway.bex.util.BEXUtilities.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+
+import java.time.Duration;
 
 import org.junit.jupiter.api.Test;
 
@@ -384,5 +387,14 @@ class BEXMatcherTest {
 		String pattern = ":[1] @--(?<day>Sun)day|(?<day>Sat)urday--! :[day]";
 		String text = "something Sunday Sat";
 		testNoBEXMatch(pattern, text);
+	}
+
+	@Test
+	// Issue #75
+	void testMismatchedBracketsDoesNotCauseInfiniteLoop() {
+		String pattern = "if (:[before]blah:[after])";
+		String text = "if (something) blah";
+
+		assertTimeoutPreemptively(Duration.ofSeconds(1), () -> testNoBEXMatch(pattern, text));
 	}
 }
