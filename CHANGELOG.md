@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **NOTE**: The below change log references the version of the BEX library, since this is the version for the Maven artifact. The below change log will indicate when the Eclipse plugin is updated and its changes; this will be listed after the BEX library changes.
 
 ## [Unreleased]
+## [0.9.1] - 2020-08-10
+## Fixed
+* Short-term bug fix for infinite loop in some cases related to mismatched brackets
+* A long-term fix is still being investigated (#75)
+
 ## [0.9.0] - 2020-08-09
 ### Added
 * Added support for Comby style of regex ```:[groupName~regex]```
