@@ -21,7 +21,7 @@ The library has no dependency on Eclipse and can be used in commercial or privat
     <dependency>
         <groupId>info.codesaway</groupId>
         <artifactId>bex</artifactId>
-        <version>0.9.0</version>
+        <version>0.9.1</version>
     </dependency>
     <dependency>
         <groupId>info.codesaway</groupId>
