@@ -99,7 +99,7 @@ public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 
 	/**
 	 * Applies the specified BiFunction, passing {@link #getLeft()} and {@link #getRight()} as arguments
-	
+
 	 * @param function the BiFunction to apply
 	 * @return the result of applying the BiFunction
 	 */
@@ -109,7 +109,7 @@ public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 
 	/**
 	 * Applies the specified ToIntBiFunction, passing {@link #getLeft()} and {@link #getRight()} as arguments
-	
+
 	 * @param function the ToIntBiFunction to apply
 	 * @return the result of applying the ToIntBiFunction
 	 */
@@ -119,7 +119,7 @@ public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 
 	/**
 	 * Evaluates the specified BiPredicate, passing {@link #getLeft()} and {@link #getRight()} as arguments
-	
+
 	 * @param predicate the BiPredicate to apply
 	 * @return <code>true</code> if the predicate matches when applying the arugments; otherwise, <code>false</code>
 	 */
@@ -262,6 +262,7 @@ public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 	/**
 	 * Compares the BEXPair first by the left element then the right element
 	 * @throws ClassCastException if the entries do not implement Comparable or are not mutually Comparable
+	 * @since 0.10
 	 */
 	@Override
 	public default int compareTo(final BEXPair<T> o) {
