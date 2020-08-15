@@ -100,6 +100,6 @@ public final class MatcherTestHelper {
 
 		boolean result = bexMatcher.find();
 		assertTrue(result);
-		assertThat(bexMatcher.startEndPair()).isEqualTo(IntBEXRange.of(0, pattern.length()));
+		assertThat(bexMatcher.range()).isEqualTo(IntBEXRange.of(0, pattern.length()));
 	}
 }

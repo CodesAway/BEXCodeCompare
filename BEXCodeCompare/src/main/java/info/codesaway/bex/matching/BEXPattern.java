@@ -282,7 +282,7 @@ public final class BEXPattern {
 				} else if (hasText(pattern, i, "+")) {
 					// Wildcard to match 1 or more characters (excludes line terminators)
 					// TODO: if group is optional, how should handle?
-					regex = ".+?";
+					regex = isOptional ? ".*?" : ".+?";
 					i++;
 				} else if (currentChar(pattern, i) == '~') {
 					// Start of regex (Comby style syntax)
@@ -293,6 +293,40 @@ public final class BEXPattern {
 						regex = "(?:" + regex + ")?";
 					} else {
 						shouldSurroundRegexInNonCaptureGroup = true;
+					}
+				} else if (hasText(pattern, i, "\\n$")) {
+					regex = ".*+(?>\\r\\n|\\v|(?-m)$)";
+					i += 3;
+
+					if (isOptional) {
+						regex = "(?:" + regex + ")?";
+					}
+				} else if (hasText(pattern, i, "\n$")) {
+					// Support also specifying "\n", which is an actual line separator
+					// (this way, don't get error if forget to escape "\\n" in String literal)
+
+					regex = ".*+(?>\\r\\n|\\v|(?-m)$)";
+					i += 2;
+
+					if (isOptional) {
+						regex = "(?:" + regex + ")?";
+					}
+				} else if (hasText(pattern, i, "\\n")) {
+					regex = ".*+(?>\\r\\n|\\v)";
+					i += 2;
+
+					if (isOptional) {
+						regex = "(?:" + regex + ")?";
+					}
+				} else if (hasText(pattern, i, "\n")) {
+					// Support also specifying "\n", which is an actual line separator
+					// (this way, don't get error if forget to escape "\\n" in String literal)
+
+					regex = ".*+(?>\\r\\n|\\v)";
+					i += 1;
+
+					if (isOptional) {
+						regex = "(?:" + regex + ")?";
 					}
 				}
 
@@ -392,6 +426,8 @@ public final class BEXPattern {
 			//			System.out.printf("Rest of regex: %s%s%s%n", REGEX_BLOCK_START, regexBuilder, REGEX_BLOCK_END);
 		} else {
 			// If ends with group, then group will capture rest of input
+			// (doesn't have any flags, since meant to match end of input)
+			// (even though added multiline in 0.9, this should still match end of input)
 			patterns.add(Pattern.compile("$"));
 		}
 

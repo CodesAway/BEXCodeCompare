@@ -9,7 +9,7 @@ public final class ASTNodeUtilities {
 		throw new UnsupportedOperationException();
 	}
 
-	public static IntBEXRange getStartEnd(final ASTNode node) {
+	public static IntBEXRange getRange(final ASTNode node) {
 		int start = node.getStartPosition();
 		int end = start + node.getLength();
 
@@ -34,7 +34,7 @@ public final class ASTNodeUtilities {
 	//		TreeMap<Integer, IntBEXRange> commentRanges = new TreeMap<>();
 	//
 	//		for (Comment comment : commentList) {
-	//			commentRanges.put(comment.getStartPosition(), getStartEnd(comment));
+	//			commentRanges.put(comment.getStartPosition(), getRange(comment));
 	//		}
 	//
 	//		return Collections.unmodifiableNavigableMap(commentRanges);

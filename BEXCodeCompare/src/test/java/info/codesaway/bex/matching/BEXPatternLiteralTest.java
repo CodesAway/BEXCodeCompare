@@ -36,7 +36,7 @@ class BEXPatternLiteralTest {
 
 		assertTrue(matcher.find());
 
-		assertThat(matcher.startEndPair()).isEqualTo(IntBEXRange.of(0, matcher.text().length()));
+		assertThat(matcher.range()).isEqualTo(IntBEXRange.of(0, matcher.text().length()));
 	}
 
 	@Test
@@ -61,7 +61,7 @@ class BEXPatternLiteralTest {
 
 		assertTrue(matcher.find());
 
-		assertThat(matcher.startEndPair()).isEqualTo(IntBEXRange.of(0, matcher.text().length()));
+		assertThat(matcher.range()).isEqualTo(IntBEXRange.of(0, matcher.text().length()));
 	}
 
 	@Test
@@ -71,6 +71,6 @@ class BEXPatternLiteralTest {
 
 		assertTrue(matcher.find());
 
-		assertThat(matcher.startEndPair()).isEqualTo(IntBEXRange.of(0, matcher.text().length()));
+		assertThat(matcher.range()).isEqualTo(IntBEXRange.of(0, matcher.text().length()));
 	}
 }

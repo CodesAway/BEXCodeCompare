@@ -1,6 +1,7 @@
 package info.codesaway.bex.matching;
 
 import info.codesaway.bex.ImmutableIntRangeMap;
+import info.codesaway.bex.IntPair;
 
 public final class BEXString implements CharSequence {
 	private final String text;
@@ -63,6 +64,16 @@ public final class BEXString implements CharSequence {
 	@Override
 	public char charAt(final int index) {
 		return this.text.charAt(index);
+	}
+
+	/**
+	 *
+	 * @param startEnd the start (left value) and end (right value)
+	 * @return
+	 * @since 0.10
+	 */
+	public BEXString substring(final IntPair startEnd) {
+		return this.substring(startEnd.getLeft(), startEnd.getRight());
 	}
 
 	public BEXString substring(final int start, final int end) {

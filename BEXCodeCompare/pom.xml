@@ -4,9 +4,9 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>info.codesaway</groupId>
 	<artifactId>bex</artifactId>
-	<version>0.9.1</version>
-	<name>BEX Code Compare</name>
-	<description>Be Enhanced Code Compare</description>
+	<version>0.10.0</version>
+	<name>Be Enhanced Code Compare (BEϽC)</name>
+	<description>An enhanced code compare, utilities, and code matching</description>
 	<properties>
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
@@ -49,7 +49,6 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-
 	<build>
 		<plugins>
 			<plugin>

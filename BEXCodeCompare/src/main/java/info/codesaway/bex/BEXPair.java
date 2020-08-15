@@ -18,10 +18,12 @@ import info.codesaway.bex.util.FunctionThrows;
  * Pair of left and right values, which are of the same type
  *
  * <p>Instances of this class are immutable if generic class type is also immutable</p>
+ *
+ * <p>Instances of this class are Comparable if generic class type is also Comparable</p>
  * @param <T> the type of pair
  * @since 0.3
  */
-public interface BEXPair<T> {
+public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 	/**
 	 * Gets the left value in the pair
 	 * @return the left value
@@ -97,7 +99,7 @@ public interface BEXPair<T> {
 
 	/**
 	 * Applies the specified BiFunction, passing {@link #getLeft()} and {@link #getRight()} as arguments
-	
+
 	 * @param function the BiFunction to apply
 	 * @return the result of applying the BiFunction
 	 */
@@ -107,7 +109,7 @@ public interface BEXPair<T> {
 
 	/**
 	 * Applies the specified ToIntBiFunction, passing {@link #getLeft()} and {@link #getRight()} as arguments
-	
+
 	 * @param function the ToIntBiFunction to apply
 	 * @return the result of applying the ToIntBiFunction
 	 */
@@ -117,7 +119,7 @@ public interface BEXPair<T> {
 
 	/**
 	 * Evaluates the specified BiPredicate, passing {@link #getLeft()} and {@link #getRight()} as arguments
-	
+
 	 * @param predicate the BiPredicate to apply
 	 * @return <code>true</code> if the predicate matches when applying the arugments; otherwise, <code>false</code>
 	 */
@@ -255,5 +257,26 @@ public interface BEXPair<T> {
 	*/
 	public default String toString(final String format) {
 		return String.format(format, this.getLeft(), this.getRight());
+	}
+
+	/**
+	 * Compares the BEXPair first by the left element then the right element
+	 * @throws ClassCastException if the entries do not implement Comparable or are not mutually Comparable
+	 * @since 0.10
+	 */
+	@Override
+	public default int compareTo(final BEXPair<T> o) {
+		@SuppressWarnings("unchecked")
+		Comparable<? super T> left1 = (Comparable<? super T>) this.getLeft();
+
+		@SuppressWarnings("unchecked")
+		Comparable<? super T> right1 = (Comparable<? super T>) this.getRight();
+
+		int compare = left1.compareTo(o.getLeft());
+		if (compare != 0) {
+			return compare;
+		}
+
+		return right1.compareTo(o.getRight());
 	}
 }

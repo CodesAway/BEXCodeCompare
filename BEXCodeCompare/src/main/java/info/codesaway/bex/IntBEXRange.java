@@ -29,6 +29,11 @@ public final class IntBEXRange implements IntRange {
 		if (end < start) {
 			throw new IllegalArgumentException(String.format("Invalid range start = %d, end = %d", start, end));
 		}
+
+		if (end == start && !hasInclusiveStart && !hasInclusiveEnd) {
+			// Mimics Guava's Range class and throws exception
+			throw new IllegalArgumentException(String.format("Invalid range (%d, %d)", start, end));
+		}
 	}
 
 	/**
