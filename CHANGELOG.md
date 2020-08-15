@@ -9,16 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ## [0.10.0] - 2020-08-15
 ### Added
+* BEXPattern syntax
+  * ```:[group\n]``` to match rest of line, including line terminator
+  * ```:[group\n$]``` to match rest of line, including line terminator (will also match if last line in text with no line terminator)
+
+* BEXPair interface extends Comparable interface (so elements are comparable, left then right, if the type is comparable
+* BEXString substring method overridden to take IntPair (including IntRange)
 * BEXPairs.bexPair helper method to create a BEXPair (can use static import)
 * IntRange.length method
 
 ### Changed
-* BEXPair interface extends Comparable interface (so elements are comparable, left then right, if the type is comparable
-* 
-
-### Removed
+* Renamed methods which reference start/end now refer to as range
+  * BEXMatcher
+  * BEXMatchResult
+  * ASTNodeUtilities
 
 ### Fixed
+* In BEXMatcher / BEXMatchResult, throw IllegalStateException if try to get match info if a successful match hasn't occurred yet
+* IntBEXRange will throw exception if range is invalid (start and end match and exclusive on both ends, such as ```(1, 1)```)
 
 ## [0.9.1] - 2020-08-10
 ### Fixed
