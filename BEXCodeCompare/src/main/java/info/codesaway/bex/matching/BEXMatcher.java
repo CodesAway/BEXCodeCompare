@@ -61,7 +61,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 */
 	private int offset;
 
-	private final MutableIntBEXPair matchStartEnd = new MutableIntBEXPair(-1, 0);
+	private final MutableIntBEXPair matchRange = new MutableIntBEXPair(-1, 0);
 
 	/**
 	 * Most groups will have only one value, so stored here
@@ -105,7 +105,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 */
 	public BEXMatchResult toMatchResult() {
 		BEXMatcher result = new BEXMatcher(this.pattern(), this.text(), this.textStateMap, this.offset);
-		result.matchStartEnd.set(this.matchStartEnd);
+		result.matchRange.set(this.matchRange);
 		result.valuesMap.putAll(this.valuesMap);
 
 		if (!this.multipleValuesMap.isEmpty()) {
@@ -129,8 +129,8 @@ public final class BEXMatcher implements BEXMatchResult {
 
 	public boolean find() {
 		// Logic from regex Matcher.find
-		int nextSearchStart = this.end();
-		if (nextSearchStart == this.start()) {
+		int nextSearchStart = this.matchRange.getRight();
+		if (nextSearchStart == this.matchRange.getLeft()) {
 			nextSearchStart++;
 		}
 		// If next search starts beyond region then it fails
@@ -148,7 +148,7 @@ public final class BEXMatcher implements BEXMatchResult {
 
 		boolean foundMatch = this.match(from);
 		if (!foundMatch) {
-			this.matchStartEnd.setLeft(-1);
+			this.matchRange.setLeft(-1);
 		}
 
 		return foundMatch;
@@ -362,13 +362,13 @@ public final class BEXMatcher implements BEXMatchResult {
 			// (unless it's an unnamed group)
 			if (!group.equals("_")) {
 				// TODO: what if group was matched as part of regex, does normal group have to match?
-				IntBEXRange startEnd = this.getInternal(group);
+				IntBEXRange range = this.getInternalNoMatchCheck(group);
 
 				// If group is already specified
-				if (startEnd != null && startEnd != NOT_FOUND) {
+				if (range != null && range != NOT_FOUND) {
 					// Verify the content equals; otherwise, don't match
 					// TODO: should go to next match or something... need to implement
-					int oldLength = startEnd.getRight() - startEnd.getLeft();
+					int oldLength = range.length();
 					int newLength = end - start;
 
 					// Fast check, based on length
@@ -377,7 +377,7 @@ public final class BEXMatcher implements BEXMatchResult {
 					}
 
 					// Compare character by character
-					int index1 = startEnd.getLeft();
+					int index1 = range.getStart();
 					int index2 = start;
 
 					for (int m = 0; m < oldLength; m++) {
@@ -402,10 +402,10 @@ public final class BEXMatcher implements BEXMatchResult {
 		int matchStart = currentMatcher.start();
 		int matchEnd = regionStart;
 
-		this.matchStartEnd.set(matchStart, matchEnd);
+		this.matchRange.set(matchStart, matchEnd);
 
 		if (DEBUG) {
-			System.out.println("Found match: " + this.matchStartEnd);
+			System.out.println("Found match: " + this.matchRange);
 		}
 
 		return true;
@@ -458,7 +458,7 @@ public final class BEXMatcher implements BEXMatchResult {
 			if (entry != null && !entry.getValue().isCode()) {
 				// Has a state option
 				IntRange canonical = entry.getKey().canonical();
-				boolean isEndOfRange = indexWithOffset == canonical.getRight() - 1;
+				boolean isEndOfRange = indexWithOffset == canonical.getEnd() - 1;
 
 				stateOption = isEndOfRange ? null : entry.getValue();
 
@@ -554,26 +554,33 @@ public final class BEXMatcher implements BEXMatchResult {
 	}
 
 	@Override
-	public IntBEXRange startEndPair() {
-		return IntBEXRange.of(this.matchStartEnd.getLeft(), this.matchStartEnd.getRight());
+	public IntBEXRange range() {
+		this.checkForMatch();
+
+		return IntBEXRange.of(this.matchRange.getLeft(), this.matchRange.getRight());
 	}
 
 	@Override
-	public IntBEXRange startEndPair(final String group) {
-		IntBEXRange startEnd = this.getInternal(group);
+	public IntBEXRange range(final String group) {
+		IntBEXRange range = this.getInternal(group);
 
 		// Intentionally using identity equals
-		if (startEnd == NOT_FOUND) {
+		if (range == NOT_FOUND) {
 			throw new IllegalArgumentException("The specified group is not in the pattern: " + group);
 		}
 
-		return startEnd;
+		return range;
 	}
 
 	private static IntBEXRange NOT_FOUND = IntBEXRange.of(Integer.MIN_VALUE, Integer.MIN_VALUE);
 	private static IntBEXRange NULL_PAIR = IntBEXRange.of(-1, -1);
 
 	private IntBEXRange getInternal(final String group) {
+		this.checkForMatch();
+		return this.getInternalNoMatchCheck(group);
+	}
+
+	private IntBEXRange getInternalNoMatchCheck(final String group) {
 		List<IntBEXRange> existingValues = this.multipleValuesMap.get(group);
 
 		if (existingValues != null) {
@@ -597,7 +604,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 * @since 0.6
 	 */
 	public BEXMatcher reset() {
-		this.matchStartEnd.set(-1, 0);
+		this.matchRange.set(-1, 0);
 		this.clearGroups();
 		this.lastAppendPosition = 0;
 
@@ -921,6 +928,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 */
 	@Override
 	public Set<Entry<String, String>> entrySet() {
+		this.checkForMatch();
 		return new EntrySet();
 	}
 
@@ -931,6 +939,19 @@ public final class BEXMatcher implements BEXMatchResult {
 	 */
 	private int getTextLength() {
 		return this.text.length();
+	}
+
+	/**
+	 * Check for match
+	 *
+	 * @throws  IllegalStateException
+	 *          If no match has yet been attempted,
+	 *          or if the previous match operation failed
+	 */
+	private void checkForMatch() {
+		if (this.matchRange.getLeft() < 0) {
+			throw new IllegalStateException("No match available");
+		}
 	}
 
 	/**

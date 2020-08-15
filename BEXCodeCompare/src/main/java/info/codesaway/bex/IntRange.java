@@ -38,6 +38,19 @@ public interface IntRange extends IntPair {
 				&& !(this.hasInclusiveStart() && this.hasInclusiveEnd());
 	}
 
+	/**
+	 *
+	 * @return the length of the range
+	 * @since 0.10
+	 */
+	public default int length() {
+		// Logic from canonical
+		int start = this.hasInclusiveStart() ? this.getStart() : this.getStart() + 1;
+		int end = this.hasInclusiveEnd() ? this.getEnd() + 1 : this.getEnd();
+
+		return end - start;
+	}
+
 	public default IntRange canonical() {
 		if (this.hasInclusiveStart() && !this.hasInclusiveEnd()) {
 			return this;

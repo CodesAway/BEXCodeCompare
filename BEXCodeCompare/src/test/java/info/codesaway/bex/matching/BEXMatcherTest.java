@@ -1,6 +1,7 @@
 package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.matching.MatcherTestHelper.testBEXMatch;
+import static info.codesaway.bex.matching.MatcherTestHelper.testBEXMatchReplaceAll;
 import static info.codesaway.bex.matching.MatcherTestHelper.testJustBEXMatch;
 import static info.codesaway.bex.matching.MatcherTestHelper.testNoBEXMatch;
 import static info.codesaway.bex.util.BEXUtilities.entry;
@@ -70,7 +71,23 @@ class BEXMatcherTest {
 	void testPatternSingleGroupMatchesAll() {
 		String pattern = ":[value]";
 		String text = "a = a";
-		testBEXMatch(pattern, text, "a = a");
+		testBEXMatch(pattern, text, text);
+	}
+
+	@Test
+	// Issue #82
+	void testPatternSingleGroupMatchesAllAcrossMultipleLines() {
+		String pattern = ":[value]";
+		String text = "a = a\r\na = a";
+		testBEXMatch(pattern, text, text);
+	}
+
+	@Test
+	// Issue #82
+	void testPatternTrailingGroupMatchesAllAcrossMultipleLines() {
+		String pattern = "blah :[value]";
+		String text = "blah a = a\r\na = a";
+		testBEXMatch(pattern, text, "a = a\r\na = a");
 	}
 
 	@Test
@@ -396,5 +413,55 @@ class BEXMatcherTest {
 		String text = "if (something) blah";
 
 		assertTimeoutPreemptively(Duration.ofSeconds(1), () -> testNoBEXMatch(pattern, text));
+	}
+
+	@Test
+	// Issue #81
+	void testLineSeparatorMatch() {
+		String pattern = "something :[value\\n]";
+		String text = "something else is at the end of this line\r\n";
+		testBEXMatch(pattern, text, "else is at the end of this line\r\n");
+	}
+
+	@Test
+	// Issue #81
+	void testLineSeparatorMatchWithActualNewLine() {
+		String pattern = "something :[value\n]";
+		String text = "something else is at the end of this line\r\n";
+		testBEXMatch(pattern, text, "else is at the end of this line\r\n");
+	}
+
+	@Test
+	// Issue #81
+	void testLineSeparatorMatchOrEndOfText() {
+		String pattern = ":[key] = :[value\\n$]";
+		String text = "a = b\n"
+				+ "c = d";
+		testBEXMatchReplaceAll(pattern, text, "", "");
+	}
+
+	@Test
+	// Issue #81
+	void testLineSeparatorMatchOrEndOfTextWithActualNewLine() {
+		String pattern = ":[key] = :[value\n$]";
+		String text = "a = b\n"
+				+ "c = d";
+		testBEXMatchReplaceAll(pattern, text, "", "");
+	}
+
+	@Test
+	// Issue #81
+	void testOptionalLineSeparatorMatch() {
+		String pattern = "something :[?_\\n] :[value]";
+		String text = "something else is at the end of this line";
+		testBEXMatch(pattern, text, "else is at the end of this line");
+	}
+
+	@Test
+	// Issue #81
+	void testOptionalLineSeparatorMatchWithActualNewLine() {
+		String pattern = "something :[?_\n] :[value]";
+		String text = "something else is at the end of this line";
+		testBEXMatch(pattern, text, "else is at the end of this line");
 	}
 }

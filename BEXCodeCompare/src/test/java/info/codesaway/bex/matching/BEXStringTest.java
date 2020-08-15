@@ -8,6 +8,7 @@ import static info.codesaway.bex.util.BEXUtilities.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class BEXStringTest {
@@ -54,6 +55,58 @@ class BEXStringTest {
 		assertThat(bexMatcher)
 				.extracting(m -> m.get("value"))
 				.isEqualTo("text(\\\"blah");
+	}
+
+	@Test
+	void testSubstringRange() {
+		String pattern = "\":[value]\"";
+		String text = "Line 1\n"
+				+ "\"text(\\\"blah\"\n"
+				+ "Line 3";
+
+		BEXString bexString = new BEXString(text);
+
+		BEXPattern bexPattern = BEXPattern.compile(pattern);
+		BEXMatcher bexMatcher = bexPattern.matcher(bexString);
+
+		assertTrue(bexMatcher.find(), "Could not find match");
+
+		String value = bexMatcher.group("value");
+
+		assertThat(value).isEqualTo("text(\\\"blah");
+
+		assertThat(bexString.substring(bexMatcher.range("value")).getText()).isEqualTo(value);
+	}
+
+	@Test
+	@Disabled("not sure why doesn't match subpattern")
+	void testSubstringRangeMatchSubpattern() {
+		String pattern = "\":[value]\"";
+		String text = "Line 1\n"
+				+ "\"text(\\\"blah\"\n"
+				+ "Line 3";
+
+		BEXString bexString = new BEXString(text);
+
+		BEXPattern bexPattern = BEXPattern.compile(pattern);
+		BEXMatcher bexMatcher = bexPattern.matcher(bexString);
+
+		assertTrue(bexMatcher.find(), "Could not find match");
+
+		String value = bexMatcher.group("value");
+
+		assertThat(value).isEqualTo("text(\\\"blah");
+
+		System.out.println("Subpattern!");
+		BEXPattern bexSubPattern = BEXPattern.compile("blah");
+		BEXMatcher bexSubMatcher = bexSubPattern.matcher(bexString.substring(bexMatcher.range("value")));
+
+		System.out.println("Subtext: " + bexSubMatcher.text());
+
+		assertThat(bexSubMatcher.text()).asString().isEqualTo(value);
+		assertTrue(bexSubMatcher.find(), "Could not find match");
+
+		assertThat(bexSubMatcher.get("1")).isEqualTo("lah\"");
 	}
 
 	@Test

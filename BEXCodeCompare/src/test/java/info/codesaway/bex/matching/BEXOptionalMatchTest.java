@@ -170,4 +170,12 @@ public class BEXOptionalMatchTest {
 		String text = "\"a     c\"";
 		testBEXMatch(pattern, text, "");
 	}
+
+	@Test
+	void testOptionalPlus() {
+		String pattern = "something :[?value+] fun";
+		String text = "something fun";
+		String expectedValue = "";
+		testBEXMatch(pattern, text, expectedValue);
+	}
 }
