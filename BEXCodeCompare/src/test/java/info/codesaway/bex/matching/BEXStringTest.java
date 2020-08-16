@@ -79,7 +79,8 @@ class BEXStringTest {
 	}
 
 	@Test
-	@Disabled("not sure why doesn't match subpattern")
+	@Disabled("Doesn't match subpattern since within String literal (which is ignored)")
+	// TODO: see if there's a way to handle this intelligently, so it can match
 	void testSubstringRangeMatchSubpattern() {
 		String pattern = "\":[value]\"";
 		String text = "Line 1\n"

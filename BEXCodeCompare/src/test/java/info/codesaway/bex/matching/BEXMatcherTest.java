@@ -1,6 +1,7 @@
 package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.matching.MatcherTestHelper.testBEXMatch;
+import static info.codesaway.bex.matching.MatcherTestHelper.testBEXMatchEntries;
 import static info.codesaway.bex.matching.MatcherTestHelper.testBEXMatchReplaceAll;
 import static info.codesaway.bex.matching.MatcherTestHelper.testJustBEXMatch;
 import static info.codesaway.bex.matching.MatcherTestHelper.testNoBEXMatch;
@@ -128,6 +129,13 @@ class BEXMatcherTest {
 		String pattern = "try { }";
 		String text = "\"try { }\"";
 		testNoBEXMatch(pattern, text);
+	}
+
+	@Test
+	void testInStringLiteralPatternHasContextSoMatch() {
+		String pattern = "\"try { }\"";
+		String text = "\"try { }\"";
+		testJustBEXMatch(pattern, text);
 	}
 
 	@Test
@@ -463,5 +471,33 @@ class BEXMatcherTest {
 		String pattern = "something :[?_\n] :[value]";
 		String text = "something else is at the end of this line";
 		testBEXMatch(pattern, text, "else is at the end of this line");
+	}
+
+	@Test
+	void testMatchViaBacktrace() {
+		String pattern = "if (:[?before]blah:[?after])";
+		String text = "if (something) blah\n"
+				+ "if (something == blah)";
+
+		testBEXMatchEntries(pattern, text, entry("before", "something == "), entry("after", ""));
+	}
+
+	@Test
+	void testMatchViaBacktraceBeforeAndAfterRequiredNoMatch() {
+		String pattern = "if (:[before]blah:[after])";
+		String text = "if (something) blah\n"
+				+ "if (something == blah)";
+
+		testNoBEXMatch(pattern, text);
+	}
+
+	@Test
+	void testMatchViaBacktraceBeforeAndAfterRequiredHasMatch() {
+		String pattern = "if (:[before]blah:[after])";
+		String text = "if (something) blah\n"
+				+ "if (something == blah)\n"
+				+ "if (something == blah && fun)";
+
+		testBEXMatchEntries(pattern, text, entry("before", "something == "), entry("after", " && fun"));
 	}
 }
