@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **NOTE**: The below change log references the version of the BEX library, since this is the version for the Maven artifact. The below change log will indicate when the Eclipse plugin is updated and its changes; this will be listed after the BEX library changes.
 
 ## [Unreleased]
+## [0.10.1] - 2020-08-16
+### Fixed
+* Matcher will retry if encounter mismatched brackets
+
 ## [0.10.0] - 2020-08-15
 ### Added
 * BEXPattern syntax
