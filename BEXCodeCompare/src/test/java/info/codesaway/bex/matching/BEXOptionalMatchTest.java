@@ -152,12 +152,12 @@ public class BEXOptionalMatchTest {
 
 	@Test
 	void testOptionalMultipleReplacement() {
-		String pattern = "<p:[?attrs]>";
+		String pattern = "<p:[?attributes]>";
 		String text = "<p>content</p><p attr=\"attr\">more content</p>";
 		// TODO: Comby supports (requires?) question mark in replacement
 		// (what's the purpose of this?)
-		String replacement = "<p{:[attrs]}>";
-		//		String replacement = "<p{:[?attrs]}>";
+		String replacement = "<p{:[attributes]}>";
+		//		String replacement = "<p{:[?attributes]}>";
 
 		BEXPattern p = BEXPattern.compile(pattern);
 		BEXMatcher m = p.matcher(text);

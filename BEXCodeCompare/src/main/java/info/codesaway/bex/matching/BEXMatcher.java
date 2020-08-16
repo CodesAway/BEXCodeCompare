@@ -161,66 +161,85 @@ public final class BEXMatcher implements BEXMatchResult {
 			return false;
 		}
 
-		// TODO: cache matchers?
-		Matcher currentMatcher = patterns.get(0).matcher(this.text);
-		// TODO: specify as option? (needed to handle spaces after group)
-		currentMatcher.useTransparentBounds(true);
+		//		// TODO: cache matchers?
+		//		Matcher currentMatcher = patterns.get(0).matcher(this.text);
+		//		// TODO: specify as option? (needed to handle spaces after group)
+		//		currentMatcher.useTransparentBounds(true);
+		//
+		//		boolean foundMatch;
+		//		int searchFrom = from;
+		//		do {
+		//			if (!currentMatcher.find(searchFrom)) {
+		//				if (DEBUG) {
+		//					System.out.println("Couldn't find match 0: " + from + "\t" + this.text());
+		//					System.out.println("Pattern 0: @" + currentMatcher.pattern() + "@");
+		//				}
+		//				return false;
+		//			}
+		//
+		//			int start = currentMatcher.start();
+		//			int startWithOffset = start + this.offset;
+		//			Entry<IntRange, BEXMatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
+		//
+		//			// XXX: think this is what prevents test from passing that first match is in String literal
+		//			// TODO: see about refactoring to use for loop to handle first match no differently than other matches
+		//			// (only difference is wouldn't have an actual group, so this would just pass)
+		//			if (entry != null && startWithOffset != entry.getKey().getStart()
+		//					&& !entry.getValue().isCode()) {
+		//				// Don't count as match, since part of string literal or comment
+		//				// If match starts with the block, then okay to match
+		//				// TODO: when else would it be okay to match?
+		//				foundMatch = false;
+		//				searchFrom = start + 1;
+		//			} else {
+		//				foundMatch = true;
+		//				if (DEBUG) {
+		//					if (start == startWithOffset) {
+		//						System.out.printf("Found match! %d\t|%s|%n", start, currentMatcher.group());
+		//					} else {
+		//						System.out.printf("Found match! %d (%d)%n", start, startWithOffset);
+		//					}
+		//					System.out.println("Text states: " + this.textStateMap);
+		//				}
+		//			}
+		//		} while (!foundMatch);
+		//
+		//		// Don't match if in string literal or comment
+		//		// TODO: under what scenarios should it match stuff in comments?
+		//
+		//		// TODO: need to process code before match to detect if in block comment, line comment, or String literal
+		//
+		//		this.putCaptureGroups(currentMatcher);
+		//		int regionStart = currentMatcher.end();
 
-		boolean foundMatch;
-		int searchFrom = from;
-		do {
-			if (!currentMatcher.find(searchFrom)) {
-				if (DEBUG) {
-					System.out.println("Couldn't find match 0: " + from + "\t" + this.text());
-					System.out.println("Pattern 0: @" + currentMatcher.pattern() + "@");
-				}
-				return false;
-			}
-
-			int start = currentMatcher.start();
-			int startWithOffset = start + this.offset;
-			Entry<IntRange, BEXMatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
-
-			if (entry != null && startWithOffset != entry.getKey().getStart()
-					&& !entry.getValue().isCode()) {
-				// Don't count as match, since part of string literal or comment
-				// If match starts with the block, then okay to match
-				// TODO: when else would it be okay to match?
-				foundMatch = false;
-				searchFrom = start + 1;
-			} else {
-				foundMatch = true;
-				if (DEBUG) {
-					if (start == startWithOffset) {
-						System.out.printf("Found match! %d\t|%s|%n", start, currentMatcher.group());
-					} else {
-						System.out.printf("Found match! %d (%d)%n", start, startWithOffset);
-					}
-					System.out.println("Text states: " + this.textStateMap);
-				}
-			}
-		} while (!foundMatch);
-
-		// Don't match if in string literal or comment
-		// TODO: under what scenarios should it match stuff in comments?
-
-		// TODO: need to process code before match to detect if in block comment, line comment, or String literal
-
-		this.putCaptureGroups(currentMatcher);
-		int regionStart = currentMatcher.end();
+		int regionStart = from;
 		// TODO: keep track of matchStart (such as if requires multiple passes to find next match)
 
-		for (int i = 0; i < patterns.size() - 1; i++) {
-			Pattern nextPattern = patterns.get(i + 1);
-			Matcher nextMatcher = nextPattern.matcher(this.text);
+		int firstMatchStart = -1;
+
+		outer: for (int i = 0; i < patterns.size(); i++) {
+			//		for (int i = 0; i < patterns.size() - 1; i++) {
+			Pattern pattern = patterns.get(i);
+			//			Pattern nextPattern = patterns.get(i + 1);
+			// TODO: can we reuse the matcher and just change out the pattern?
+			Matcher matcher = pattern.matcher(this.text);
+			//			Matcher nextMatcher = nextPattern.matcher(this.text);
 
 			if (DEBUG) {
-				System.out.println("Trying matcher " + (i + 1));
+				System.out.println("Trying matcher " + i);
+				//				System.out.println("Trying matcher " + (i + 1));
 				System.out.println("Region start: " + regionStart);
 			}
 
-			BEXGroupMatchSetting groupMatchSetting = this.parentPattern.getGroupMatchSettings()
-					.getOrDefault(i, DEFAULT);
+			BEXGroupMatchSetting groupMatchSetting;
+
+			if (i == 0) {
+				// No group match (treat as "optional", since won't match anything)
+				groupMatchSetting = DEFAULT.turnOn(BEXGroupMatchSetting.OPTIONAL);
+			} else {
+				groupMatchSetting = this.parentPattern.getGroupMatchSettings().getOrDefault(i - 1, DEFAULT);
+				//				groupMatchSetting = this.parentPattern.getGroupMatchSettings().getOrDefault(i, DEFAULT);
+			}
 
 			// If the group isn't optional, start searching with next character
 			// (since group must match something, so match would be at least 1 character)
@@ -237,25 +256,66 @@ public final class BEXMatcher implements BEXMatchResult {
 			//				return false;
 			//			}
 
-			nextMatcher.region(matcherRegionStart, this.text.length());
-			nextMatcher.useTransparentBounds(true);
+			matcher.region(matcherRegionStart, this.text.length());
+			matcher.useTransparentBounds(true);
+			//			nextMatcher.region(matcherRegionStart, this.text.length());
+			//			nextMatcher.useTransparentBounds(true);
 
-			if (!nextMatcher.find()) {
+			if (!matcher.find()) {
+				//			if (!nextMatcher.find()) {
 				if (DEBUG) {
-					System.out.printf("Didn't match next matcher %d%n", i + 1);
-					System.out.println("Pattern: " + nextPattern);
+					System.out.printf("Didn't match %d%n", i);
+					//					System.out.printf("Didn't match next matcher %d%n", i + 1);
+					System.out.println("Pattern: " + pattern);
+					//					System.out.println("Pattern: " + nextPattern);
 					System.out.println("Text: " + this.text.subSequence(regionStart, this.text.length()));
 				}
 				return false;
 			}
 
 			if (DEBUG) {
-				System.out.printf("Matched next match %d %s\t|%s|%n", i + 1, nextMatcher.pattern(),
-						nextMatcher.group());
+				System.out.printf("Matched %d %s\t|%s|%n", i, matcher.pattern(), matcher.group());
+				//				System.out.printf("Matched next match %d %s\t|%s|%n", i + 1, nextMatcher.pattern(),
+				//						nextMatcher.group());
 			}
 
 			int start = regionStart;
-			int end = nextMatcher.start();
+			int end = matcher.start();
+			//			int end = nextMatcher.start();
+
+			// Handle first match (since has no group)
+			if (i == 0) {
+				// TODO: check that state is valid
+				int startWithOffset = matcher.start() + this.offset;
+				Entry<IntRange, BEXMatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
+
+				boolean isValid;
+				if (entry != null && startWithOffset != entry.getKey().getStart()
+						&& !entry.getValue().isCode()) {
+					// Don't count as match, since part of string literal or comment
+					// If match starts with the block, then okay to match
+					// TODO: when else would it be okay to match?
+					isValid = false;
+					if (DEBUG) {
+						System.out.println("Invalid entry, try first match again: " + entry);
+					}
+				} else {
+					isValid = true;
+				}
+
+				if (!isValid) {
+					i--;
+					// TODO: should this instead be matcher.end()?
+					// (start + 1 would be trying the next character, just like regex would do)
+					regionStart = matcher.start() + 1;
+					continue;
+				}
+
+				this.putCaptureGroups(matcher);
+				firstMatchStart = matcher.start();
+				regionStart = matcher.end();
+				continue;
+			}
 
 			int startWithOffset = start + this.offset;
 			Entry<IntRange, BEXMatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
@@ -271,7 +331,6 @@ public final class BEXMatcher implements BEXMatchResult {
 			if (DEBUG) {
 				System.out.println("Performing search with initialState " + initialState);
 			}
-
 			BEXMatchingState state = this.search(start, end, groupMatchSetting, initialState);
 
 			while (!state.isValid(end, initialState.getOptions())) {
@@ -279,9 +338,19 @@ public final class BEXMatcher implements BEXMatchResult {
 				// This way, if one line in a file isn't valid, could still handle other lines (versus never matching ever)
 				if (state.hasMismatchedBrackets()) {
 					if (DEBUG) {
-						System.out.println(state);
+						System.out.println("Mismatched brackets: " + state);
 					}
-					return false;
+
+					// Start outer from first pattern and try again
+					// TODO: when should we not start at first pattern?
+					i = -1;
+					this.clearGroups();
+
+					// TODO: is this the correct place to start the next try?
+					// (seems likely, since this is right after the invalid bracket)
+					regionStart = state.getPosition() + 1;
+
+					continue outer;
 				}
 
 				// TODO: handle what if not valid (in this case, expand group)
@@ -310,30 +379,39 @@ public final class BEXMatcher implements BEXMatchResult {
 							+ this.text.subSequence(start, position));
 				}
 
-				nextMatcher.region(position, this.text.length());
+				matcher.region(position, this.text.length());
+				//				nextMatcher.region(position, this.text.length());
 				// TODO: specify as option? (needed to handle spaces after group)
-				nextMatcher.useTransparentBounds(true);
+				matcher.useTransparentBounds(true);
+				//				nextMatcher.useTransparentBounds(true);
 
-				if (!nextMatcher.find()) {
+				if (!matcher.find()) {
+					//				if (!nextMatcher.find()) {
 					// State is valid and cannot find another match
 					// In this case, skip and try again from beginning at later point?
 					if (DEBUG) {
-						System.out.println("Cannot find next match: " + (i + 1));
+						System.out.println("Cannot find match: " + i);
+						//						System.out.println("Cannot find next match: " + (i + 1));
 					}
 					return false;
 				}
 
-				end = nextMatcher.start();
+				end = matcher.start();
+				//				end = nextMatcher.start();
 
 				if (end != position) {
 					// TODO: there may be extra stuff between the valid position and the next start
 					// (if this is also valid, it would be okay)
 					if (DEBUG) {
-						System.out.printf("New scenario %d: %d\t%d\t%s%n", i + 1, nextMatcher.start(), position,
-								this.text.subSequence(position, nextMatcher.start()));
+						System.out.printf("New scenario %d: %d\t%d\t%s%n", i, matcher.start(), position,
+								this.text.subSequence(position, matcher.start()));
+						//						System.out.printf("New scenario %d: %d\t%d\t%s%n", i + 1, nextMatcher.start(), position,
+						//								this.text.subSequence(position, nextMatcher.start()));
 
-						System.out.printf("Position does not match next matcher start: %d != %d%n", position,
-								nextMatcher.start());
+						System.out.printf("Position does not match matcher start: %d != %d%n", position,
+								matcher.start());
+						//						System.out.printf("Position does not match next matcher start: %d != %d%n", position,
+						//								nextMatcher.start());
 					}
 					//					return false;
 					// TODO: what should I pass for initial state
@@ -351,7 +429,8 @@ public final class BEXMatcher implements BEXMatchResult {
 				return false;
 			}
 
-			String group = this.parentPattern.getGroups().get(i);
+			String group = this.parentPattern.getGroups().get(i - 1);
+			//			String group = this.parentPattern.getGroups().get(i);
 			//			String value = this.text.subSequence(start, end).toString();
 
 			if (DEBUG) {
@@ -393,13 +472,14 @@ public final class BEXMatcher implements BEXMatchResult {
 				}
 			}
 
-			this.putCaptureGroups(nextMatcher);
+			this.putCaptureGroups(matcher);
 
 			//			System.out.printf("%s: @%s@%n", group, value);
-			regionStart = nextMatcher.end();
+			regionStart = matcher.end();
 		}
 
-		int matchStart = currentMatcher.start();
+		int matchStart = firstMatchStart;
+		//		int matchStart = currentMatcher.start();
 		int matchEnd = regionStart;
 
 		this.matchRange.set(matchStart, matchEnd);

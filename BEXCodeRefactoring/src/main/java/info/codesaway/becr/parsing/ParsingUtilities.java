@@ -168,7 +168,7 @@ public final class ParsingUtilities {
 	 *
 	 *
 	 * @param workspace
-	 * @param jrePathname JRE pathname (not needed is not including jars)
+	 * @param jrePathname JRE pathname (not needed if not including jars)
 	 * @param includeJars
 	 * @return
 	 */
