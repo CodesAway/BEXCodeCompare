@@ -115,11 +115,11 @@ public class BEXMatchingUtilities {
 	}
 
 	/**
-	 * Extracts <code>BEXMatchingTextState</code>s from the specified Java text
+	 * Parses the specified Java text and determines the <code>BEXMatchingTextState</code>s
 	 * @param text the Java text
-	 * @return an unmodifiable map from the range start to the BEXMatchingTextState
+	 * @return an unmodifiable map from the range to the BEXMatchingTextState
 	 */
-	public static ImmutableIntRangeMap<BEXMatchingStateOption> extractJavaTextStates(final CharSequence text) {
+	public static ImmutableIntRangeMap<MatchingStateOption> parseJavaTextStates(final CharSequence text) {
 		if (text.length() == 0) {
 			return ImmutableIntRangeMap.of();
 		}
@@ -130,8 +130,8 @@ public class BEXMatchingUtilities {
 		// * In String literal
 		// * Other stuff?
 
-		ImmutableIntRangeMap.Builder<BEXMatchingStateOption> builder = ImmutableIntRangeMap.builder();
-		ArrayDeque<BEXMatchingStateOption> stateStack = new ArrayDeque<>();
+		ImmutableIntRangeMap.Builder<MatchingStateOption> builder = ImmutableIntRangeMap.builder();
+		ArrayDeque<MatchingStateOption> stateStack = new ArrayDeque<>();
 		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
 
 		for (int i = 0; i < text.length(); i++) {
@@ -206,11 +206,11 @@ public class BEXMatchingUtilities {
 	}
 
 	/**
-	 * Extracts <code>BEXMatchingTextState</code>s from the specified JSP text
+	 * Parses the specified JSP text and determines the <code>BEXMatchingTextState</code>s
 	 * @param text the JSP text
-	 * @return an unmodifiable map from the range start to the BEXMatchingTextState
+	 * @return an unmodifiable map from the range to the BEXMatchingTextState
 	 */
-	public static ImmutableIntRangeMap<BEXMatchingStateOption> extractJSPTextStates(final CharSequence text) {
+	public static ImmutableIntRangeMap<MatchingStateOption> parseJSPTextStates(final CharSequence text) {
 		// TODO: used Java as a basic and need to enhance
 		// For example, to handle JSP Expression
 		// https://www.tutorialspoint.com/jsp/jsp_syntax.htm
@@ -239,8 +239,8 @@ public class BEXMatchingUtilities {
 		// * In String literal
 		// * Other stuff?
 
-		ImmutableIntRangeMap.Builder<BEXMatchingStateOption> builder = ImmutableIntRangeMap.builder();
-		ArrayDeque<BEXMatchingStateOption> stateStack = new ArrayDeque<>();
+		ImmutableIntRangeMap.Builder<MatchingStateOption> builder = ImmutableIntRangeMap.builder();
+		ArrayDeque<MatchingStateOption> stateStack = new ArrayDeque<>();
 		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
 
 		for (int i = 0; i < text.length(); i++) {
@@ -337,6 +337,121 @@ public class BEXMatchingUtilities {
 				stateStack.push(IN_EXPRESSION_BLOCK);
 				startTextInfoStack.push(i);
 				i += 2;
+			}
+		}
+
+		if (!stateStack.isEmpty()) {
+			// TODO: what if there are multiple entries?
+			// (this would suggest improperly formatted code)
+			int startTextInfo = startTextInfoStack.pop();
+			builder.put(IntBEXRange.of(startTextInfo, text.length()), stateStack.pop());
+		}
+
+		return builder.build();
+	}
+
+	/**
+	 * Parses the specified SQL text and determines the <code>BEXMatchingTextState</code>s
+	 * @param text the SQL text
+	 * @return an unmodifiable map from the range to the BEXMatchingTextState
+	 */
+	public static ImmutableIntRangeMap<MatchingStateOption> parseSQLTextStates(final CharSequence text) {
+		if (text.length() == 0) {
+			return ImmutableIntRangeMap.of();
+		}
+
+		// Parse text to get states
+		// * Block comment
+		// * Line comment
+		// * In String literal
+		// * Other stuff?
+
+		ImmutableIntRangeMap.Builder<MatchingStateOption> builder = ImmutableIntRangeMap.builder();
+		ArrayDeque<MatchingStateOption> stateStack = new ArrayDeque<>();
+		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
+
+		for (int i = 0; i < text.length(); i++) {
+			char c = text.charAt(i);
+
+			if (stateStack.peek() == IN_STRING_LITERAL) {
+				// TODO: how to implement escaping, since cannot escape single quote with '\'
+				if (c == '\'' && nextChar(text, i) == '\'') {
+					// 2 single quotes represents 1 single quote in text
+					i++;
+				} else if (c == '\'') {
+					// End of String literal
+					int startTextInfo = startTextInfoStack.pop();
+					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
+				}
+				//				} else if (c == '\\') {
+				//				// Escape next character
+				//				if (nextChar(text, i) == '\0') {
+				//					break;
+				//				}
+				//
+				//				i++;
+				//			}
+				// Other characters don't matter??
+				// TODO: does SQL allow double quotes and what is their meaning?
+				//			} else if (stateStack.peek() == IN_SECONDARY_STRING_LITERAL) {
+				//				if (c == '\\') {
+				//					// Escape next character
+				//					if (nextChar(text, i) == '\0') {
+				//						break;
+				//					}
+				//
+				//					i++;
+				//				} else if (c == '\'') {
+				//					// End of String literal
+				//					int startTextInfo = startTextInfoStack.pop();
+				//					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
+				//				}
+				//				// Other characters don't matter??
+			} else if (stateStack.peek() == IN_LINE_COMMENT) {
+				if (c == '\n' || c == '\r') {
+					int startTextInfo = startTextInfoStack.pop();
+					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.pop());
+				}
+				// Other characters don't matter?
+			} else if (stateStack.peek() == IN_MULTILINE_COMMENT) {
+				if (hasText(text, i, "*/")) {
+					i++;
+					int startTextInfo = startTextInfoStack.pop();
+					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
+
+					if (!stateStack.isEmpty()) {
+						// Inside a first level, so add startTextInfo for after expression blocks ends
+						startTextInfoStack.push(i + 1);
+					}
+				} else if (hasText(text, i, "/*")) {
+					// SQL supports nested block comments
+
+					// Going into second level, so end current level
+					int startTextInfo = startTextInfoStack.pop();
+					if (startTextInfo != i) {
+						// Only add if not empty range
+						// Would be empty for example if ended one expression then immediately started next one
+						builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
+					}
+
+					stateStack.push(IN_MULTILINE_COMMENT);
+					startTextInfoStack.push(i);
+					i++;
+				}
+			} else if (c == '-' && nextChar(text, i) == '-') {
+				stateStack.push(IN_LINE_COMMENT);
+				startTextInfoStack.push(i);
+				i++;
+			} else if (c == '/' && nextChar(text, i) == '*') {
+				stateStack.push(IN_MULTILINE_COMMENT);
+				startTextInfoStack.push(i);
+				i++;
+			} else if (c == '\'') {
+				stateStack.push(IN_STRING_LITERAL);
+				startTextInfoStack.push(i);
+				//			} else if (c == '"') {
+				//				stateStack.push(IN_SECONDARY_STRING_LITERAL);
+				//				startTextInfoStack.push(i);
 			}
 		}
 

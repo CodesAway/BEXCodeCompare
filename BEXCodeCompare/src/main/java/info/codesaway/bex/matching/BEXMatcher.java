@@ -3,12 +3,12 @@ package info.codesaway.bex.matching;
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.DEFAULT;
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.STOP_WHEN_VALID;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.MISMATCHED_BRACKETS;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.extractJavaTextStates;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasNextChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.isWordCharacter;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.lastChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.nextChar;
+import static info.codesaway.bex.matching.BEXMatchingUtilities.parseJavaTextStates;
 import static info.codesaway.bex.util.BEXUtilities.entry;
 import static info.codesaway.bex.util.BEXUtilities.getSubstring;
 
@@ -54,7 +54,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	/**
 	 * Map from range to text state
 	 */
-	private ImmutableIntRangeMap<BEXMatchingStateOption> textStateMap;
+	private ImmutableIntRangeMap<MatchingStateOption> textStateMap;
 
 	/**
 	 * Offset used when resolving indexes in textStateMap (allows sharing textStateMap such as in BEXString)
@@ -79,11 +79,11 @@ public final class BEXMatcher implements BEXMatchResult {
 	private Map<String, List<IntBEXRange>> multipleValuesMap = Collections.emptyMap();
 
 	BEXMatcher(final BEXPattern parent, final CharSequence text) {
-		this(parent, text, extractJavaTextStates(text), 0);
+		this(parent, text, parseJavaTextStates(text), 0);
 	}
 
 	BEXMatcher(final BEXPattern parent, final CharSequence text,
-			final ImmutableIntRangeMap<BEXMatchingStateOption> textStateMap, final int offset) {
+			final ImmutableIntRangeMap<MatchingStateOption> textStateMap, final int offset) {
 		this.parentPattern = parent;
 		this.text = text;
 		this.textStateMap = textStateMap;
@@ -127,6 +127,21 @@ public final class BEXMatcher implements BEXMatchResult {
 		this.multipleValuesMap.clear();
 	}
 
+	/**
+	 * Attempts to find the next subsequence of the input sequence that matches
+	 * the pattern.
+	 *
+	 * <p>This method starts at the beginning of this matcher's region, or, if a
+	 * previous invocation of the method was successful and the matcher has not
+	 * since been reset, at the first character not matched by the previous
+	 * match.</p>
+	 *
+	 * <p>If the match succeeds then more information can be obtained via the
+	 * <code>start</code>, <code>end</code>, <code>range</code>, and <code>group</code> methods.</p>
+	 *
+	 * @return <code>true</code> if, and only if, a subsequence of the input
+	 *         sequence matches this matcher's pattern
+	 */
 	public boolean find() {
 		// Logic from regex Matcher.find
 		int nextSearchStart = this.matchRange.getRight();
@@ -179,7 +194,7 @@ public final class BEXMatcher implements BEXMatchResult {
 		//
 		//			int start = currentMatcher.start();
 		//			int startWithOffset = start + this.offset;
-		//			Entry<IntRange, BEXMatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
+		//			Entry<IntRange, MatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
 		//
 		//			// XXX: think this is what prevents test from passing that first match is in String literal
 		//			// TODO: see about refactoring to use for loop to handle first match no differently than other matches
@@ -287,7 +302,7 @@ public final class BEXMatcher implements BEXMatchResult {
 			if (i == 0) {
 				// TODO: check that state is valid
 				int startWithOffset = matcher.start() + this.offset;
-				Entry<IntRange, BEXMatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
+				Entry<IntRange, MatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
 
 				boolean isValid;
 				if (entry != null && startWithOffset != entry.getKey().getStart()
@@ -318,7 +333,7 @@ public final class BEXMatcher implements BEXMatchResult {
 			}
 
 			int startWithOffset = start + this.offset;
-			Entry<IntRange, BEXMatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
+			Entry<IntRange, MatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
 
 			BEXMatchingState initialState;
 			if (entry != null && startWithOffset != entry.getKey().getStart()
@@ -504,8 +519,10 @@ public final class BEXMatcher implements BEXMatchResult {
 
 		boolean shouldStopWhenValid = groupMatchSetting.shouldStopWhenValid();
 
-		if (DEBUG && shouldStopWhenValid) {
-			System.out.println("Should stop when valid!");
+		if (DEBUG) {
+			if (shouldStopWhenValid) {
+				System.out.println("Should stop when valid!");
+			}
 		}
 
 		// By default, don't include angled brackets <> as part of balancing (unless specified)
@@ -524,7 +541,7 @@ public final class BEXMatcher implements BEXMatchResult {
 		// TODO: how to handle multiple levels? Currently, only get top most level
 		// For example, JSP expression within String literal gets JSP expression, but doesn't know about String literal outside
 
-		BEXMatchingStateOption stateOption = null;
+		MatchingStateOption stateOption = null;
 
 		if (state != null) {
 			brackets.append(state.getBrackets());
@@ -533,7 +550,7 @@ public final class BEXMatcher implements BEXMatchResult {
 
 		for (int i = start; i < end; i++) {
 			int indexWithOffset = i + this.offset;
-			Entry<IntRange, BEXMatchingStateOption> entry = this.textStateMap.getEntry(indexWithOffset);
+			Entry<IntRange, MatchingStateOption> entry = this.textStateMap.getEntry(indexWithOffset);
 
 			if (entry != null && !entry.getValue().isCode()) {
 				// Has a state option
@@ -708,7 +725,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 */
 	public BEXMatcher reset(final CharSequence input) {
 		this.text = input;
-		this.textStateMap = extractJavaTextStates(input);
+		this.textStateMap = parseJavaTextStates(input);
 		this.offset = 0;
 		return this.reset();
 	}

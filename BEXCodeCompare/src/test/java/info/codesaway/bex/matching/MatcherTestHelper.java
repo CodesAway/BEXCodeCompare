@@ -39,7 +39,7 @@ public final class MatcherTestHelper {
 		return bexMatcher;
 	}
 
-	static BEXMatcher testJustBEXMatch(final String pattern, final String text, final BEXMatchingLanguage language,
+	static BEXMatcher testJustBEXMatch(final String pattern, final String text, final MatchingLanguage language,
 			final BEXPatternFlag... flags) {
 		BEXPattern bexPattern = BEXPattern.compile(pattern, flags);
 		BEXString bexString = new BEXString(text, language);

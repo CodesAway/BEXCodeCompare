@@ -3,6 +3,7 @@ package info.codesaway.bex;
 import static info.codesaway.bex.util.BEXUtilities.checkArgument;
 import static info.codesaway.bex.util.BEXUtilities.entry;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -31,7 +32,9 @@ public final class ImmutableIntRangeMap<V> {
 
 	private static final Comparator<IntRange> KEY_COMPARATOR = Comparator.comparingInt(IntRange::getStart);
 
-	/** Returns an empty immutable range map. */
+	/**
+	 * Returns an empty immutable range map.
+	 */
 	@SuppressWarnings("unchecked")
 	public static <V> ImmutableIntRangeMap<V> of() {
 		return (ImmutableIntRangeMap<V>) EMPTY;
@@ -42,7 +45,9 @@ public final class ImmutableIntRangeMap<V> {
 		this.values = values;
 	}
 
-	/** Returns a new builder for an immutable range map. */
+	/**
+	 * Returns a new builder for an immutable range map.
+	 */
 	public static <V> Builder<V> builder() {
 		return new Builder<>();
 	}
@@ -276,15 +281,10 @@ public final class ImmutableIntRangeMap<V> {
 		}
 	}
 
-	private final class MapOfRanges implements Map<IntRange, V> {
+	private final class MapOfRanges extends AbstractMap<IntRange, V> {
 		@Override
 		public int size() {
 			return ImmutableIntRangeMap.this.ranges.size();
-		}
-
-		@Override
-		public boolean isEmpty() {
-			return this.size() == 0;
 		}
 
 		@Override

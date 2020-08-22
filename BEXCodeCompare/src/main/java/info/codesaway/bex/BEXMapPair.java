@@ -57,9 +57,10 @@ public final class BEXMapPair<K, V> implements BEXPair<Map<K, V>> {
 	}
 
 	/**
-	 * Gets the map on the specified side
+	 * Gets the map on the specified side.
+	 *
 	 * @param side the side
-	 * @return
+	 * @return the map on the specified side
 	 */
 	@Override
 	public Map<K, V> get(final BEXSide side) {
