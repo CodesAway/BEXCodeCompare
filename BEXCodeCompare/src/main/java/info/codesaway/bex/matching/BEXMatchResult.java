@@ -89,7 +89,7 @@ public interface BEXMatchResult {
 
 	/**
 	 *
-	 * @param group
+	 * @param group the group
 	 * @return
 	 * @throws  IllegalStateException
 	 *          If no match has yet been attempted,

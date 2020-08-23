@@ -10,6 +10,9 @@ import java.util.function.BiFunction;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+/**
+ *
+ */
 public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	private final List<DiffLine> leftLines;
 	private final List<DiffLine> rightLines;
@@ -34,10 +37,19 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 		this.normalizationFunction = firstNonNull(normalizationFunction, DiffHelper.NO_NORMALIZATION_FUNCTION);
 	}
 
+	/**
+	 * Gets the left lines
+	 * @return the left lines
+	 */
 	public List<DiffLine> getLeftLines() {
 		return this.leftLines;
 	}
 
+	/**
+	 * Gets the right lines.
+	 *
+	 * @return the right lines
+	 */
 	public List<DiffLine> getRightLines() {
 		return this.rightLines;
 	}
@@ -52,8 +64,8 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	/**
 	 * Gets the text from the specified line in {@link #getLeftLines()}
 	 *
-	 * @param index
-	 * @return
+	 * @param index the line number
+	 * @return the left text on the specified line number
 	 */
 	public String getLeftText(final int index) {
 		return this.getLeftLines().get(index).getText();
@@ -62,8 +74,8 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	/**
 	 * Gets the text from the specified line in {@link #getRightLines()}
 	 *
-	 * @param index
-	 * @return
+	 * @param index the line number
+	 * @return the right text on the specified line
 	 */
 	public String getRightText(final int index) {
 		return this.getRightLines().get(index).getText();

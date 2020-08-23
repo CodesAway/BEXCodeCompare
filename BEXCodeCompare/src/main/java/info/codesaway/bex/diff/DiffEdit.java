@@ -80,20 +80,38 @@ public final class DiffEdit implements DiffUnit {
 	}
 
 	/**
-	 * Gets the first side which has data (left or right)
+	 * Gets the first side which has data (left or right).
+	 *
+	 * @return the first side
 	 */
 	public BEXSide getFirstSide() {
 		return this.hasLeftLine() ? LEFT : RIGHT;
 	}
 
+	/**
+	 * Gets the line.
+	 *
+	 * @param side the side
+	 * @return the optional line
+	 */
 	public Optional<DiffLine> getLine(final BEXSide side) {
 		return side == LEFT ? this.getLeftLine() : this.getRightLine();
 	}
 
+	/**
+	 * Gets the left line.
+	 *
+	 * @return the left line
+	 */
 	public Optional<DiffLine> getLeftLine() {
 		return this.leftLine;
 	}
 
+	/**
+	 * Gets the right line.
+	 *
+	 * @return the right line
+	 */
 	public Optional<DiffLine> getRightLine() {
 		return this.rightLine;
 	}
@@ -110,6 +128,8 @@ public final class DiffEdit implements DiffUnit {
 
 	/**
 	 * Indicates if has left line
+	 *
+	 * @return <code>true</code> if has left line
 	 */
 	public boolean hasLeftLine() {
 		return this.getLeftLine().isPresent();
@@ -117,28 +137,45 @@ public final class DiffEdit implements DiffUnit {
 
 	/**
 	 * Indicates if has right line
+	 *
+	 * @return <code>true</code> if has right line
 	 */
 	public boolean hasRightLine() {
 		return this.getRightLine().isPresent();
 	}
 
+	/**
+	 * Gets the text.
+	 *
+	 * @return the text
+	 */
 	public String getText() {
 		return this.getText(this.getFirstSide());
 	}
 
+	/**
+	 * Gets the text.
+	 *
+	 * @param side the side
+	 * @return the text
+	 */
 	public String getText(final BEXSide side) {
 		return this.getLine(side).orElse(ABSENT_LINE).getText();
 	}
 
 	/**
-	 * Gets the text for the left line
+	 * Gets the text for the left line.
+	 *
+	 * @return the left text
 	 */
 	public String getLeftText() {
 		return this.getText(LEFT);
 	}
 
 	/**
-	 * Gets the text for the right line
+	 * Gets the text for the right line.
+	 *
+	 * @return the right text
 	 */
 	public String getRightText() {
 		return this.getText(RIGHT);
@@ -183,8 +220,9 @@ public final class DiffEdit implements DiffUnit {
 	}
 
 	/**
-	 * Gets the line number (as a String) for the specified side
+	 * Gets the line number (as a String) for the specified side.
 	 *
+	 * @param side the side
 	 * @return the line number (or the empty string if there is no line for the specified side)
 	 */
 	public String getLineNumberString(final BEXSide side) {

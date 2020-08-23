@@ -35,10 +35,11 @@ public final class BEXPairValue<T> implements BEXPair<T> {
 	}
 
 	/**
-	 * Creates a new BEXPair using the results of applying the specified function for both {@link BEXSide#LEFT} and {@link BEXSide#RIGHT}
-	 * @param <T>
+	 * Creates a new BEXPair using the results of applying the specified function for both {@link BEXSide#LEFT} and {@link BEXSide#RIGHT}.
+	 *
+	 * @param <T> the generic type
 	 * @param function the function to apply
-	 * @return
+	 * @return the BEXPairValue
 	 * @since 0.4
 	 */
 	// Changed from constructor to static method due to ambiguity between this and constructor accepting a Supplier

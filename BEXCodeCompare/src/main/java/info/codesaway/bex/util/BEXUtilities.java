@@ -64,6 +64,7 @@ public final class BEXUtilities {
 	 */
 	// Added Java 11 "not" helper method
 	// https://bugs.openjdk.java.net/browse/JDK-8203428
+	@SuppressWarnings("unchecked")
 	public static <T> Predicate<T> not(final Predicate<? super T> target) {
 		return (Predicate<T>) target.negate();
 	}

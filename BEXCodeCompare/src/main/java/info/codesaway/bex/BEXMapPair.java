@@ -1,6 +1,7 @@
 package info.codesaway.bex;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
@@ -57,9 +58,10 @@ public final class BEXMapPair<K, V> implements BEXPair<Map<K, V>> {
 	}
 
 	/**
-	 * Gets the map on the specified side
+	 * Gets the map on the specified side.
+	 *
 	 * @param side the side
-	 * @return
+	 * @return the map on the specified side
 	 */
 	@Override
 	public Map<K, V> get(final BEXSide side) {
@@ -75,5 +77,25 @@ public final class BEXMapPair<K, V> implements BEXPair<Map<K, V>> {
 		V right = this.getRight().get(rightKey);
 
 		return new BEXPairValue<>(left, right);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(this.pair);
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (this.getClass() != obj.getClass()) {
+			return false;
+		}
+		BEXMapPair<?, ?> other = (BEXMapPair<?, ?>) obj;
+		return Objects.equals(this.pair, other.pair);
 	}
 }

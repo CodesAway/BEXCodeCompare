@@ -1,7 +1,6 @@
 package info.codesaway.bex.matching;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * BEX group match settings
@@ -10,7 +9,7 @@ import java.util.Map;
  * Methods which turn on or off flags return a different settings object (from cache when possible) with the specified settings changed</p>
  */
 final class BEXGroupMatchSetting {
-	private static final Map<Integer, BEXGroupMatchSetting> CACHE = new HashMap<>();
+	private static final ConcurrentHashMap<Integer, BEXGroupMatchSetting> CACHE = new ConcurrentHashMap<>();
 
 	private final int flags;
 
