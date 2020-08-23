@@ -1,23 +1,33 @@
 package info.codesaway.bex.matching;
 
-import static info.codesaway.bex.matching.BEXMatchingStateOption.MISMATCHED_BRACKETS;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.MISMATCHED_DELIMITERS;
 import static info.codesaway.bex.util.BEXUtilities.not;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 
+import info.codesaway.bex.BEXPair;
+
 final class BEXMatchingState {
 	private final int position;
-	private final String brackets;
+	private final Collection<BEXPair<String>> delimiters;
+	//	private final String brackets;
 	private final Set<MatchingStateOption> options;
 
-	public static final BEXMatchingState DEFAULT = new BEXMatchingState(-1, "");
+	public static final BEXMatchingState DEFAULT = new BEXMatchingState(-1, Collections.emptyList());
 
-	public BEXMatchingState(final int position, final String brackets, final BEXMatchingStateOption... options) {
+	BEXMatchingState(final int position, final Collection<BEXPair<String>> delimiters,
+			final BEXMatchingStateOption... options) {
 		this.position = position;
-		this.brackets = brackets;
+
+		this.delimiters = delimiters.isEmpty()
+				? Collections.emptyList()
+				: Collections.unmodifiableCollection(new ArrayList<>(delimiters));
+
 		EnumSet<BEXMatchingStateOption> optionSet = EnumSet.noneOf(BEXMatchingStateOption.class);
 
 		for (BEXMatchingStateOption option : options) {
@@ -29,9 +39,14 @@ final class BEXMatchingState {
 		this.options = Collections.unmodifiableSet(optionSet);
 	}
 
-	public BEXMatchingState(final int position, final String brackets, final MatchingStateOption... options) {
+	BEXMatchingState(final int position, final Collection<BEXPair<String>> delimiters,
+			final MatchingStateOption... options) {
 		this.position = position;
-		this.brackets = brackets;
+
+		this.delimiters = delimiters.isEmpty()
+				? Collections.emptyList()
+				: Collections.unmodifiableCollection(new ArrayList<>(delimiters));
+
 		Set<MatchingStateOption> optionSet = new HashSet<>();
 
 		for (MatchingStateOption option : options) {
@@ -47,8 +62,8 @@ final class BEXMatchingState {
 		return this.position;
 	}
 
-	public String getBrackets() {
-		return this.brackets;
+	public Collection<BEXPair<String>> getDelimiters() {
+		return this.delimiters;
 	}
 
 	public Set<MatchingStateOption> getOptions() {
@@ -59,8 +74,8 @@ final class BEXMatchingState {
 	//		return this.options.contains(IN_STRING_LITERAL);
 	//	}
 
-	public boolean hasMismatchedBrackets() {
-		return this.options.contains(MISMATCHED_BRACKETS);
+	public boolean hasMismatchedDelimiters() {
+		return this.options.contains(MISMATCHED_DELIMITERS);
 	}
 
 	//	public boolean isInLineComment() {
@@ -77,7 +92,7 @@ final class BEXMatchingState {
 
 	public boolean isValid(final int expectedPosition, final Set<MatchingStateOption> ignoreOptions) {
 		return (this.position == expectedPosition || expectedPosition == -1)
-				&& this.brackets.length() == 0
+				&& this.delimiters.isEmpty()
 				&& this.isOptionsEmpty(ignoreOptions);
 	}
 
@@ -99,6 +114,6 @@ final class BEXMatchingState {
 	@Override
 	public String toString() {
 		// TODO: fix this
-		return String.format("BEXMatchingState[%s, %s, %s]", this.position, this.brackets, this.options);
+		return String.format("BEXMatchingState[%s, %s, %s]", this.position, this.delimiters, this.options);
 	}
 }

@@ -26,6 +26,14 @@ public final class MatcherTestHelper {
 		assertFalse(bexMatcher.find(), "Should not find match");
 	}
 
+	static void testNoBEXMatch(final String pattern, final String text, final BEXMatchingLanguage language,
+			final BEXPatternFlag... flags) {
+		BEXPattern bexPattern = BEXPattern.compile(pattern, flags);
+		BEXMatcher bexMatcher = bexPattern.matcher(new BEXString(text, language));
+
+		assertFalse(bexMatcher.find(), "Should not find match");
+	}
+
 	static BEXMatcher testJustBEXMatch(final String pattern, final String text) {
 		return testJustBEXMatch(pattern, text, NO_FLAGS);
 	}

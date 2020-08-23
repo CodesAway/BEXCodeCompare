@@ -2,19 +2,20 @@ package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.DEFAULT;
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.STOP_WHEN_VALID;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.MISMATCHED_BRACKETS;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.MISMATCHED_DELIMITERS;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasNextChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.isWordCharacter;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.lastChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.nextChar;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.parseJavaTextStates;
 import static info.codesaway.bex.util.BEXUtilities.entry;
 import static info.codesaway.bex.util.BEXUtilities.getSubstring;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,11 +23,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import info.codesaway.bex.AbstractImmutableSet;
+import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.ImmutableIntRangeMap;
 import info.codesaway.bex.IntBEXRange;
 import info.codesaway.bex.IntRange;
@@ -50,6 +53,9 @@ public final class BEXMatcher implements BEXMatchResult {
 	private int lastAppendPosition = 0;
 
 	private CharSequence text;
+
+	// TODO: should I add a public getter for language?
+	private MatchingLanguage language;
 
 	/**
 	 * Map from range to text state
@@ -79,13 +85,14 @@ public final class BEXMatcher implements BEXMatchResult {
 	private Map<String, List<IntBEXRange>> multipleValuesMap = Collections.emptyMap();
 
 	BEXMatcher(final BEXPattern parent, final CharSequence text) {
-		this(parent, text, parseJavaTextStates(text), 0);
+		this(parent, text, BEXMatchingLanguage.JAVA, parseJavaTextStates(text), 0);
 	}
 
-	BEXMatcher(final BEXPattern parent, final CharSequence text,
+	BEXMatcher(final BEXPattern parent, final CharSequence text, final MatchingLanguage language,
 			final ImmutableIntRangeMap<MatchingStateOption> textStateMap, final int offset) {
 		this.parentPattern = parent;
 		this.text = text;
+		this.language = language;
 		this.textStateMap = textStateMap;
 		this.offset = offset;
 	}
@@ -104,7 +111,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 * @since 0.8
 	 */
 	public BEXMatchResult toMatchResult() {
-		BEXMatcher result = new BEXMatcher(this.pattern(), this.text(), this.textStateMap, this.offset);
+		BEXMatcher result = new BEXMatcher(this.pattern(), this.text(), this.language, this.textStateMap, this.offset);
 		result.matchRange.set(this.matchRange);
 		result.valuesMap.putAll(this.valuesMap);
 
@@ -338,7 +345,7 @@ public final class BEXMatcher implements BEXMatchResult {
 			BEXMatchingState initialState;
 			if (entry != null && startWithOffset != entry.getKey().getStart()
 					&& !entry.getValue().isCode()) {
-				initialState = new BEXMatchingState(-1, "", entry.getValue());
+				initialState = new BEXMatchingState(-1, Collections.emptyList(), entry.getValue());
 			} else {
 				initialState = BEXMatchingState.DEFAULT;
 			}
@@ -349,11 +356,11 @@ public final class BEXMatcher implements BEXMatchResult {
 			BEXMatchingState state = this.search(start, end, groupMatchSetting, initialState);
 
 			while (!state.isValid(end, initialState.getOptions())) {
-				// TODO: if has mismatched brackets, start over and try to find after this?
+				// If has mismatched delimiters, start over and try to find after this?
 				// This way, if one line in a file isn't valid, could still handle other lines (versus never matching ever)
-				if (state.hasMismatchedBrackets()) {
+				if (state.hasMismatchedDelimiters()) {
 					if (DEBUG) {
-						System.out.println("Mismatched brackets: " + state);
+						System.out.println("Mismatched delimiters: " + state);
 					}
 
 					// Start outer from first pattern and try again
@@ -362,8 +369,9 @@ public final class BEXMatcher implements BEXMatchResult {
 					this.clearGroups();
 
 					// TODO: is this the correct place to start the next try?
-					// (seems likely, since this is right after the invalid bracket)
-					regionStart = state.getPosition() + 1;
+					// (seems likely, since this is right after the invalid delimiter)
+					// (state's position was tweaked for Mismatch to be right after the delimiter)
+					regionStart = state.getPosition();
 
 					continue outer;
 				}
@@ -513,7 +521,7 @@ public final class BEXMatcher implements BEXMatchResult {
 
 	private BEXMatchingState search(final int start, final int end,
 			final BEXGroupMatchSetting groupMatchSetting, final BEXMatchingState state) {
-		// Verify parentheses / brackets are balanced
+		// Verify parentheses / delimiters are balanced
 		// TODO: handle string (what if group is in String??)
 		// TODO: handle comments (what if group is in comments??)
 
@@ -526,25 +534,35 @@ public final class BEXMatcher implements BEXMatchResult {
 		}
 
 		// By default, don't include angled brackets <> as part of balancing (unless specified)
-		String bracketStarts;
-		String bracketEnds;
-
+		Set<MatchingLanguageSetting> settings;
 		if (groupMatchSetting.shouldMatchAngleBrackets()) {
-			bracketStarts = "([{<";
-			bracketEnds = ")]}>";
+			settings = new HashSet<>();
+			settings.add(MatchingLanguageOption.MATCH_ANGLE_BRACKETS);
 		} else {
-			bracketStarts = "([{";
-			bracketEnds = ")]}";
+			settings = Collections.emptySet();
 		}
 
-		StringBuilder brackets = new StringBuilder();
+		//		String bracketStarts;
+		//		String bracketEnds;
+		//
+		//		if (groupMatchSetting.shouldMatchAngleBrackets()) {
+		//			bracketStarts = "([{<";
+		//			bracketEnds = ")]}>";
+		//		} else {
+		//			bracketStarts = "([{";
+		//			bracketEnds = ")]}";
+		//		}
+
+		ArrayDeque<BEXPair<String>> delimiters = new ArrayDeque<>();
+		//		StringBuilder brackets = new StringBuilder();
 		// TODO: how to handle multiple levels? Currently, only get top most level
 		// For example, JSP expression within String literal gets JSP expression, but doesn't know about String literal outside
 
 		MatchingStateOption stateOption = null;
 
 		if (state != null) {
-			brackets.append(state.getBrackets());
+			delimiters.addAll(state.getDelimiters());
+			//			brackets.append(state.getBrackets());
 			stateOption = state.getOptions().stream().findFirst().orElse(null);
 		}
 
@@ -559,35 +577,62 @@ public final class BEXMatcher implements BEXMatchResult {
 
 				stateOption = isEndOfRange ? null : entry.getValue();
 
-				if (shouldStopWhenValid && brackets.length() == 0 && isEndOfRange) {
+				if (shouldStopWhenValid && delimiters.isEmpty() && isEndOfRange) {
 					// TODO: need to write unit test to verify this should be plus 1
-					return new BEXMatchingState(i + 1, "");
+					return new BEXMatchingState(i + 1, Collections.emptyList());
 				}
 			} else {
-				char c = this.text.charAt(i);
-				if (bracketStarts.indexOf(c) != -1) {
-					brackets.append(c);
+				// XXX: pass to MatchingLanguage to check for delimiter
+				Optional<BEXPair<String>> startDelimiter = this.language.findStartDelimiter(this.text, i, settings);
+
+				if (startDelimiter.isPresent()) {
+					delimiters.add(startDelimiter.get());
+					i += startDelimiter.get().getLeft().length() - 1;
 				} else {
-					int bracketEndIndex = bracketEnds.indexOf(c);
+					MatchingDelimiterState delimiterState = this.language.findEndDelimiter(delimiters.peekLast(),
+							this.text, i, settings);
+					MatchingDelimiterResult result = delimiterState.getResult();
 
-					if (bracketEndIndex != -1) {
-						char bracketStart = bracketStarts.charAt(bracketEndIndex);
-						if (lastChar(brackets) != bracketStart) {
-							return new BEXMatchingState(i, brackets.toString(), MISMATCHED_BRACKETS);
-						} else {
-							// Remove last character
-							brackets.setLength(brackets.length() - 1);
+					if (result == MatchingDelimiterResult.MISMATCHED) {
+						// XXX: should position be after the mismatch - so can try again at this point
+						return new BEXMatchingState(i + delimiterState.getDelimiter().length(), delimiters,
+								MISMATCHED_DELIMITERS);
+					} else if (result == MatchingDelimiterResult.FOUND) {
+						// Remove last delimiter
+						delimiters.removeLast();
 
-							if (shouldStopWhenValid && brackets.length() == 0) {
-								return new BEXMatchingState(i + 1, "");
-							}
+						if (shouldStopWhenValid && delimiters.isEmpty()) {
+							// TODO: should this be plus 1 or plus the length of the delimiter?
+							return new BEXMatchingState(i + 1, Collections.emptyList());
 						}
 					}
 				}
+
+				//				char c = this.text.charAt(i);
+				//				if (bracketStarts.indexOf(c) != -1) {
+				//					brackets.append(c);
+				//				} else {
+				//					int bracketEndIndex = bracketEnds.indexOf(c);
+				//
+				//					if (bracketEndIndex != -1) {
+				//						char bracketStart = bracketStarts.charAt(bracketEndIndex);
+				//						if (lastChar(brackets) != bracketStart) {
+				//							return new BEXMatchingState(i, delimiters, MISMATCHED_DELIMITERS);
+				//						} else {
+				//							// Remove last delimiter
+				//							delimiters.removeLast();
+				//							//							brackets.setLength(brackets.length() - 1);
+				//
+				//							if (shouldStopWhenValid && delimiters.isEmpty()) {
+				//								return new BEXMatchingState(i + 1, Collections.emptyList());
+				//							}
+				//						}
+				//					}
+				//				}
 			}
 		}
 
-		return new BEXMatchingState(end, brackets.toString(), stateOption);
+		return new BEXMatchingState(end, delimiters, stateOption);
 	}
 
 	private void putCaptureGroups(final Matcher matcher) {
@@ -725,6 +770,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 */
 	public BEXMatcher reset(final CharSequence input) {
 		this.text = input;
+		this.language = BEXMatchingLanguage.JAVA;
 		this.textStateMap = parseJavaTextStates(input);
 		this.offset = 0;
 		return this.reset();
@@ -744,6 +790,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 */
 	public BEXMatcher reset(final BEXString bexString) {
 		this.text = bexString.getText();
+		this.language = bexString.getLanguage();
 		this.textStateMap = bexString.getTextStateMap();
 		this.offset = bexString.getOffset();
 		return this.reset();

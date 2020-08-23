@@ -1,6 +1,7 @@
 package info.codesaway.bex;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -151,5 +152,25 @@ public final class BEXListPair<E> implements BEXPair<List<E>> {
 	@Override
 	public <R> BEXPair<R> map(final Function<List<E>, R> function) {
 		return new BEXPairValue<>(function.apply(this.getLeft()), function.apply(this.getRight()));
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(this.pair);
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (this.getClass() != obj.getClass()) {
+			return false;
+		}
+		BEXListPair<?> other = (BEXListPair<?>) obj;
+		return Objects.equals(this.pair, other.pair);
 	}
 }

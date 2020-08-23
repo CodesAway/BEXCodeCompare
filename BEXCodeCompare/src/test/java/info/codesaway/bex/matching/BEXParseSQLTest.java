@@ -5,6 +5,8 @@ import static info.codesaway.bex.IntBEXRange.closedOpen;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_LINE_COMMENT;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_MULTILINE_COMMENT;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_STRING_LITERAL;
+import static info.codesaway.bex.matching.MatcherTestHelper.testJustBEXMatch;
+import static info.codesaway.bex.matching.MatcherTestHelper.testNoBEXMatch;
 import static info.codesaway.bex.util.BEXUtilities.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -79,5 +81,62 @@ public class BEXParseSQLTest {
 
 		assertThat(bexString.getTextStateMap().asMapOfRanges())
 				.containsExactly(entry(closed(7, 13), IN_STRING_LITERAL));
+	}
+
+	@Test
+	void testNestedIfBlocks() {
+		// Text is the following
+		//	declare @x int = 1
+		//	declare @y int = 0
+		//
+		//	if @x > 0
+		//	BEGIN
+		//		print 'First if'
+		//
+		//		if @x > @y
+		//		BEGIN
+		//			print 'Second if'
+		//		END
+		//	END
+		String text = "			declare @x int = 1\r\n" +
+				"			declare @y int = 0\r\n" +
+				"		\r\n" +
+				"			if @x > 0\r\n" +
+				"			BEGIN\r\n" +
+				"				print 'First if'\r\n" +
+				"		\r\n" +
+				"				if @x > @y\r\n" +
+				"				BEGIN\r\n" +
+				"					print 'Second if'\r\n" +
+				"				END\r\n" +
+				"			END";
+
+		String pattern = "if :[condition] begin :[stuff] end";
+
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXMatchingLanguage.SQL,
+				BEXPatternFlag.CASE_INSENSITIVE);
+
+		assertThat(bexMatcher.get("stuff")).isEqualTo("print 'First if'\r\n" +
+				"		\r\n" +
+				"				if @x > @y\r\n" +
+				"				BEGIN\r\n" +
+				"					print 'Second if'\r\n" +
+				"				END");
+	}
+
+	@Test
+	void testTrailingBeginDoesNotMatch() {
+		String pattern = ":[stuff]";
+		String text = "BEGIN";
+
+		testNoBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+	}
+
+	@Test
+	void testTrailingEndDoesNotMatch() {
+		String pattern = ":[stuff]";
+		String text = "END";
+
+		testNoBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
 	}
 }

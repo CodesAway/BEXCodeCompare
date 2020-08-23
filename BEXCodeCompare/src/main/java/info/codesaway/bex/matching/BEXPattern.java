@@ -142,7 +142,7 @@ public final class BEXPattern {
 	public static BEXPattern compile(final String pattern, final BEXPatternFlag... flags) {
 		// https://stackoverflow.com/a/54140147
 		// Use Java 8 to make an easy cache
-		if (CACHE_MAP.size() > MAX_CACHE_SIZE) {
+		if (CACHE_MAP.size() >= MAX_CACHE_SIZE) {
 			CACHE_MAP.clear();
 		}
 		PatternCacheKey key = new PatternCacheKey(pattern, BEXPatternFlag.encodeFlags(flags));
@@ -485,7 +485,7 @@ public final class BEXPattern {
 	}
 
 	public BEXMatcher matcher(final BEXString text) {
-		return new BEXMatcher(this, text.getText(), text.getTextStateMap(), text.getOffset());
+		return new BEXMatcher(this, text.getText(), text.getLanguage(), text.getTextStateMap(), text.getOffset());
 	}
 
 	List<Pattern> getPatterns() {

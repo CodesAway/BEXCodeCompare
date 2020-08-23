@@ -114,6 +114,34 @@ public class BEXMatchingUtilities {
 		return true;
 	}
 
+	public static boolean hasCaseInsensitiveText(final CharSequence text, final int startIndex, final String search) {
+		int index = startIndex;
+
+		if (search.length() > text.length() - startIndex) {
+			return false;
+		}
+
+		for (int i = 0; i < search.length(); i++) {
+			// Case-insensitive compare
+			// Based on String.CaseInsensitiveComparator.compare(String, String)
+			char c1 = text.charAt(index++);
+			char c2 = search.charAt(i);
+			if (c1 != c2) {
+				c1 = Character.toUpperCase(c1);
+				c2 = Character.toUpperCase(c2);
+				if (c1 != c2) {
+					c1 = Character.toLowerCase(c1);
+					c2 = Character.toLowerCase(c2);
+					if (c1 != c2) {
+						return false;
+					}
+				}
+			}
+		}
+
+		return true;
+	}
+
 	/**
 	 * Parses the specified Java text and determines the <code>BEXMatchingTextState</code>s
 	 * @param text the Java text
