@@ -61,8 +61,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Minor tweaks to how BEXPattern caches patterns (ran into corner case with tests that checked for cached patterns)
 
-### Removed
-
 ## [0.10.1] - 2020-08-16
 ### Fixed
 * Matcher will retry if encounter mismatched brackets
