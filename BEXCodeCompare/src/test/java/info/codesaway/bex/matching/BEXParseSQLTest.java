@@ -133,10 +133,46 @@ public class BEXParseSQLTest {
 	}
 
 	@Test
+	void testVariableNamedBeginMatches() {
+		String pattern = ":[value]";
+		String text = "@BEGIN";
+
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+		assertThat(bexMatcher.group("value")).isEqualTo("@BEGIN");
+	}
+
+	@Test
+	void testVariableNamedContainingBeginMatches() {
+		String pattern = ":[value]";
+		String text = "@lets_begin";
+
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+		assertThat(bexMatcher.group("value")).isEqualTo("@lets_begin");
+	}
+
+	@Test
 	void testTrailingEndDoesNotMatch() {
 		String pattern = ":[stuff]";
 		String text = "END";
 
 		testNoBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+	}
+
+	@Test
+	void testVariableNamedEndMatches() {
+		String pattern = ":[value]";
+		String text = "@end";
+
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+		assertThat(bexMatcher.group("value")).isEqualTo("@end");
+	}
+
+	@Test
+	void testVariableNamedContainingEndMatches() {
+		String pattern = ":[value]";
+		String text = "@the_end";
+
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+		assertThat(bexMatcher.group("value")).isEqualTo("@the_end");
 	}
 }

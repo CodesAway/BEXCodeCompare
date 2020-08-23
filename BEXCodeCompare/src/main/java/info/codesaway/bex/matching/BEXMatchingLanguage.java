@@ -1,19 +1,24 @@
 package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.BEXPairs.bexPair;
+import static info.codesaway.bex.BEXSide.LEFT;
+import static info.codesaway.bex.BEXSide.RIGHT;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.currentChar;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.hasCaseInsensitiveText;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
 import static info.codesaway.bex.matching.BEXMatchingUtilities.isWordCharacter;
+import static info.codesaway.bex.matching.BEXMatchingUtilities.previousChar;
+import static java.util.stream.Collectors.toList;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 
 import info.codesaway.bex.BEXPair;
+import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.ImmutableIntRangeMap;
 
 public enum BEXMatchingLanguage implements MatchingLanguage {
@@ -24,18 +29,20 @@ public enum BEXMatchingLanguage implements MatchingLanguage {
 	 * SQL Matching language
 	 * @since 0.11
 	 */
-	SQL(BEXMatchingUtilities::parseSQLTextStates, true, bexPair("BEGIN", "END")),
+	SQL(BEXMatchingUtilities::parseSQLTextStates, "@", true, bexPair("BEGIN", "END")),
 
 	// End of enum
 	;
 
 	private final Function<CharSequence, ImmutableIntRangeMap<MatchingStateOption>> parseFunction;
+	private final String specialWordCharacters;
 	private final boolean hasCaseInsensitiveDelimiters;
-	private final List<BEXPair<String>> delimiters;
+	private final List<Optional<BEXPair<String>>> delimiters;
 
 	private BEXMatchingLanguage(
 			final Function<CharSequence, ImmutableIntRangeMap<MatchingStateOption>> parseFunction) {
 		this.parseFunction = parseFunction;
+		this.specialWordCharacters = "";
 		this.hasCaseInsensitiveDelimiters = false;
 		this.delimiters = Collections.emptyList();
 	}
@@ -43,11 +50,16 @@ public enum BEXMatchingLanguage implements MatchingLanguage {
 	@SafeVarargs
 	private BEXMatchingLanguage(
 			final Function<CharSequence, ImmutableIntRangeMap<MatchingStateOption>> parseFunction,
+			final String specialWordCharacters,
 			final boolean hasCaseInsensitiveDelimiters,
 			final BEXPair<String>... delimiters) {
 		this.parseFunction = parseFunction;
+		this.specialWordCharacters = specialWordCharacters;
 		this.hasCaseInsensitiveDelimiters = hasCaseInsensitiveDelimiters;
-		this.delimiters = Arrays.asList(delimiters);
+		this.delimiters = Arrays.stream(delimiters)
+				// Wrap in Optional, so don't have to create new Optional objects for each matching
+				.map(Optional::of)
+				.collect(toList());
 	}
 
 	@Override
@@ -59,19 +71,10 @@ public enum BEXMatchingLanguage implements MatchingLanguage {
 	public Optional<BEXPair<String>> findStartDelimiter(final CharSequence text, final int index,
 			final Set<MatchingLanguageSetting> settings) {
 
-		for (BEXPair<String> delimiter : this.delimiters) {
-			String s = delimiter.getLeft();
+		Optional<BEXPair<String>> delimiter = this.findDelimiter(LEFT, text, index);
 
-			if (this.hasCaseInsensitiveDelimiters) {
-				if (hasCaseInsensitiveText(text, index, s)
-						&& !isWordCharacter(currentChar(text, index + s.length()))) {
-					return Optional.of(delimiter);
-				}
-			} else {
-				if (hasText(text, index, s) && !isWordCharacter(currentChar(text, index + s.length()))) {
-					return Optional.of(delimiter);
-				}
-			}
+		if (delimiter.isPresent()) {
+			return delimiter;
 		}
 
 		return MatchingLanguage.super.findStartDelimiter(text, index, settings);
@@ -82,30 +85,41 @@ public enum BEXMatchingLanguage implements MatchingLanguage {
 			final int index,
 			final Set<MatchingLanguageSetting> settings) {
 
-		for (BEXPair<String> delimiter : this.delimiters) {
-			String s = delimiter.getRight();
+		Optional<BEXPair<String>> delimiter = this.findDelimiter(RIGHT, text, index);
 
-			if (this.hasCaseInsensitiveDelimiters) {
-				if (hasCaseInsensitiveText(text, index, s)
-						&& !isWordCharacter(currentChar(text, index + s.length()))) {
-					MatchingDelimiterResult result = lastDelimiter != null
-							&& s.equalsIgnoreCase(lastDelimiter.getRight())
-									? MatchingDelimiterResult.FOUND
-									: MatchingDelimiterResult.MISMATCHED;
+		if (delimiter.isPresent()) {
+			String s = delimiter.get().getRight();
 
-					return new MatchingDelimiterState(result, s);
-				}
-			} else {
-				if (hasText(text, index, s) && !isWordCharacter(currentChar(text, index + s.length()))) {
-					MatchingDelimiterResult result = lastDelimiter != null && s.equals(lastDelimiter.getRight())
-							? MatchingDelimiterResult.FOUND
-							: MatchingDelimiterResult.MISMATCHED;
+			BiPredicate<String, String> equals = this.hasCaseInsensitiveDelimiters
+					? String::equalsIgnoreCase
+					: String::equals;
 
-					return new MatchingDelimiterState(result, s);
+			MatchingDelimiterResult result = lastDelimiter != null && equals.test(s, lastDelimiter.getRight())
+					? MatchingDelimiterResult.FOUND
+					: MatchingDelimiterResult.MISMATCHED;
+
+			return new MatchingDelimiterState(result, s);
+		}
+
+		return MatchingLanguage.super.findEndDelimiter(lastDelimiter, text, index, settings);
+	}
+
+	private Optional<BEXPair<String>> findDelimiter(final BEXSide side, final CharSequence text, final int index) {
+		if (!this.delimiters.isEmpty() && !this.isPartOfWord(previousChar(text, index))) {
+			for (Optional<BEXPair<String>> delimiter : this.delimiters) {
+				String s = delimiter.get().get(side);
+				char nextChar = currentChar(text, index + s.length());
+
+				if (hasText(text, index, s, this.hasCaseInsensitiveDelimiters) && !this.isPartOfWord(nextChar)) {
+					return delimiter;
 				}
 			}
 		}
 
-		return MatchingLanguage.super.findEndDelimiter(lastDelimiter, text, index, settings);
+		return Optional.empty();
+	}
+
+	private boolean isPartOfWord(final char c) {
+		return isWordCharacter(c) || this.specialWordCharacters.indexOf(c) != -1;
 	}
 }

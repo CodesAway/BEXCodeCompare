@@ -97,6 +97,22 @@ public class BEXMatchingUtilities {
 		return Character.isAlphabetic(c) || Character.isDigit(c) || c == '_';
 	}
 
+	/**
+	 *
+	 * @param text
+	 * @param startIndex
+	 * @param search
+	 * @param isCaseInsensitive
+	 * @return
+	 * @since 0.11
+	 */
+	public static boolean hasText(final CharSequence text, final int startIndex, final String search,
+			final boolean isCaseInsensitive) {
+		return isCaseInsensitive
+				? hasCaseInsensitiveText(text, startIndex, search)
+				: hasText(text, startIndex, search);
+	}
+
 	public static boolean hasText(final CharSequence text, final int startIndex, final String search) {
 		int index = startIndex;
 
@@ -114,6 +130,14 @@ public class BEXMatchingUtilities {
 		return true;
 	}
 
+	/**
+	 *
+	 * @param text
+	 * @param startIndex
+	 * @param search
+	 * @return
+	 * @since 0.11
+	 */
 	public static boolean hasCaseInsensitiveText(final CharSequence text, final int startIndex, final String search) {
 		int index = startIndex;
 
