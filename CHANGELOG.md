@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Support for parsing SQL
   * Includes support for ensuring BEGIN / END delimiters are balanced in a match
   * Added support for matching custom delimiters in a language (like BEGIN / END for SQL)
-  * MEthod BEXMatchingUtilities.parseSQLTextStates
+  * Method BEXMatchingUtilities.parseSQLTextStates
 
 * MatchingLanguage interface
   * Allows users to define custom language, if a sutable one isn't implemented
@@ -28,9 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * BEXMatcher now internally tracks the MatchingLanguage, so that custom delimiters can be matched as part of a search
    
    * Internal BEXMatchingState changed to accept collection of delimiters versus a String of brackets
+   
+   * Enum MatchingDelimiterResult
+   * Class MatchingDelimiterState
+   * Interface MatchingLanguageSetting
+     * No methods to implement
+     * Used just to indicate a setting, so can write custom settings (trying to be flexible in design)
+     
+   * MatchingLanguageOption (implements MatchingLanguageSetting)
 
-
-* MatchingStateOption interface
+* MatchingStateOption interface (implemented by BEXMatchingStateOption)
 
 * BEXMatchingUtilities
   * Method hasText which takes parameter to indicate if text search should be case-insensitive
@@ -49,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * BEXMatcher
   * BEXMatchingUtilities
   * BEXString
+
+* BEXString keeps track of MatchingLanguage used when parser (helps BEXMatcher handle custom delimiters)
 
 * Minor tweaks to how BEXPattern caches patterns (ran into corner case with tests that checked for cached patterns)
 
