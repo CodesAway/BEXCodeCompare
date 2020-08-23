@@ -7,26 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **NOTE**: The below change log references the version of the BEX library, since this is the version for the Maven artifact. The below change log will indicate when the Eclipse plugin is updated and its changes; this will be listed after the BEX library changes.
 
 ## [Unreleased]
+
 ## [0.11.0] - 2020-08-23
 
 ### Added
 * Support for parsing SQL
   * Includes support for ensuring BEGIN / END delimiters are balanced in a match
   * Added support for matching custom delimiters in a language (like BEGIN / END for SQL)
+  * MEthod BEXMatchingUtilities.parseSQLTextStates
 
 * MatchingLanguage interface
   * Allows users to define custom language, if a sutable one isn't implemented
   * For example, this would be used to allow writing a parser to match language specific keywords (no plans / need to implement in BEX Matching, but user could implement for their own needs)
+  
+ * Part of custom delimiters
+   * MatchingLanguage methods
+     * findStartDelimiter
+     * findEndDelimiter
+    
+   * BEXMatcher now internally tracks the MatchingLanguage, so that custom delimiters can be matched as part of a search
+   
+   * Internal BEXMatchingState changed to accept collection of delimiters versus a String of brackets
+
 
 * MatchingStateOption interface
-  * Changed BEXMatcher to use interface instead of BEXMatchingStateOption enum
-  
+
+* BEXMatchingUtilities
+  * Method hasText which takes parameter to indicate if text search should be case-insensitive
+  * Method hasCaseInsensitiveText
+
 * hashCode / equals method in BEXListPair and BEXMapPair (per SpotBugs warning)
 
 ### Changed
 
-* BEXMatcher now internally tracks the MatchingLanguage, so that custom delimiters can be matched as part of a search
+* BEXMatchingLanguage renamed **extract** method to **parse**
+* BEXMatchingUtilities renamed various **extract** methods to **parse**
 
+* BEXMatchingStateOption renamed MISMATCHED_BRACKETS to MISMATCHED_DELIMITERS
+
+* Changed to use MatchingStateOption interface instead of BEXMatchingStateOption enum
+  * BEXMatcher
+  * BEXMatchingUtilities
+  * BEXString
+
+* Minor tweaks to how BEXPattern caches patterns (ran into corner case with tests that checked for cached patterns)
 
 ### Removed
 
