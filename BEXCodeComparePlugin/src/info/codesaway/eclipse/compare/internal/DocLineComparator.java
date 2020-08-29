@@ -315,4 +315,9 @@ public class DocLineComparator implements ITokenComparator {
 	public int getLineOffset() {
 		return this.fLineOffset;
 	}
+
+	// Added so can pass to BEXString to determine which lines are comments
+	public String getText() {
+		return this.fDocument.get();
+	}
 }

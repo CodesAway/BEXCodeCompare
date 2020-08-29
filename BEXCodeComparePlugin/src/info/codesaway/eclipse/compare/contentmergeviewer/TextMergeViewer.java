@@ -139,6 +139,7 @@ import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.osgi.util.NLS;
@@ -6175,6 +6176,14 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 		int offset = this.fMerger.getOffset(contributor, line);
 		Position position = new Position(offset);
 
+		// Issue #18
+		// TODO: when does this, still shows green background (should it?)
+		// (when I perform an actual mouse click, it doesn't show the background)
+		Diff diff = this.findDiff(contributor, offset);
+
+		//		System.out.println("Scroll to " + offset + "\t" + diff);
+		this.setCurrentDiff(diff, true);
+
 		if (leftLineNumber != -1 && rightLineNumber != -1) {
 			// Subtract 1 to make 0-based line
 			int rightOffset = this.fMerger.getOffset(RIGHT_CONTRIBUTOR, rightLineNumber - 1);
@@ -6184,9 +6193,17 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 			this.fRight.setSelection(rightPosition);
 		} else {
 			reveal(mergeSourceViewer, position);
+
+			// Issue #10
+			MergeSourceViewer otherMergeSourceViewer = mergeSourceViewer == this.fLeft ? this.fRight : this.fLeft;
+			// Source: https://www.eclipse.org/forums/index.php/t/369341/
+			otherMergeSourceViewer.getSourceViewer().setSelection(StructuredSelection.EMPTY);
 		}
 
 		mergeSourceViewer.setSelection(position);
+
+		// TODO: does this help Issue #18 at all?
+		this.updatePresentation();
 
 		//		this.revealDiff(diff, true);
 	}

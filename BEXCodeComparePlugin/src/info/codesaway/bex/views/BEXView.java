@@ -28,10 +28,13 @@ import org.eclipse.ui.part.DrillDownAdapter;
 import org.eclipse.ui.part.ViewPart;
 
 import info.codesaway.bex.Activator;
+import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXSide;
+import info.codesaway.bex.IntRange;
 import info.codesaway.bex.compare.BEXChangeInfo;
 import info.codesaway.bex.diff.DiffChange;
 import info.codesaway.bex.diff.DiffEdit;
+import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.eclipse.compare.contentmergeviewer.TextMergeViewer;
 
 /**
@@ -351,17 +354,55 @@ public final class BEXView extends ViewPart {
 		List<TreeParent> expandedElements = new ArrayList<>();
 
 		boolean shouldShowBothSidesOfSubstitution = Activator.shouldShowBothSidesOfSubstitution();
+		System.out.println("In BEXView.setChanges");
 
 		for (DiffChange<BEXChangeInfo> change : changes) {
 			TreeParent changeParent = new TreeParent(change.toString());
 			invisibleRoot.addChild(changeParent);
 
-			if (change.getInfo().isImportantChange()) {
+			boolean isImportantChange = change.getInfo().isImportantChange();
+
+			if (isImportantChange) {
 				expandedElements.add(changeParent);
 			}
 
-			for (DiffEdit changeEdit : change.getEdits()) {
+			// Collapse consecutive ignored differences
+			List<DiffEdit> diffEdits = change.getEdits();
+
+			for (int i = 0; i < diffEdits.size(); i++) {
+				DiffEdit changeEdit = diffEdits.get(i);
 				char symbol = changeEdit.shouldIgnore() ? ' ' : changeEdit.getSymbol();
+
+				if (isImportantChange && changeEdit.shouldIgnore() && i < diffEdits.size() - 1) {
+					// TODO: if there are multiple continuous DiffEdit which should be ignored
+					// Group them together, collapsed
+					// This way, can expand if want to, but otherwise will collapse
+
+					DiffEdit nextChangeEdit = diffEdits.get(i + 1);
+
+					if (nextChangeEdit.shouldIgnore()
+							&& DiffHelper.hasConsecutiveLines(changeEdit, nextChangeEdit, true)) {
+						//						System.out.println("Create ignore block starting with " + changeEdit);
+						List<DiffEdit> ignoreEdits = new ArrayList<>();
+						ignoreEdits.add(changeEdit);
+
+						do {
+							changeEdit = diffEdits.get(++i);
+							ignoreEdits.add(changeEdit);
+
+							if (i == diffEdits.size() - 1) {
+								break;
+							}
+
+							nextChangeEdit = diffEdits.get(i + 1);
+						} while (nextChangeEdit.shouldIgnore()
+								&& DiffHelper.hasConsecutiveLines(changeEdit, nextChangeEdit, true));
+
+						this.addIgnoreParent(changeParent, ignoreEdits);
+
+						continue;
+					}
+				}
 
 				if (changeEdit.isSubstitution() && shouldShowBothSidesOfSubstitution) {
 					// TODO: maybe give option to have like this, but this is information overload
@@ -396,6 +437,26 @@ public final class BEXView extends ViewPart {
 
 		this.viewer.refresh();
 		this.viewer.setExpandedElements(expandedElements.toArray());
+	}
+
+	private void addIgnoreParent(final TreeParent changeParent, final List<DiffEdit> ignoreEdits) {
+		// TODO: Get the first non-empty line?
+		DiffEdit initialEdit = ignoreEdits.get(0);
+
+		BEXPair<IntRange> enclosedRange = DiffHelper.determineEnclosedRange(ignoreEdits);
+		IntRange leftRange = enclosedRange.getLeft();
+		IntRange rightRange = enclosedRange.getRight();
+
+		String name = String.format("Ignore%s%n",
+				leftRange.getLeft() != -1 ? " LEFT " + leftRange : "",
+				rightRange.getLeft() != -1 ? " RIGHT " + rightRange : "");
+
+		TreeParent ignoreParent = new TreeParent(name, initialEdit);
+		changeParent.addChild(ignoreParent);
+
+		for (DiffEdit diffEdit : ignoreEdits) {
+			ignoreParent.addChild(new TreeObject(diffEdit.toString(' '), diffEdit));
+		}
 	}
 
 	public void refreshChanges() {

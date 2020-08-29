@@ -1,9 +1,11 @@
 package info.codesaway.bex.diff;
 
+import static info.codesaway.bex.BEXPairs.bexPair;
 import static info.codesaway.bex.BEXPairs.mapGet;
 import static info.codesaway.bex.BEXSide.BEX_SIDES;
 import static info.codesaway.bex.BEXSide.LEFT;
 import static info.codesaway.bex.BEXSide.RIGHT;
+import static info.codesaway.bex.IntBEXRange.closed;
 import static info.codesaway.bex.diff.BasicDiffType.REPLACEMENT_BLOCK;
 import static info.codesaway.bex.util.BEXUtilities.firstNonNull;
 import static info.codesaway.bex.util.BEXUtilities.not;
@@ -38,6 +40,7 @@ import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXPairValue;
 import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.IntPair;
+import info.codesaway.bex.IntRange;
 import info.codesaway.bex.diff.patience.FrequencyCount;
 import info.codesaway.bex.diff.patience.PatienceMatch;
 import info.codesaway.bex.diff.substitution.RefactoringDiffType;
@@ -268,35 +271,35 @@ public final class DiffHelper {
 				.filter(DiffWithIndex::isInsertOrDelete)
 				.filter(d -> d.getDiffEdit().getText().trim().startsWith("import"))
 				.collect(toList());
-	
+
 		// Group imports by classname
 		Map<String, List<DiffWithIndex>> importsByClassName = new HashMap<>();
 		Map<DiffWithIndex, MatchResult> matchResults = new HashMap<>();
-	
+
 		for (DiffWithIndex possibleImport : possibleImports) {
 			Matcher matcher = IMPORT_MATCHER.get().reset(possibleImport.getDiffEdit().getText());
-	
+
 			if (!matcher.find()) {
 				continue;
 			}
-	
+
 			matchResults.put(possibleImport, matcher.toMatchResult());
 			importsByClassName.computeIfAbsent(matcher.group("class"), k -> new ArrayList<>()).add(possibleImport);
 		}
-	
+
 		// Check results
 		for (Entry<String, List<DiffWithIndex>> entry : importsByClassName.entrySet()) {
 			List<DiffWithIndex> list = entry.getValue();
 			if (list.size() != 2) {
 				continue;
 			}
-	
+
 			DiffWithIndex firstDiff = list.get(0);
 			DiffWithIndex secondDiff = list.get(1);
-	
+
 			DiffWithIndex left = null;
 			DiffWithIndex right = null;
-	
+
 			if (firstDiff.hasLeftLine()) {
 				if (secondDiff.hasRightLine()) {
 					left = firstDiff;
@@ -306,13 +309,13 @@ public final class DiffHelper {
 				left = secondDiff;
 				right = firstDiff;
 			}
-	
+
 			if (left != null && right != null) {
 				ImportSameClassnameDiffType diffType = determineImportSameClassnameDiffType(matchResults.get(left),
 						matchResults.get(right), true);
-	
+
 				//				System.out.println(entry);
-	
+
 				if (diffType != null) {
 					DiffEdit diffEdit = new DiffEdit(diffType, left.getLeftLine(), right.getRightLine());
 					diff.set(left.getIndex(), diffEdit);
@@ -320,7 +323,7 @@ public final class DiffHelper {
 				}
 			}
 		}
-	
+
 		return diff;
 	}*/
 
@@ -902,6 +905,58 @@ public final class DiffHelper {
 		}
 
 		return results;
+	}
+
+	/**
+	 * Determines the range which encloses all the lines of the specified DiffUnit
+	 *
+	 * <p>If the DiffUnit does not consist of sequential lines, the range will enclose all the lines,
+	 * even though each value in the range will not have a corresponding line in the DiffUnit</p>
+	 *
+	 * @param diffUnit the DiffUnit
+	 * @return the range of lines (left / right) in the specified DiffUnit
+	 * @since 0.12
+	 */
+	public static BEXPair<IntRange> determineEnclosedRange(final DiffUnit diffUnit) {
+		return determineEnclosedRange(diffUnit.getEdits());
+	}
+
+	/**
+	 * Determines the range which encloses all the lines of the specified edits
+	 *
+	 * <p>If the edits do not consist of sequential lines, the range will enclose all the lines,
+	 * even though each value in the range will not have a corresponding line in the edits</p>
+	 *
+	 * @param diffEdits the edits
+	 * @return the range of lines (left / right) in the specified edits
+	 * @since 0.12
+	 */
+	public static BEXPair<IntRange> determineEnclosedRange(final Collection<DiffEdit> diffEdits) {
+		int minLeft = diffEdits.stream()
+				.filter(DiffEdit::hasLeftLine)
+				.mapToInt(DiffEdit::getLeftLineNumber)
+				.min()
+				.orElse(-1);
+
+		int maxLeft = diffEdits.stream()
+				.filter(DiffEdit::hasLeftLine)
+				.mapToInt(DiffEdit::getLeftLineNumber)
+				.max()
+				.orElse(-1);
+
+		int minRight = diffEdits.stream()
+				.filter(DiffEdit::hasRightLine)
+				.mapToInt(DiffEdit::getRightLineNumber)
+				.min()
+				.orElse(-1);
+
+		int maxRight = diffEdits.stream()
+				.filter(DiffEdit::hasRightLine)
+				.mapToInt(DiffEdit::getRightLineNumber)
+				.max()
+				.orElse(-1);
+
+		return bexPair(closed(minLeft, maxLeft), closed(minRight, maxRight));
 	}
 
 	/**
