@@ -123,6 +123,7 @@ import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.IRewriteTarget;
 import org.eclipse.jface.text.ITextPresentationListener;
 import org.eclipse.jface.text.ITextViewer;
+import org.eclipse.jface.text.JFaceTextUtil;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.Region;
 import org.eclipse.jface.text.TextPresentation;
@@ -6152,7 +6153,6 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 
 	public void scroll(final int leftLineNumber, final int rightLineNumber) {
 		char contributor;
-		//		boolean isLeft;
 		int line;
 		MergeSourceViewer mergeSourceViewer;
 
@@ -6177,12 +6177,17 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 		Position position = new Position(offset);
 
 		// Issue #18
-		// TODO: when does this, still shows green background (should it?)
-		// (when I perform an actual mouse click, it doesn't show the background)
-		Diff diff = this.findDiff(contributor, offset);
+		// First, check if the specified line is already visible
+		// (based on logic in TextViewer.internalRevealRange)
+		StyledText text = mergeSourceViewer.getSourceViewer().getTextWidget();
+		int top = text.getTopIndex();
+		int bottom = JFaceTextUtil.getBottomIndex(text);
+		boolean isVisible = line >= top && line <= bottom;
 
-		//		System.out.println("Scroll to " + offset + "\t" + diff);
-		this.setCurrentDiff(diff, true);
+		if (!isVisible) {
+			Diff diff = this.fMerger.findDiff(contributor, position);
+			this.setCurrentDiff(diff, true);
+		}
 
 		if (leftLineNumber != -1 && rightLineNumber != -1) {
 			// Subtract 1 to make 0-based line
@@ -6201,10 +6206,5 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 		}
 
 		mergeSourceViewer.setSelection(position);
-
-		// TODO: does this help Issue #18 at all?
-		this.updatePresentation();
-
-		//		this.revealDiff(diff, true);
 	}
 }

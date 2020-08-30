@@ -354,7 +354,7 @@ public final class BEXView extends ViewPart {
 		List<TreeParent> expandedElements = new ArrayList<>();
 
 		boolean shouldShowBothSidesOfSubstitution = Activator.shouldShowBothSidesOfSubstitution();
-		System.out.println("In BEXView.setChanges");
+		//		System.out.println("In BEXView.setChanges");
 
 		for (DiffChange<BEXChangeInfo> change : changes) {
 			TreeParent changeParent = new TreeParent(change.toString());
