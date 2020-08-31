@@ -170,10 +170,10 @@ public final class ImmutableIntRangeMap<V> {
 	 *
 	 * @param key the value to be searched for
 	 * @return index of the search key, if it is contained in the array;
-	 *         otherwise, <tt>(-(<i>insertion point</i>) - 1)</tt>.  The
+	 *         otherwise, <code>(-(<i>insertion point</i>) - 1)</code>.  The
 	 *         <i>insertion point</i> is defined as the point at which the
 	 *         key would be inserted into the array: the index of the first
-	 *         element greater than the key, or <tt>a.length</tt> if all
+	 *         element greater than the key, or <code>a.length</code> if all
 	 *         elements in the array are less than the specified key.  Note
 	 *         that this guarantees that the return value will be &gt;= 0 if
 	 *         and only if the key is found.
