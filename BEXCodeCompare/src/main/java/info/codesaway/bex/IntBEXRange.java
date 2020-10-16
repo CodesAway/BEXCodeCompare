@@ -80,6 +80,17 @@ public final class IntBEXRange implements IntRange {
 		return new IntBEXRange(start, end, false);
 	}
 
+	/**
+	 * Closed range containing a single value
+	 * @param value the value
+	 * @return a closed range containing a single value
+	 * @since 0.12
+	 * @see #closed(int, int)
+	 */
+	public static IntBEXRange singleton(final int value) {
+		return closed(value, value);
+	}
+
 	@Override
 	public boolean hasInclusiveStart() {
 		return this.hasInclusiveStart;

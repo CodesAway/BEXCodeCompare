@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>info.codesaway</groupId>
 	<artifactId>bex</artifactId>
-	<version>0.11.0</version>
+	<version>0.12.0</version>
 	<name>Be Enhanced Code Compare (BEϽC)</name>
 	<description>An enhanced code compare, utilities, and code matching</description>
 	<properties>
@@ -22,7 +22,7 @@
 		<dependency>
 			<groupId>info.codesaway</groupId>
 			<artifactId>regexplus</artifactId>
-			<version>1.2.0</version>
+			<version>2.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.spotbugs</groupId>
@@ -111,7 +111,10 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>2.9.1</version>
+						<version>3.2.0</version>
+						<configuration>
+							<source>8</source>
+						</configuration>
 						<executions>
 							<execution>
 								<id>attach-javadocs</id>

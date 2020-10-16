@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>info.codesaway</groupId>
 	<artifactId>becr.examples</artifactId>
-	<version>0.9.0</version>
+	<version>0.10.0</version>
 	<name>BECR Examples</name>
 	<description>Examples of BECR - Be Enhanced Code Refactoring</description>
 	<properties>
@@ -22,7 +22,13 @@
 		<dependency>
 			<groupId>info.codesaway</groupId>
 			<artifactId>becr</artifactId>
-			<version>0.11.0</version>
+			<version>0.12.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.spotbugs</groupId>
+			<artifactId>spotbugs-annotations</artifactId>
+			<version>4.0.3</version>
+			<optional>true</optional>
 		</dependency>
 		<!-- Used for making Excel report -->
 		<dependency>
@@ -98,7 +104,10 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>2.9.1</version>
+						<version>3.2.0</version>
+						<configuration>
+							<source>8</source>
+						</configuration>
 						<executions>
 							<execution>
 								<id>attach-javadocs</id>

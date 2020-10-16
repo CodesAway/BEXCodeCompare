@@ -29,7 +29,7 @@ public enum BEXMatchingLanguage implements MatchingLanguage {
 	 * SQL Matching language
 	 * @since 0.11
 	 */
-	SQL(BEXMatchingUtilities::parseSQLTextStates, "@", true, bexPair("BEGIN", "END")),
+	SQL(BEXMatchingUtilities::parseSQLTextStates, "@#$", true, bexPair("BEGIN", "END")),
 
 	// End of enum
 	;
@@ -92,11 +92,11 @@ public enum BEXMatchingLanguage implements MatchingLanguage {
 
 			BiPredicate<String, String> equals = this.hasCaseInsensitiveDelimiters
 					? String::equalsIgnoreCase
-					: String::equals;
+							: String::equals;
 
 			MatchingDelimiterResult result = lastDelimiter != null && equals.test(s, lastDelimiter.getRight())
 					? MatchingDelimiterResult.FOUND
-					: MatchingDelimiterResult.MISMATCHED;
+							: MatchingDelimiterResult.MISMATCHED;
 
 			return new MatchingDelimiterState(result, s);
 		}

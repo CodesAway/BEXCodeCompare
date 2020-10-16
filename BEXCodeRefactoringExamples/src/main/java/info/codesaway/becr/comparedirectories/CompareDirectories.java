@@ -71,6 +71,7 @@ import com.google.common.collect.Range;
 import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import info.codesaway.becr.diff.CorrespondingCode;
 import info.codesaway.becr.diff.FileType;
 import info.codesaway.becr.diff.ImpactType;
@@ -847,6 +848,7 @@ public class CompareDirectories {
 
 	private XSSFCellStyle WRAP_TEXT_CELL_STYLE;
 
+	@SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE", justification = "https://github.com/spotbugs/spotbugs/issues/756")
 	public XSSFWorkbook generateExcelReport(final Path excelReportPath,
 			final Map<String, String> projectSheetNameMap,
 			final CompareDirectoriesResult compareDirectoriesResult) throws IOException {

@@ -123,6 +123,7 @@ import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.IRewriteTarget;
 import org.eclipse.jface.text.ITextPresentationListener;
 import org.eclipse.jface.text.ITextViewer;
+import org.eclipse.jface.text.JFaceTextUtil;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.Region;
 import org.eclipse.jface.text.TextPresentation;
@@ -139,6 +140,7 @@ import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.osgi.util.NLS;
@@ -6151,7 +6153,6 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 
 	public void scroll(final int leftLineNumber, final int rightLineNumber) {
 		char contributor;
-		//		boolean isLeft;
 		int line;
 		MergeSourceViewer mergeSourceViewer;
 
@@ -6175,6 +6176,19 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 		int offset = this.fMerger.getOffset(contributor, line);
 		Position position = new Position(offset);
 
+		// Issue #18
+		// First, check if the specified line is already visible
+		// (based on logic in TextViewer.internalRevealRange)
+		StyledText text = mergeSourceViewer.getSourceViewer().getTextWidget();
+		int top = text.getTopIndex();
+		int bottom = JFaceTextUtil.getBottomIndex(text);
+		boolean isVisible = line >= top && line <= bottom;
+
+		if (!isVisible) {
+			Diff diff = this.fMerger.findDiff(contributor, position);
+			this.setCurrentDiff(diff, true);
+		}
+
 		if (leftLineNumber != -1 && rightLineNumber != -1) {
 			// Subtract 1 to make 0-based line
 			int rightOffset = this.fMerger.getOffset(RIGHT_CONTRIBUTOR, rightLineNumber - 1);
@@ -6184,10 +6198,13 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 			this.fRight.setSelection(rightPosition);
 		} else {
 			reveal(mergeSourceViewer, position);
+
+			// Issue #10
+			MergeSourceViewer otherMergeSourceViewer = mergeSourceViewer == this.fLeft ? this.fRight : this.fLeft;
+			// Source: https://www.eclipse.org/forums/index.php/t/369341/
+			otherMergeSourceViewer.getSourceViewer().setSelection(StructuredSelection.EMPTY);
 		}
 
 		mergeSourceViewer.setSelection(position);
-
-		//		this.revealDiff(diff, true);
 	}
 }

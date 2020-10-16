@@ -1,17 +1,21 @@
 package info.codesaway.bex.diff;
 
 import static com.google.common.collect.Maps.immutableEntry;
+import static info.codesaway.bex.BEXPairs.bexPair;
+import static info.codesaway.bex.IntBEXRange.closed;
 import static info.codesaway.bex.diff.BasicDiffType.DELETE;
 import static info.codesaway.bex.diff.BasicDiffType.EQUAL;
 import static info.codesaway.bex.diff.BasicDiffType.INSERT;
 import static info.codesaway.bex.diff.BasicDiffType.MOVE_LEFT;
 import static info.codesaway.bex.diff.BasicDiffType.MOVE_RIGHT;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -20,6 +24,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Streams;
 import com.google.common.primitives.ImmutableIntArray;
 
+import info.codesaway.bex.BEXPair;
+import info.codesaway.bex.IntBEXPair;
+import info.codesaway.bex.IntRange;
 import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.patience.PatienceMatch;
@@ -118,5 +125,39 @@ class DiffHelperTests {
 		List<DiffUnit> expected = ImmutableList.of(new DiffBlock(MOVE_LEFT, diff));
 
 		assertEquals(expected, diffUnits);
+	}
+
+	@Test
+	public void testDetermineEnclosedRange() {
+		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, "a"), new DiffLine(1, "b"), new DiffLine(2, "c"));
+		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(3, "a"), new DiffLine(4, "b"), new DiffLine(5, "c"));
+
+		List<DiffEdit> diff = ImmutableList.of(
+				new DiffEdit(MOVE_LEFT, leftLines.get(0), rightLines.get(0)),
+				new DiffEdit(MOVE_LEFT, leftLines.get(1), rightLines.get(1)),
+				new DiffEdit(MOVE_LEFT, leftLines.get(2), rightLines.get(2)));
+
+		List<DiffUnit> diffUnits = DiffHelper.combineToDiffBlocks(diff);
+
+		DiffUnit diffUnit = diffUnits.get(0);
+
+		BEXPair<IntRange> enclosedRange = DiffHelper.determineEnclosedRange(diffUnit);
+		BEXPair<IntRange> expectedRange = bexPair(closed(0, 2), closed(3, 5));
+		assertThat(enclosedRange).isEqualTo(expectedRange);
+	}
+
+	@Test
+	@Disabled("Not sure if I plan or need to add functionality for consecutive ranges")
+	public void testHasConsecutiveRanges() {
+		IntRange left1 = closed(0, 2);
+		IntRange left2 = closed(3, 5);
+
+		IntRange right1 = closed(1, 5);
+		IntRange right2 = closed(6, 10);
+
+		IntBEXPair line1 = IntBEXPair.of(left1.getEnd(), right1.getEnd());
+		IntBEXPair line2 = IntBEXPair.of(left2.getStart(), right2.getStart());
+
+		System.out.println(DiffHelper.isConsecutive(line1, line2, false));
 	}
 }

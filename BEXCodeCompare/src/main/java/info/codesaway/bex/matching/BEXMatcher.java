@@ -852,10 +852,10 @@ public final class BEXMatcher implements BEXMatchResult {
 	 * replaced in the result by the replacement string. The replacement string
 	 * may contain references to captured subsequences as in the {@link #appendReplacement appendReplacement} method.</p>
 	 *
-	 * <p>Given the pattern <tt>dog</tt>, the input
-	 * <tt>"zzzdogzzzdogzzz"</tt>, and the replacement string <tt>"cat"</tt>, an
+	 * <p>Given the pattern <code>dog</code>, the input
+	 * <code>"zzzdogzzzdogzzz"</code>, and the replacement string <code>"cat"</code>, an
 	 * invocation of this method on a matcher for that expression would yield
-	 * the string <tt>"zzzcatzzzdogzzz"</tt>.</p>
+	 * the string <code>"zzzcatzzzdogzzz"</code>.</p>
 	 *
 	 * <p>Invoking this method changes this matcher's state. If the matcher
 	 * is to be used in further matching operations then it should first be
@@ -977,7 +977,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 * <p>It reads characters from the input sequence, starting at the append
 	 * position, and appends them to the given string buffer. It stops after
 	 * reading the last character preceding the previous match, that is, the
-	 * character at index {@link #start()}&nbsp;<tt>-</tt>&nbsp;<tt>1</tt>.</p>
+	 * character at index {@link #start()}&nbsp;<code>-</code>&nbsp;<code>1</code>.</p>
 	 * </li>
 	 *
 	 * <li>
@@ -996,8 +996,8 @@ public final class BEXMatcher implements BEXMatchResult {
 	 *
 	 * <p>This method is intended to be used in a loop together with the {@link #appendTail appendTail} and
 	 * {@link #find find} methods. The
-	 * following code, for example, writes <tt>one dog two dogs in the
-	 * yard</tt> to the standard-outputSyntax stream:</p>
+	 * following code, for example, writes <code>one dog two dogs in the
+	 * yard</code> to the standard-outputSyntax stream:</p>
 	 *
 	 * <blockquote>
 	 *
