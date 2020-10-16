@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2020-08-31
+### Added
+* Method IntBEXRange.singleton
+* DiffHelper methods
+  * determineEnclosedRange(DiffUnit)
+  * determineEnclosedRange(Collection<DiffEdit>)
+
+### Changed
+* Changed Javadoc to allow compiling against Java 14 (minimum version remains Java 8)
+* BEXMatchingLanguage.SQL handling of word characters when next to '#' and '$'
+* BEX Eclipse plugin (beta version 0.4.0)
+  * RangeComparatorBEX refactored to use BEXPair to reduce code
+  * Better handling of ignoring commented out code (when option is enabled)
+  * Group together consecutive unimportant changes
+  * Fix wonky scrolling in compare window
+
+* Upgraded backend libraries
+  * RegExPlus from version 1.2.0 to 2.0.0
+  * maven-javadoc-plugin from version 2.9.1 to 3.2.0
+
 ## [0.11.0] - 2020-08-23
 
 ### Added
