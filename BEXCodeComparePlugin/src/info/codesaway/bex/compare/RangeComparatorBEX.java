@@ -234,7 +234,11 @@ public final class RangeComparatorBEX {
 		// (if true, okay to combine using existing logic)
 		// (if false, should never combine, even if current logic would allow)
 		// This way, can ensure we don't combine unimportant refactorings in the same change as important changes
-		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, true);
+		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, true,
+				// Fixes issue #103 - only combine if both diffs either should or should not
+				// (what was happening was it was combining non-important changes with important changes)
+				// (this caused Eclipse to show more differences than expected)
+				(x, y) -> x.shouldTreatAsNormalizedEqual() == y.shouldTreatAsNormalizedEqual());
 		//		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, false);
 
 		// Handle ignoring blank lines or comments (if option is enabled)

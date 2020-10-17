@@ -30,6 +30,7 @@ import info.codesaway.bex.IntRange;
 import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.patience.PatienceMatch;
+import info.codesaway.bex.diff.substitution.SubstitutionDiffTypeValue;
 
 class DiffHelperTests {
 
@@ -161,6 +162,34 @@ class DiffHelperTests {
 		List<DiffUnit> diffUnits = DiffHelper.combineToDiffBlocks(diff, true, (x, y) -> false);
 
 		List<DiffUnit> expected = ImmutableList.of(first, second, third);
+
+		assertEquals(expected, diffUnits);
+	}
+
+	@Test
+	// Issue #103
+	public void testCombineToDiffBlocksPartitionImportantAndNonImportantChanges() {
+		// Text doesn't matter, since combine focuses on DiffType
+		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, ""), new DiffLine(1, ""), new DiffLine(2, ""),
+				new DiffLine(3, ""));
+		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(0, ""), new DiffLine(1, ""), new DiffLine(2, ""),
+				new DiffLine(3, ""));
+
+		DiffType shouldTreatAsNormalizedEqual = new SubstitutionDiffTypeValue(' ', "", false, true);
+
+		DiffEdit first = new DiffEdit(INSERT, leftLines.get(0), rightLines.get(0));
+		DiffEdit second = new DiffEdit(shouldTreatAsNormalizedEqual, leftLines.get(1), rightLines.get(1));
+		DiffEdit third = new DiffEdit(shouldTreatAsNormalizedEqual, leftLines.get(2), rightLines.get(2));
+		DiffEdit fourth = new DiffEdit(INSERT, leftLines.get(3), rightLines.get(3));
+
+		List<DiffEdit> diff = ImmutableList.of(first, second, third, fourth);
+
+		List<DiffUnit> diffUnits = DiffHelper.combineToDiffBlocks(diff, true,
+				(x, y) -> x.shouldTreatAsNormalizedEqual() == y.shouldTreatAsNormalizedEqual());
+
+		List<DiffUnit> expected = ImmutableList.of(first,
+				new DiffBlock(shouldTreatAsNormalizedEqual, diff.subList(1, 3)),
+				fourth);
 
 		assertEquals(expected, diffUnits);
 	}
