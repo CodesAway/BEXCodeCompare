@@ -229,6 +229,11 @@ public final class RangeComparatorBEX {
 		// (should be helpful when ignore comments)
 		// TODO: though, makes ignoring split line differences challenging
 		// TODO: write logic that recognizes split lines even if not in blocks
+
+		// TODO: pass BiPredicate which indicates if can combine
+		// (if true, okay to combine using existing logic)
+		// (if false, should never combine, even if current logic would allow)
+		// This way, can ensure we don't combine unimportant refactorings in the same change as important changes
 		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, true);
 		//		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, false);
 

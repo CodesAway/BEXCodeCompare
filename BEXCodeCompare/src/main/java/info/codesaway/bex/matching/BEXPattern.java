@@ -25,6 +25,7 @@ public final class BEXPattern {
 	// What if starts or ends with group?
 	// What if has two groups side by side?
 
+	private final String pattern;
 	private final List<Pattern> patterns;
 	private final List<String> groups;
 	private final Map<Integer, BEXGroupMatchSetting> groupMatchSettings;
@@ -45,8 +46,10 @@ public final class BEXPattern {
 	// For our needs, this simple cache should surfice, since it will handle the common use case
 	private static final int MAX_CACHE_SIZE = 100;
 
-	private BEXPattern(final List<Pattern> patterns, final List<String> groups,
+	private BEXPattern(final String pattern, final List<Pattern> patterns, final List<String> groups,
 			final Map<Integer, BEXGroupMatchSetting> groupMatchSettings) {
+		this.pattern = pattern;
+
 		if (patterns.isEmpty()) {
 			throw new IllegalArgumentException("No patterns specified");
 		}
@@ -435,7 +438,7 @@ public final class BEXPattern {
 		patterns.trimToSize();
 		groups.trimToSize();
 
-		return new BEXPattern(patterns, groups, groupMatchSettings);
+		return new BEXPattern(pattern, patterns, groups, groupMatchSettings);
 	}
 
 	private static String extractRegexFromInGroup(final String pattern, final int index) {
@@ -549,5 +552,20 @@ public final class BEXPattern {
 	public static ThreadLocal<BEXMatcher> getThreadLocalMatcher(final String pattern) {
 		BEXPattern bexPattern = BEXPattern.compile(pattern);
 		return ThreadLocal.withInitial(bexPattern::matcher);
+	}
+
+	/**
+	 * Returns the BEX pattern from which this pattern was compiled.
+	 *
+	 * @return The source of this pattern
+	 * @since 0.13
+	 */
+	public String pattern() {
+		return this.pattern;
+	}
+
+	@Override
+	public String toString() {
+		return this.pattern();
 	}
 }

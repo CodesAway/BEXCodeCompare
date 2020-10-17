@@ -3,8 +3,10 @@ package info.codesaway.bex.matching;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_EXPRESSION_BLOCK;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_LINE_COMMENT;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_MULTILINE_COMMENT;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_SECONDARY_MULTILINE_COMMENT;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_SECONDARY_STRING_LITERAL;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_STRING_LITERAL;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_TAG;
 
 import java.util.ArrayDeque;
 
@@ -262,6 +264,7 @@ public class BEXMatchingUtilities {
 	 * @param text the JSP text
 	 * @return an unmodifiable map from the range to the BEXMatchingTextState
 	 */
+	// TODO: need to fix and then update BEX
 	public static ImmutableIntRangeMap<MatchingStateOption> parseJSPTextStates(final CharSequence text) {
 		// TODO: used Java as a basic and need to enhance
 		// For example, to handle JSP Expression
@@ -291,9 +294,17 @@ public class BEXMatchingUtilities {
 		// * In String literal
 		// * Other stuff?
 
+		// Reference: https://www.tutorialspoint.com/jsp/jsp_syntax.htm
+
 		ImmutableIntRangeMap.Builder<MatchingStateOption> builder = ImmutableIntRangeMap.builder();
 		ArrayDeque<MatchingStateOption> stateStack = new ArrayDeque<>();
 		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
+
+		boolean isJava = false;
+		// HTML tag
+		boolean isTag = false;
+		// TODO: should I refactor and use this? how would I use it?
+		String expectedEnd = "";
 
 		for (int i = 0; i < text.length(); i++) {
 			char c = text.charAt(i);
@@ -307,20 +318,12 @@ public class BEXMatchingUtilities {
 
 					i++;
 				} else if (c == '"') {
-					int startTextInfo = startTextInfoStack.pop();
-					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
+					popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
 				} else if (hasText(text, i, "<%=")) {
-					// Going into second level, so end current level
-					int startTextInfo = startTextInfoStack.pop();
-					if (startTextInfo != i) {
-						// Only add if not empty range
-						// Would be empty for example if ended one expression then immediately started next one
-						builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
-					}
-
-					stateStack.push(IN_EXPRESSION_BLOCK);
-					startTextInfoStack.push(i);
+					pushNextLevelMatchingStateOption(IN_EXPRESSION_BLOCK, i, builder, stateStack, startTextInfoStack);
 					i += 2;
+
+					isJava = true;
 				}
 
 				// Other characters don't matter??
@@ -334,61 +337,89 @@ public class BEXMatchingUtilities {
 
 					i++;
 				} else if (c == '\'') {
-					int startTextInfo = startTextInfoStack.pop();
-					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
+					popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
 				} else if (hasText(text, i, "<%=")) {
-					// Going into second level, so end current level
-					int startTextInfo = startTextInfoStack.pop();
-					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
-
-					stateStack.push(IN_EXPRESSION_BLOCK);
-					startTextInfoStack.push(i);
+					pushNextLevelMatchingStateOption(IN_EXPRESSION_BLOCK, i, builder, stateStack, startTextInfoStack);
 					i += 2;
 				}
 
 				// Other characters don't matter??
 				// TODO: handle unicode and other escaping in String literal
-			} else if (stateStack.peek() == IN_LINE_COMMENT) {
+
+				// TODO: Java comments only valid in <% code block %>
+			} else if (isJava && stateStack.peek() == IN_LINE_COMMENT) {
 				if (c == '\n' || c == '\r') {
 					int startTextInfo = startTextInfoStack.pop();
 					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.pop());
 				}
 				// Other characters don't matter?
-			} else if (stateStack.peek() == IN_MULTILINE_COMMENT) {
+			} else if (isJava && stateStack.peek() == IN_MULTILINE_COMMENT) {
 				if (hasText(text, i, "*/")) {
 					i++;
 					int startTextInfo = startTextInfoStack.pop();
 					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
 				}
+			} else if (stateStack.peek() == IN_MULTILINE_COMMENT) {
+				if (hasText(text, i, "--%>")) {
+					i += 3;
+					popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
+				}
+			} else if (stateStack.peek() == IN_SECONDARY_MULTILINE_COMMENT) {
+				if (hasText(text, i, "-->")) {
+					i += 2;
+					popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
+				}
 			} else if (stateStack.peek() == IN_EXPRESSION_BLOCK) {
 				if (hasText(text, i, "%>")) {
+					isJava = false;
 					i++;
-					int startTextInfo = startTextInfoStack.pop();
-					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
-
-					if (!stateStack.isEmpty()) {
-						// Inside a first level, so add startTextInfo for after expression blocks ends
-						startTextInfoStack.push(i + 1);
-					}
+					popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
 				}
-			} else if (c == '/' && nextChar(text, i) == '/') {
+			} else if (hasText(text, i, "<%--")) {
+				stateStack.push(IN_MULTILINE_COMMENT);
+				startTextInfoStack.push(i);
+				i += 3;
+			} else if (hasText(text, i, "<!--")) {
+				stateStack.push(IN_SECONDARY_MULTILINE_COMMENT);
+				startTextInfoStack.push(i);
+				i += 3;
+			} else if (isJava && c == '/' && nextChar(text, i) == '/') {
 				stateStack.push(IN_LINE_COMMENT);
 				startTextInfoStack.push(i);
 				i++;
-			} else if (c == '/' && nextChar(text, i) == '*') {
+			} else if (isJava && c == '/' && nextChar(text, i) == '*') {
 				stateStack.push(IN_MULTILINE_COMMENT);
 				startTextInfoStack.push(i);
 				i++;
-			} else if (c == '"') {
+			} else if (c == '"' && isTag) {
+				pushNextLevelMatchingStateOption(IN_STRING_LITERAL, i, builder, stateStack, startTextInfoStack);
+			} else if (c == '\'' && isTag) {
+				pushNextLevelMatchingStateOption(IN_SECONDARY_STRING_LITERAL, i, builder, stateStack,
+						startTextInfoStack);
+			} else if (c == '"' && isJava) {
 				stateStack.push(IN_STRING_LITERAL);
 				startTextInfoStack.push(i);
-			} else if (c == '\'') {
+			} else if (c == '\'' && isJava) {
 				stateStack.push(IN_SECONDARY_STRING_LITERAL);
 				startTextInfoStack.push(i);
 			} else if (hasText(text, i, "<%=")) {
 				stateStack.push(IN_EXPRESSION_BLOCK);
 				startTextInfoStack.push(i);
 				i += 2;
+				isJava = true;
+			} else if (hasText(text, i, "<%")) {
+				// TODO: in Java scriptlet
+				stateStack.push(IN_EXPRESSION_BLOCK);
+				startTextInfoStack.push(i);
+				i++;
+				isJava = true;
+			} else if (c == '<' && !isJava && !isTag) {
+				stateStack.push(IN_TAG);
+				startTextInfoStack.push(i);
+				isTag = true;
+			} else if (c == '>' && isTag) {
+				isTag = false;
+				popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
 			}
 		}
 
@@ -411,20 +442,20 @@ public class BEXMatchingUtilities {
 		if (text.length() == 0) {
 			return ImmutableIntRangeMap.of();
 		}
-
+	
 		// Parse text to get states
 		// * Block comment
 		// * Line comment
 		// * In String literal
 		// * Other stuff?
-
+	
 		ImmutableIntRangeMap.Builder<MatchingStateOption> builder = ImmutableIntRangeMap.builder();
 		ArrayDeque<MatchingStateOption> stateStack = new ArrayDeque<>();
 		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
-
+	
 		for (int i = 0; i < text.length(); i++) {
 			char c = text.charAt(i);
-
+	
 			if (stateStack.peek() == IN_STRING_LITERAL) {
 				// TODO: how to implement escaping, since cannot escape single quote with '\'
 				if (c == '\'' && nextChar(text, i) == '\'') {
@@ -470,14 +501,14 @@ public class BEXMatchingUtilities {
 					i++;
 					int startTextInfo = startTextInfoStack.pop();
 					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
-
+	
 					if (!stateStack.isEmpty()) {
 						// Inside a first level, so add startTextInfo for after expression blocks ends
 						startTextInfoStack.push(i + 1);
 					}
 				} else if (hasText(text, i, "/*")) {
 					// SQL supports nested block comments
-
+	
 					// Going into second level, so end current level
 					int startTextInfo = startTextInfoStack.pop();
 					if (startTextInfo != i) {
@@ -485,7 +516,7 @@ public class BEXMatchingUtilities {
 						// Would be empty for example if ended one expression then immediately started next one
 						builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
 					}
-
+	
 					stateStack.push(IN_MULTILINE_COMMENT);
 					startTextInfoStack.push(i);
 					i++;
@@ -506,14 +537,43 @@ public class BEXMatchingUtilities {
 				//				startTextInfoStack.push(i);
 			}
 		}
-
+	
 		if (!stateStack.isEmpty()) {
 			// TODO: what if there are multiple entries?
 			// (this would suggest improperly formatted code)
 			int startTextInfo = startTextInfoStack.pop();
 			builder.put(IntBEXRange.of(startTextInfo, text.length()), stateStack.pop());
 		}
-
+	
 		return builder.build();
+	}
+
+	private static void pushNextLevelMatchingStateOption(final MatchingStateOption matchingStateOption, final int i,
+			final ImmutableIntRangeMap.Builder<MatchingStateOption> builder,
+			final ArrayDeque<MatchingStateOption> stateStack,
+			final ArrayDeque<Integer> startTextInfoStack) {
+		// Going into second level, so end current level
+		int startTextInfo = startTextInfoStack.pop();
+		if (startTextInfo != i) {
+			// Only add if not empty range
+			// Would be empty for example if ended one expression then immediately started next one
+			builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
+		}
+
+		stateStack.push(matchingStateOption);
+		startTextInfoStack.push(i);
+	}
+
+	private static void popMatchingStateOption(final int i,
+			final ImmutableIntRangeMap.Builder<MatchingStateOption> builder,
+			final ArrayDeque<MatchingStateOption> stateStack,
+			final ArrayDeque<Integer> startTextInfoStack) {
+		int startTextInfo = startTextInfoStack.pop();
+		builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
+
+		if (!stateStack.isEmpty()) {
+			// Inside a first level, so add startTextInfo for after expression blocks ends
+			startTextInfoStack.push(i + 1);
+		}
 	}
 }

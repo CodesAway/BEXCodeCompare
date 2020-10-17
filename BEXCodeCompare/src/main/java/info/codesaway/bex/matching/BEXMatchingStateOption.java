@@ -1,21 +1,29 @@
 package info.codesaway.bex.matching;
 
+import static info.codesaway.bex.util.BEXUtilities.in;
+
 public enum BEXMatchingStateOption implements MatchingStateOption {
-	IN_STRING_LITERAL, MISMATCHED_DELIMITERS, IN_LINE_COMMENT, IN_MULTILINE_COMMENT, IN_EXPRESSION_BLOCK(true),
-	IN_SECONDARY_STRING_LITERAL;
-
-	private final boolean isCode;
-
-	private BEXMatchingStateOption() {
-		this(false);
-	}
-
-	private BEXMatchingStateOption(final boolean isCode) {
-		this.isCode = isCode;
-	}
+	// Code
+	IN_EXPRESSION_BLOCK, IN_TAG,
+	// Comment
+	IN_LINE_COMMENT, IN_MULTILINE_COMMENT, IN_SECONDARY_MULTILINE_COMMENT,
+	// String literal
+	IN_STRING_LITERAL, IN_SECONDARY_STRING_LITERAL,
+	// Other states
+	MISMATCHED_DELIMITERS;
 
 	@Override
 	public boolean isCode() {
-		return this.isCode;
+		return in(this, IN_EXPRESSION_BLOCK, IN_TAG);
+	}
+
+	@Override
+	public boolean isComment() {
+		return in(this, IN_LINE_COMMENT, IN_MULTILINE_COMMENT, IN_SECONDARY_MULTILINE_COMMENT);
+	}
+
+	@Override
+	public boolean isStringLiteral() {
+		return in(this, IN_STRING_LITERAL, IN_SECONDARY_STRING_LITERAL);
 	}
 }

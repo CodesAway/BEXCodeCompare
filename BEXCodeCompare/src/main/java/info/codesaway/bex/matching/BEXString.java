@@ -91,7 +91,7 @@ public final class BEXString implements CharSequence {
 	}
 
 	public BEXString substring(final int start, final int end) {
-		return new BEXString(this.text.substring(start, end), this.language, this.textStateMap, start);
+		return new BEXString(this.text.substring(start, end), this.language, this.textStateMap, start + this.offset);
 	}
 
 	@Override

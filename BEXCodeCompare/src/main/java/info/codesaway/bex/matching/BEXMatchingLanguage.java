@@ -31,6 +31,26 @@ public enum BEXMatchingLanguage implements MatchingLanguage {
 	 */
 	SQL(BEXMatchingUtilities::parseSQLTextStates, "@#$", true, bexPair("BEGIN", "END")),
 
+	/**
+	 * Language which gives no special meaning to any characters
+	 *
+	 * <p>For example, brackets aren't checked that they balance</p>
+	 * @since 0.13
+	 */
+	TEXT(x -> ImmutableIntRangeMap.of()) {
+		@Override
+		public Optional<BEXPair<String>> findStartDelimiter(final CharSequence text, final int index,
+				final Set<MatchingLanguageSetting> settings) {
+			return Optional.empty();
+		}
+
+		@Override
+		public MatchingDelimiterState findEndDelimiter(final BEXPair<String> lastDelimiter, final CharSequence text,
+				final int index, final Set<MatchingLanguageSetting> settings) {
+			return MatchingDelimiterState.NOT_FOUND;
+		}
+	},
+
 	// End of enum
 	;
 
@@ -92,11 +112,11 @@ public enum BEXMatchingLanguage implements MatchingLanguage {
 
 			BiPredicate<String, String> equals = this.hasCaseInsensitiveDelimiters
 					? String::equalsIgnoreCase
-							: String::equals;
+					: String::equals;
 
 			MatchingDelimiterResult result = lastDelimiter != null && equals.test(s, lastDelimiter.getRight())
 					? MatchingDelimiterResult.FOUND
-							: MatchingDelimiterResult.MISMATCHED;
+					: MatchingDelimiterResult.MISMATCHED;
 
 			return new MatchingDelimiterState(result, s);
 		}
