@@ -4,6 +4,9 @@ import static info.codesaway.bex.IntBEXRange.closed;
 import static info.codesaway.bex.IntBEXRange.closedOpen;
 import static info.codesaway.bex.IntBEXRange.singleton;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_EXPRESSION_BLOCK;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_LINE_COMMENT;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_MULTILINE_COMMENT;
+import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_SECONDARY_MULTILINE_COMMENT;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_STRING_LITERAL;
 import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_TAG;
 import static info.codesaway.bex.util.BEXUtilities.entry;
@@ -27,5 +30,31 @@ public class BEXParseJSPTest {
 						entry(singleton(35), IN_TAG),
 						entry(closed(36, 47), IN_EXPRESSION_BLOCK),
 						entry(closed(48, 51), IN_TAG));
+	}
+
+	@Test
+	// Issue #93
+	void testComments() {
+		String text = "I love my <%-- JSP Comments --%> and <!-- HTML comments -->\r\n"
+				+ "As well as <% my code /* multi-line comment \r\n"
+				+ "More comment */\r\n"
+				+ "More code // more comments %>";
+		BEXString bexString = new BEXString(text, BEXMatchingLanguage.JSP);
+
+		assertThat(bexString.getTextStateMap().asMapOfRanges())
+				.containsExactly(
+						entry(closed(10, 31), IN_MULTILINE_COMMENT),
+						entry(closed(37, 58), IN_SECONDARY_MULTILINE_COMMENT),
+						entry(closedOpen(72, 83), IN_EXPRESSION_BLOCK),
+						// Part of expression block
+						// TODO: check this (issue #105)
+						entry(closed(83, 121), IN_MULTILINE_COMMENT),
+						entry(closedOpen(122, 134), IN_EXPRESSION_BLOCK),
+						// Part of expression block
+						// TODO: check this (issue #105)
+						entry(closed(134, 150), IN_LINE_COMMENT),
+						entry(closed(151, 152), IN_EXPRESSION_BLOCK));
+
+		System.out.println(bexString.getTextStateMap().getEntry(83));
 	}
 }

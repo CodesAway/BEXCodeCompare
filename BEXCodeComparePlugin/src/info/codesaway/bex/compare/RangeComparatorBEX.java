@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 import java.util.function.BiFunction;
@@ -38,7 +37,6 @@ import info.codesaway.bex.BEXListPair;
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXPairValue;
 import info.codesaway.bex.IntBEXRange;
-import info.codesaway.bex.IntRange;
 import info.codesaway.bex.diff.DiffBlock;
 import info.codesaway.bex.diff.DiffChange;
 import info.codesaway.bex.diff.DiffEdit;
@@ -51,9 +49,7 @@ import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.substitution.SubstitutionType;
 import info.codesaway.bex.diff.substitution.java.EnhancedForLoopRefactoring;
-import info.codesaway.bex.matching.BEXMatchingStateOption;
 import info.codesaway.bex.matching.BEXString;
-import info.codesaway.bex.matching.MatchingStateOption;
 import info.codesaway.bex.views.BEXView;
 import info.codesaway.eclipse.compare.internal.DocLineComparator;
 import info.codesaway.eclipse.compare.rangedifferencer.AbstractRangeDifferenceFactory;
@@ -184,7 +180,7 @@ public final class RangeComparatorBEX {
 						IntBEXRange lineRange = this.determineLineRange(text, tokenStart);
 
 						// Check if line is comment (either line or multi-line comment)
-						if (this.isCommentedOut(bexString.get(side), lineRange)) {
+						if (bexString.get(side).isComment(lineRange)) {
 							lineComments.get(side).add(diffEdit.getLineNumber(side));
 							//						System.out.printf("Commented out line %d: %s%n", edit.getLineNumber(side), lineRange);
 						}
@@ -397,7 +393,7 @@ public final class RangeComparatorBEX {
 					}
 				} else {
 					if (!currentChanges.isEmpty()) {
-						BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, "Change " + (++index));
+						BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, ++index);
 						changes.add(new DiffChange<>(currentChangeType, currentChanges, info));
 						currentChanges.clear();
 					}
@@ -412,7 +408,7 @@ public final class RangeComparatorBEX {
 
 		if (updateView) {
 			if (!currentChanges.isEmpty()) {
-				BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, "Change " + (++index));
+				BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, ++index);
 				changes.add(new DiffChange<>(currentChangeType, currentChanges, info));
 			}
 
@@ -433,40 +429,26 @@ public final class RangeComparatorBEX {
 		}
 	}
 
-	private boolean isCommentedOut(final BEXString bexString, final IntBEXRange lineRange) {
-		Entry<IntRange, MatchingStateOption> entry = bexString.getTextStateMap().getEntry(lineRange.getStart());
-
-		if (entry == null) {
-			return false;
-		}
-
-		if (!in(entry.getValue(), BEXMatchingStateOption.IN_LINE_COMMENT,
-				BEXMatchingStateOption.IN_MULTILINE_COMMENT)) {
-			return false;
-		}
-
-		return entry.getKey().contains(lineRange.getEnd());
-	}
-
 	private IntBEXRange determineLineRange(final String text, final int tokenStart) {
 		// Ignore leading and trailing whitespace
-		int leadingSpaces = 0;
-		while (leadingSpaces < text.length() && Character.isWhitespace(text.charAt(leadingSpaces))) {
-			leadingSpaces++;
+		int relativeInclusiveStart = 0;
+		while (relativeInclusiveStart < text.length() && Character.isWhitespace(text.charAt(relativeInclusiveStart))) {
+			relativeInclusiveStart++;
 		}
 
-		int trailingSpaces = text.length() - 1;
-		while (trailingSpaces > leadingSpaces && Character.isWhitespace(text.charAt(trailingSpaces))) {
-			trailingSpaces--;
+		int relativeInclusiveEnd = text.length() - 1;
+		while (relativeInclusiveEnd > relativeInclusiveStart
+				&& Character.isWhitespace(text.charAt(relativeInclusiveEnd))) {
+			relativeInclusiveEnd--;
 		}
 
 		// Inclusive on both ends
 		int lineStart = tokenStart;
 		// Don't include the line terminator for the line end
-		int lineEnd = lineStart + trailingSpaces;
+		int lineEnd = lineStart + relativeInclusiveEnd;
 
 		// Intentionally done after set lineEnd
-		lineStart += leadingSpaces;
+		lineStart += relativeInclusiveStart;
 
 		if (lineStart > lineEnd) {
 			// Entire line is whitespace

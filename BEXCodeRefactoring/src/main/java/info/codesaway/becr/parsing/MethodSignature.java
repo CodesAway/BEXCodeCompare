@@ -285,7 +285,9 @@ public final class MethodSignature implements Comparable<MethodSignature>, CodeI
 			return this.getSignatureShortOrFull(useShortName);
 		}
 
-		return this.getClassName() + "." + this.getSignatureShortOrFull(useShortName);
+		// Issue #101
+		String className = useShortName ? this.getShortClassName() : this.getClassName();
+		return className + "." + this.getSignatureShortOrFull(useShortName);
 	}
 
 	public String getFullSignature() {

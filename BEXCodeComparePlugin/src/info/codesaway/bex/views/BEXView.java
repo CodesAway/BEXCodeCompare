@@ -1,7 +1,12 @@
 package info.codesaway.bex.views;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 import javax.inject.Inject;
 
@@ -35,6 +40,7 @@ import info.codesaway.bex.compare.BEXChangeInfo;
 import info.codesaway.bex.diff.DiffChange;
 import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
+import info.codesaway.bex.diff.DiffType;
 import info.codesaway.eclipse.compare.contentmergeviewer.TextMergeViewer;
 
 /**
@@ -144,7 +150,7 @@ public final class BEXView extends ViewPart {
 		}
 
 		public boolean hasChildren() {
-			return this.children.size() > 0;
+			return !this.children.isEmpty();
 		}
 
 		/**
@@ -354,35 +360,101 @@ public final class BEXView extends ViewPart {
 		List<TreeParent> expandedElements = new ArrayList<>();
 
 		boolean shouldShowBothSidesOfSubstitution = Activator.shouldShowBothSidesOfSubstitution();
-		//		System.out.println("In BEXView.setChanges");
 
-		for (DiffChange<BEXChangeInfo> change : changes) {
-			TreeParent changeParent = new TreeParent(change.toString());
-			invisibleRoot.addChild(changeParent);
+		// Issue #91 - Combine changes if have same type and are not important
+		Map<DiffChange<BEXChangeInfo>, TreeParent> parents = new HashMap<>();
 
+		for (int index = 0; index < changes.size(); index++) {
+			DiffChange<BEXChangeInfo> change = changes.get(index);
+			DiffType changeType = change.getType();
 			boolean isImportantChange = change.getInfo().isImportantChange();
+
+			int startNumber = change.getInfo().getNumber();
+
+			if (!isImportantChange && startNumber > 0 && index < changes.size() - 1) {
+				int startIndex = index;
+				int endNumber = startNumber;
+
+				DiffChange<BEXChangeInfo> nextChange = changes.get(index + 1);
+				while (!nextChange.getInfo().isImportantChange()
+						&& nextChange.getInfo().getNumber() > 0
+						&& Objects.equals(changeType, nextChange.getType())) {
+					index++;
+					endNumber = nextChange.getInfo().getNumber();
+
+					if (index == changes.size() - 1) {
+						break;
+					}
+
+					nextChange = changes.get(index + 1);
+				}
+
+				if (index != startIndex) {
+					String changeName = String.format("%s - Changes %d..%d", changeType, startNumber, endNumber);
+					TreeParent changeParent = new TreeParent(changeName,
+							change.getChanges().get(0).stream().findFirst().get());
+
+					// +1 since end of subList is exclusive
+					for (DiffChange<BEXChangeInfo> diffChange : changes.subList(startIndex, index + 1)) {
+						parents.put(diffChange, changeParent);
+					}
+				}
+			}
+		}
+
+		Set<TreeParent> parentsAddedToInvisibleRoot = new HashSet<>();
+		for (DiffChange<BEXChangeInfo> change : changes) {
+			List<DiffEdit> diffEdits = change.getEdits();
+			boolean isImportantChange = change.getInfo().isImportantChange();
+
+			String changeName;
+			if (isImportantChange) {
+				changeName = change.toString();
+			} else {
+				BEXPair<IntRange> enclosedRange = DiffHelper.determineEnclosedRange(diffEdits);
+				IntRange leftRange = enclosedRange.getLeft();
+				IntRange rightRange = enclosedRange.getRight();
+
+				String leftRangeText = leftRange.isSingleValue()
+						? "[" + leftRange.getStart() + "]"
+						: leftRange.toString();
+
+				String rightRangeText = rightRange.isSingleValue()
+						? "[" + rightRange.getStart() + "]"
+						: rightRange.toString();
+
+				changeName = String.format("%s%s%s%n", change,
+						leftRange.getLeft() != -1 ? " LEFT " + leftRangeText : "",
+						rightRange.getLeft() != -1 ? " RIGHT " + rightRangeText : "");
+			}
+
+			// Issue #92 - BEX plugin - click top level, should go to first change
+			TreeParent changeParent = new TreeParent(changeName, diffEdits.get(0));
+
+			TreeParent treeParent = parents.get(change);
+			if (treeParent != null) {
+				treeParent.addChild(changeParent);
+				if (parentsAddedToInvisibleRoot.add(treeParent)) {
+					invisibleRoot.addChild(treeParent);
+				}
+			} else {
+				invisibleRoot.addChild(changeParent);
+			}
 
 			if (isImportantChange) {
 				expandedElements.add(changeParent);
 			}
 
-			// Collapse consecutive ignored differences
-			List<DiffEdit> diffEdits = change.getEdits();
-
 			for (int i = 0; i < diffEdits.size(); i++) {
 				DiffEdit changeEdit = diffEdits.get(i);
 				char symbol = changeEdit.shouldIgnore() ? ' ' : changeEdit.getSymbol();
 
+				// Collapse consecutive ignored differences
 				if (isImportantChange && changeEdit.shouldIgnore() && i < diffEdits.size() - 1) {
-					// TODO: if there are multiple continuous DiffEdit which should be ignored
-					// Group them together, collapsed
-					// This way, can expand if want to, but otherwise will collapse
-
 					DiffEdit nextChangeEdit = diffEdits.get(i + 1);
 
 					if (nextChangeEdit.shouldIgnore()
 							&& DiffHelper.hasConsecutiveLines(changeEdit, nextChangeEdit, true)) {
-						//						System.out.println("Create ignore block starting with " + changeEdit);
 						List<DiffEdit> ignoreEdits = new ArrayList<>();
 						ignoreEdits.add(changeEdit);
 
@@ -422,17 +494,6 @@ public final class BEXView extends ViewPart {
 					changeParent.addChild(changeLeaf);
 				}
 			}
-
-			// Have two levels of parents (second level shows the block)
-			//			for (DiffUnit changeUnit : change.getChanges()) {
-			//				TreeParent changeUnitParent = new TreeParent(changeUnit.getType().toString());
-			//				changeParent.addChild(changeUnitParent);
-			//
-			//				for (DiffEdit changeEdit : changeUnit.getEdits()) {
-			//					TreeObject changeLeaf = new TreeObject(changeEdit.toString());
-			//					changeUnitParent.addChild(changeLeaf);
-			//				}
-			//			}
 		}
 
 		this.viewer.refresh();
@@ -447,7 +508,8 @@ public final class BEXView extends ViewPart {
 		IntRange leftRange = enclosedRange.getLeft();
 		IntRange rightRange = enclosedRange.getRight();
 
-		String name = String.format("Ignore%s%n",
+		// Issue #99 - BEX ignoring comments doesn't show range in BEX view if lines are on right side
+		String name = String.format("Ignore%s%s%n",
 				leftRange.getLeft() != -1 ? " LEFT " + leftRange : "",
 				rightRange.getLeft() != -1 ? " RIGHT " + rightRange : "");
 

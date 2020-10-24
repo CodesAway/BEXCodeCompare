@@ -9,6 +9,8 @@ public enum BEXMatchingStateOption implements MatchingStateOption {
 	IN_LINE_COMMENT, IN_MULTILINE_COMMENT, IN_SECONDARY_MULTILINE_COMMENT,
 	// String literal
 	IN_STRING_LITERAL, IN_SECONDARY_STRING_LITERAL,
+	// Whitespace
+	WHITESPACE, LINE_TERMINATOR,
 	// Other states
 	MISMATCHED_DELIMITERS;
 
@@ -25,5 +27,10 @@ public enum BEXMatchingStateOption implements MatchingStateOption {
 	@Override
 	public boolean isStringLiteral() {
 		return in(this, IN_STRING_LITERAL, IN_SECONDARY_STRING_LITERAL);
+	}
+
+	@Override
+	public boolean isWhitespace() {
+		return in(this, WHITESPACE, LINE_TERMINATOR);
 	}
 }

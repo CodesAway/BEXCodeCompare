@@ -13,6 +13,7 @@ import info.codesaway.bex.ImmutableIntRangeMap;
  * Interface to allow defining your own MatchingLanguage outside of {@link BEXMatchingLanguage}
  * @since 0.11
  */
+@FunctionalInterface
 public interface MatchingLanguage {
 	/**
 	 *

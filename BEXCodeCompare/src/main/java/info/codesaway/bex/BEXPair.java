@@ -3,6 +3,7 @@ package info.codesaway.bex;
 import static info.codesaway.bex.BEXSide.LEFT;
 import static info.codesaway.bex.BEXSide.RIGHT;
 
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
@@ -99,7 +100,7 @@ public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 
 	/**
 	 * Applies the specified BiFunction, passing {@link #getLeft()} and {@link #getRight()} as arguments
-	
+
 	 * @param function the BiFunction to apply
 	 * @return the result of applying the BiFunction
 	 */
@@ -109,7 +110,7 @@ public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 
 	/**
 	 * Applies the specified ToIntBiFunction, passing {@link #getLeft()} and {@link #getRight()} as arguments
-	
+
 	 * @param function the ToIntBiFunction to apply
 	 * @return the result of applying the ToIntBiFunction
 	 */
@@ -119,7 +120,7 @@ public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 
 	/**
 	 * Evaluates the specified BiPredicate, passing {@link #getLeft()} and {@link #getRight()} as arguments
-	
+
 	 * @param predicate the BiPredicate to apply
 	 * @return <code>true</code> if the predicate matches when applying the arugments; otherwise, <code>false</code>
 	 */
@@ -278,5 +279,14 @@ public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 		}
 
 		return right1.compareTo(o.getRight());
+	}
+
+	/**
+	 * Indicates if the left value equals the right value
+	 * @return <code>true</code> if the left value equals the right value
+	 * @since 0.13
+	 */
+	public default boolean hasEqualValues() {
+		return Objects.equals(this.getLeft(), this.getRight());
 	}
 }
