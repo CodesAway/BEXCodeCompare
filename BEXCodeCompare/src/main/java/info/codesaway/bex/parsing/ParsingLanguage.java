@@ -1,26 +1,28 @@
-package info.codesaway.bex.matching;
+package info.codesaway.bex.parsing;
 
 import static info.codesaway.bex.BEXPairs.bexPair;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.stringChar;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.stringChar;
 
 import java.util.Optional;
 import java.util.Set;
 
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.ImmutableIntRangeMap;
+import info.codesaway.bex.matching.MatchingLanguageOption;
+import info.codesaway.bex.matching.MatchingLanguageSetting;
 
 /**
- * Interface to allow defining your own MatchingLanguage outside of {@link BEXMatchingLanguage}
+ * Interface to allow defining your own ParsingLanguage outside of {@link BEXParsingLanguage}
  * @since 0.11
  */
 @FunctionalInterface
-public interface MatchingLanguage {
+public interface ParsingLanguage {
 	/**
 	 *
 	 * @param text the text to parse and determine the states
-	 * @return unmodifiable map from range in text to MatchingStateOption
+	 * @return unmodifiable map from range in text to ParsingState
 	 */
-	public ImmutableIntRangeMap<MatchingStateOption> parse(final CharSequence text);
+	public ImmutableIntRangeMap<ParsingState> parse(final CharSequence text);
 
 	/**
 	 * Determines if a delimiter (such as a bracket) is found at the specified index in the text
@@ -63,7 +65,7 @@ public interface MatchingLanguage {
 	 * @param settings the settings to apply
 	 * @return the optional delimiter (start delimiter / end delimiter pair) found at the specified index in the text; else, {@link Optional#empty()}
 	 */
-	public default MatchingDelimiterState findEndDelimiter(final BEXPair<String> lastDelimiter,
+	public default ParsingDelimiterState findEndDelimiter(final BEXPair<String> lastDelimiter,
 			final CharSequence text, final int index,
 			final Set<MatchingLanguageSetting> settings) {
 
@@ -84,14 +86,14 @@ public interface MatchingLanguage {
 		int indexOfBracket = bracketEnds.indexOf(c);
 
 		if (indexOfBracket == -1) {
-			return MatchingDelimiterState.NOT_FOUND;
+			return ParsingDelimiterState.NOT_FOUND;
 		}
 
 		String delimiter = stringChar(bracketEnds, indexOfBracket);
-		MatchingDelimiterResult result = lastDelimiter != null && delimiter.equals(lastDelimiter.getRight())
-				? MatchingDelimiterResult.FOUND
-				: MatchingDelimiterResult.MISMATCHED;
+		ParsingDelimiterResult result = lastDelimiter != null && delimiter.equals(lastDelimiter.getRight())
+				? ParsingDelimiterResult.FOUND
+				: ParsingDelimiterResult.MISMATCHED;
 
-		return new MatchingDelimiterState(result, delimiter);
+		return new ParsingDelimiterState(result, delimiter);
 	}
 }

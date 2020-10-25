@@ -3,8 +3,9 @@ package info.codesaway.bex.diff;
 import java.util.Optional;
 
 import info.codesaway.bex.BEXSide;
+import info.codesaway.bex.Indexed;
 
-public final class DiffWithIndex {
+public final class DiffWithIndex implements Indexed<DiffEdit> {
 	private final DiffEdit diffEdit;
 	private final int index;
 
@@ -17,6 +18,12 @@ public final class DiffWithIndex {
 		return this.diffEdit;
 	}
 
+	@Override
+	public DiffEdit getValue() {
+		return this.getDiffEdit();
+	}
+
+	@Override
 	public int getIndex() {
 		return this.index;
 	}

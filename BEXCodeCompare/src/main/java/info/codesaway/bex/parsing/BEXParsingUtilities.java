@@ -1,21 +1,23 @@
-package info.codesaway.bex.matching;
+package info.codesaway.bex.parsing;
 
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_EXPRESSION_BLOCK;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_LINE_COMMENT;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_MULTILINE_COMMENT;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_SECONDARY_MULTILINE_COMMENT;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_SECONDARY_STRING_LITERAL;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_STRING_LITERAL;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_TAG;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.LINE_TERMINATOR;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.WHITESPACE;
+import static info.codesaway.bex.parsing.BEXParsingState.IN_EXPRESSION_BLOCK;
+import static info.codesaway.bex.parsing.BEXParsingState.IN_LINE_COMMENT;
+import static info.codesaway.bex.parsing.BEXParsingState.IN_MULTILINE_COMMENT;
+import static info.codesaway.bex.parsing.BEXParsingState.IN_SECONDARY_MULTILINE_COMMENT;
+import static info.codesaway.bex.parsing.BEXParsingState.IN_SECONDARY_STRING_LITERAL;
+import static info.codesaway.bex.parsing.BEXParsingState.IN_STRING_LITERAL;
+import static info.codesaway.bex.parsing.BEXParsingState.IN_TAG;
+import static info.codesaway.bex.parsing.BEXParsingState.LINE_TERMINATOR;
+import static info.codesaway.bex.parsing.BEXParsingState.WHITESPACE;
+import static info.codesaway.bex.util.BEXUtilities.index;
 
 import java.util.ArrayDeque;
 
 import info.codesaway.bex.ImmutableIntRangeMap;
+import info.codesaway.bex.Indexed;
 import info.codesaway.bex.IntBEXRange;
 
-public class BEXMatchingUtilities {
+public class BEXParsingUtilities {
 	public static String stringChar(final String text, final int index) {
 		return text.substring(index, index + 1);
 	}
@@ -171,11 +173,22 @@ public class BEXMatchingUtilities {
 	}
 
 	/**
-	 * Parses the specified Java text and determines the <code>BEXMatchingTextState</code>s
-	 * @param text the Java text
-	 * @return an unmodifiable map from the range to the BEXMatchingTextState
+	 *
+	 * @param parsingState
+	 * @param parent
+	 * @return
+	 * @since 0.13
 	 */
-	public static ImmutableIntRangeMap<MatchingStateOption> parseJavaTextStates(final CharSequence text) {
+	public static ParsingState parsingState(final ParsingState parsingState, final Indexed<ParsingState> parent) {
+		return new ParsingStateValue(parsingState, parent);
+	}
+
+	/**
+	 * Parses the specified Java text and determines the <code>ParsingState</code>s
+	 * @param text the Java text
+	 * @return an unmodifiable map from the range to the ParsingState
+	 */
+	public static ImmutableIntRangeMap<ParsingState> parseJavaTextStates(final CharSequence text) {
 		if (text.length() == 0) {
 			return ImmutableIntRangeMap.of();
 		}
@@ -186,8 +199,8 @@ public class BEXMatchingUtilities {
 		// * In String literal
 		// * Other stuff?
 
-		ImmutableIntRangeMap.Builder<MatchingStateOption> builder = ImmutableIntRangeMap.builder();
-		ArrayDeque<MatchingStateOption> stateStack = new ArrayDeque<>();
+		ImmutableIntRangeMap.Builder<ParsingState> builder = ImmutableIntRangeMap.builder();
+		ArrayDeque<ParsingState> stateStack = new ArrayDeque<>();
 		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
 
 		for (int i = 0; i < text.length(); i++) {
@@ -242,19 +255,15 @@ public class BEXMatchingUtilities {
 					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
 				}
 			} else if (c == '/' && nextChar(text, i) == '/') {
-				stateStack.push(IN_LINE_COMMENT);
-				startTextInfoStack.push(i);
+				pushParsingState(IN_LINE_COMMENT, i, stateStack, startTextInfoStack, startTextInfoStack);
 				i++;
 			} else if (c == '/' && nextChar(text, i) == '*') {
-				stateStack.push(IN_MULTILINE_COMMENT);
-				startTextInfoStack.push(i);
+				pushParsingState(IN_MULTILINE_COMMENT, i, stateStack, startTextInfoStack, startTextInfoStack);
 				i++;
 			} else if (c == '"') {
-				stateStack.push(IN_STRING_LITERAL);
-				startTextInfoStack.push(i);
+				pushParsingState(IN_STRING_LITERAL, i, stateStack, startTextInfoStack, startTextInfoStack);
 			} else if (c == '\'') {
-				stateStack.push(IN_SECONDARY_STRING_LITERAL);
-				startTextInfoStack.push(i);
+				pushParsingState(IN_SECONDARY_STRING_LITERAL, i, stateStack, startTextInfoStack, startTextInfoStack);
 			} else if (c == '\n' || c == '\r') {
 				if (c == '\r' && nextChar(text, i) == '\n') {
 					builder.put(IntBEXRange.closed(i, i + 1), LINE_TERMINATOR);
@@ -296,12 +305,11 @@ public class BEXMatchingUtilities {
 	}
 
 	/**
-	 * Parses the specified JSP text and determines the <code>BEXMatchingTextState</code>s
+	 * Parses the specified JSP text and determines the <code>ParsingState</code>s
 	 * @param text the JSP text
-	 * @return an unmodifiable map from the range to the BEXMatchingTextState
+	 * @return an unmodifiable map from the range to the ParsingState
 	 */
-	// TODO: need to fix and then update BEX
-	public static ImmutableIntRangeMap<MatchingStateOption> parseJSPTextStates(final CharSequence text) {
+	public static ImmutableIntRangeMap<ParsingState> parseJSPTextStates(final CharSequence text) {
 		// TODO: used Java as a basic and need to enhance
 		// For example, to handle JSP Expression
 		// https://www.tutorialspoint.com/jsp/jsp_syntax.htm
@@ -332,9 +340,10 @@ public class BEXMatchingUtilities {
 
 		// Reference: https://www.tutorialspoint.com/jsp/jsp_syntax.htm
 
-		ImmutableIntRangeMap.Builder<MatchingStateOption> builder = ImmutableIntRangeMap.builder();
-		ArrayDeque<MatchingStateOption> stateStack = new ArrayDeque<>();
+		ImmutableIntRangeMap.Builder<ParsingState> builder = ImmutableIntRangeMap.builder();
+		ArrayDeque<ParsingState> stateStack = new ArrayDeque<>();
 		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
+		ArrayDeque<Integer> parentStartStack = new ArrayDeque<>();
 
 		boolean isJava = false;
 		// HTML tag
@@ -345,7 +354,19 @@ public class BEXMatchingUtilities {
 		for (int i = 0; i < text.length(); i++) {
 			char c = text.charAt(i);
 
-			if (stateStack.peek() == IN_STRING_LITERAL) {
+			//			System.out.printf("Index %s%n"
+			//					+ "Char %s%n"
+			//					+ "States %s%n"
+			//					+ "Start %s%n"
+			//					+ "Parent %s%n", i, c, stateStack, startTextInfoStack, parentStartStack);
+
+			ParsingState currentState = stateStack.peek();
+
+			if (currentState instanceof ParsingStateValue) {
+				currentState = ((ParsingStateValue) currentState).getParsingState();
+			}
+
+			if (currentState == IN_STRING_LITERAL) {
 				if (c == '\\') {
 					// Escape next character
 					if (nextChar(text, i) == '\0') {
@@ -354,9 +375,10 @@ public class BEXMatchingUtilities {
 
 					i++;
 				} else if (c == '"') {
-					popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
-				} else if (hasText(text, i, "<%=")) {
-					pushNextLevelMatchingStateOption(IN_EXPRESSION_BLOCK, i, builder, stateStack, startTextInfoStack);
+					popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
+				} else if (isTag && hasText(text, i, "<%=")) {
+					pushNextLevelParsingState(IN_EXPRESSION_BLOCK, i, builder, stateStack, startTextInfoStack,
+							parentStartStack);
 					i += 2;
 
 					isJava = true;
@@ -364,7 +386,7 @@ public class BEXMatchingUtilities {
 
 				// Other characters don't matter??
 				// TODO: handle unicode and other escaping in String literal
-			} else if (stateStack.peek() == IN_SECONDARY_STRING_LITERAL) {
+			} else if (currentState == IN_SECONDARY_STRING_LITERAL) {
 				if (c == '\\') {
 					// Escape next character
 					if (nextChar(text, i) == '\0') {
@@ -373,9 +395,10 @@ public class BEXMatchingUtilities {
 
 					i++;
 				} else if (c == '\'') {
-					popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
+					popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
 				} else if (hasText(text, i, "<%=")) {
-					pushNextLevelMatchingStateOption(IN_EXPRESSION_BLOCK, i, builder, stateStack, startTextInfoStack);
+					pushNextLevelParsingState(IN_EXPRESSION_BLOCK, i, builder, stateStack, startTextInfoStack,
+							parentStartStack);
 					i += 2;
 				}
 
@@ -386,83 +409,77 @@ public class BEXMatchingUtilities {
 			} else if (isJava && hasText(text, i, "%>")) {
 				isJava = false;
 
-				if (stateStack.peek() != IN_EXPRESSION_BLOCK) {
+				if (currentState != IN_EXPRESSION_BLOCK) {
 					// End the current state on the prior character
-					popMatchingStateOption(i - 1, builder, stateStack, startTextInfoStack);
+					popParsingState(i - 1, builder, stateStack, startTextInfoStack, parentStartStack);
 				}
 
 				i++;
-				popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
-			} else if (isJava && stateStack.peek() == IN_LINE_COMMENT) {
+				popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
+			} else if (isJava && currentState == IN_LINE_COMMENT) {
 				if (c == '\n' || c == '\r') {
-					popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
+					popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
 					//					int startTextInfo = startTextInfoStack.pop();
 					//					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.pop());
 				}
 				// Other characters don't matter?
-			} else if (isJava && stateStack.peek() == IN_MULTILINE_COMMENT) {
+			} else if (isJava && currentState == IN_MULTILINE_COMMENT) {
 				if (hasText(text, i, "*/")) {
 					i++;
-					popMatchingStateOption(i, builder, stateStack, startTextInfoStack);//					int startTextInfo = startTextInfoStack.pop();
+					popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
+					//					int startTextInfo = startTextInfoStack.pop();
 					//					builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
 				}
-			} else if (stateStack.peek() == IN_MULTILINE_COMMENT) {
+			} else if (currentState == IN_MULTILINE_COMMENT) {
 				if (hasText(text, i, "--%>")) {
 					i += 3;
-					popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
+					popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
 				}
-			} else if (stateStack.peek() == IN_SECONDARY_MULTILINE_COMMENT) {
+			} else if (currentState == IN_SECONDARY_MULTILINE_COMMENT) {
 				if (hasText(text, i, "-->")) {
 					i += 2;
-					popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
+					popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
 				}
 			} else if (isJava && c == '/' && nextChar(text, i) == '/') {
-				pushNextLevelMatchingStateOption(IN_LINE_COMMENT, i, builder, stateStack, startTextInfoStack);
-				//				stateStack.push(IN_LINE_COMMENT);
-				//				startTextInfoStack.push(i);
+				pushNextLevelParsingState(IN_LINE_COMMENT, i, builder, stateStack, startTextInfoStack,
+						parentStartStack);
 				i++;
 			} else if (isJava && c == '/' && nextChar(text, i) == '*') {
-				pushNextLevelMatchingStateOption(IN_MULTILINE_COMMENT, i, builder, stateStack, startTextInfoStack);
-				//				stateStack.push(IN_MULTILINE_COMMENT);
-				//				startTextInfoStack.push(i);
+				pushNextLevelParsingState(IN_MULTILINE_COMMENT, i, builder, stateStack, startTextInfoStack,
+						parentStartStack);
 				i++;
 			} else if (c == '"' && isTag) {
-				pushNextLevelMatchingStateOption(IN_STRING_LITERAL, i, builder, stateStack, startTextInfoStack);
+				pushNextLevelParsingState(IN_STRING_LITERAL, i, builder, stateStack, startTextInfoStack,
+						parentStartStack);
 			} else if (c == '\'' && isTag) {
-				pushNextLevelMatchingStateOption(IN_SECONDARY_STRING_LITERAL, i, builder, stateStack,
-						startTextInfoStack);
+				pushNextLevelParsingState(IN_SECONDARY_STRING_LITERAL, i, builder, stateStack,
+						startTextInfoStack, parentStartStack);
 			} else if (c == '"' && isJava) {
-				stateStack.push(IN_STRING_LITERAL);
-				startTextInfoStack.push(i);
+				pushParsingState(IN_STRING_LITERAL, i, stateStack, startTextInfoStack, parentStartStack);
 			} else if (c == '\'' && isJava) {
-				stateStack.push(IN_SECONDARY_STRING_LITERAL);
-				startTextInfoStack.push(i);
+				pushParsingState(IN_SECONDARY_STRING_LITERAL, i, stateStack, startTextInfoStack, parentStartStack);
 			} else if (hasText(text, i, "<%--")) {
-				stateStack.push(IN_MULTILINE_COMMENT);
-				startTextInfoStack.push(i);
+				pushParsingState(IN_MULTILINE_COMMENT, i, stateStack, startTextInfoStack, parentStartStack);
 				i += 3;
 			} else if (hasText(text, i, "<!--")) {
-				stateStack.push(IN_SECONDARY_MULTILINE_COMMENT);
-				startTextInfoStack.push(i);
+				pushParsingState(IN_SECONDARY_MULTILINE_COMMENT, i, stateStack, startTextInfoStack, parentStartStack);
 				i += 3;
 			} else if (hasText(text, i, "<%=")) {
-				stateStack.push(IN_EXPRESSION_BLOCK);
-				startTextInfoStack.push(i);
+				// In Java expression
+				pushParsingState(IN_EXPRESSION_BLOCK, i, stateStack, startTextInfoStack, parentStartStack);
 				i += 2;
 				isJava = true;
 			} else if (hasText(text, i, "<%")) {
-				// TODO: in Java scriptlet
-				stateStack.push(IN_EXPRESSION_BLOCK);
-				startTextInfoStack.push(i);
+				// In Java scriptlet
+				pushParsingState(IN_EXPRESSION_BLOCK, i, stateStack, startTextInfoStack, parentStartStack);
 				i++;
 				isJava = true;
 			} else if (c == '<' && !isJava && !isTag) {
-				stateStack.push(IN_TAG);
-				startTextInfoStack.push(i);
+				pushParsingState(IN_TAG, i, stateStack, startTextInfoStack, parentStartStack);
 				isTag = true;
 			} else if (c == '>' && isTag) {
 				isTag = false;
-				popMatchingStateOption(i, builder, stateStack, startTextInfoStack);
+				popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
 			}
 		}
 
@@ -470,6 +487,7 @@ public class BEXMatchingUtilities {
 			// TODO: what if there are multiple entries?
 			// (this would suggest improperly formatted code)
 			int startTextInfo = startTextInfoStack.pop();
+			// TODO: does there need to be a parent?
 			builder.put(IntBEXRange.of(startTextInfo, text.length()), stateStack.pop());
 		}
 
@@ -477,11 +495,13 @@ public class BEXMatchingUtilities {
 	}
 
 	/**
-	 * Parses the specified SQL text and determines the <code>BEXMatchingTextState</code>s
+	 * Parses the specified SQL text and determines the <code>ParsingState</code>s
 	 * @param text the SQL text
-	 * @return an unmodifiable map from the range to the BEXMatchingTextState
+	 * @return an unmodifiable map from the range to the ParsingState
 	 */
-	public static ImmutableIntRangeMap<MatchingStateOption> parseSQLTextStates(final CharSequence text) {
+	public static ImmutableIntRangeMap<ParsingState> parseSQLTextStates(final CharSequence text) {
+		// TODO: add support for parent parsing state (such as for nested block comments)
+
 		if (text.length() == 0) {
 			return ImmutableIntRangeMap.of();
 		}
@@ -492,8 +512,8 @@ public class BEXMatchingUtilities {
 		// * In String literal
 		// * Other stuff?
 
-		ImmutableIntRangeMap.Builder<MatchingStateOption> builder = ImmutableIntRangeMap.builder();
-		ArrayDeque<MatchingStateOption> stateStack = new ArrayDeque<>();
+		ImmutableIntRangeMap.Builder<ParsingState> builder = ImmutableIntRangeMap.builder();
+		ArrayDeque<ParsingState> stateStack = new ArrayDeque<>();
 		ArrayDeque<Integer> startTextInfoStack = new ArrayDeque<>();
 
 		for (int i = 0; i < text.length(); i++) {
@@ -591,10 +611,9 @@ public class BEXMatchingUtilities {
 		return builder.build();
 	}
 
-	private static void pushNextLevelMatchingStateOption(final MatchingStateOption matchingStateOption, final int i,
-			final ImmutableIntRangeMap.Builder<MatchingStateOption> builder,
-			final ArrayDeque<MatchingStateOption> stateStack,
-			final ArrayDeque<Integer> startTextInfoStack) {
+	private static void pushNextLevelParsingState(final ParsingState parsingState, final int i,
+			final ImmutableIntRangeMap.Builder<ParsingState> builder, final ArrayDeque<ParsingState> stateStack,
+			final ArrayDeque<Integer> startTextInfoStack, final ArrayDeque<Integer> parentStartStack) {
 		// Going into second level, so end current level
 		int startTextInfo = startTextInfoStack.pop();
 		if (startTextInfo != i) {
@@ -603,20 +622,34 @@ public class BEXMatchingUtilities {
 			builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
 		}
 
-		stateStack.push(matchingStateOption);
-		startTextInfoStack.push(i);
+		//		System.out.println("Parent: " + parentStartStack);
+		Indexed<ParsingState> parent = index(parentStartStack.peek(), stateStack.peek());
+		ParsingState newParsingState = parsingState(parsingState, parent);
+		pushParsingState(newParsingState, i, stateStack, startTextInfoStack, parentStartStack);
 	}
 
-	private static void popMatchingStateOption(final int i,
-			final ImmutableIntRangeMap.Builder<MatchingStateOption> builder,
-			final ArrayDeque<MatchingStateOption> stateStack,
-			final ArrayDeque<Integer> startTextInfoStack) {
+	private static void pushParsingState(final ParsingState parsingState, final int i,
+			final ArrayDeque<ParsingState> stateStack,
+			final ArrayDeque<Integer> startTextInfoStack, final ArrayDeque<Integer> parentStartStack) {
+		stateStack.push(parsingState);
+		startTextInfoStack.push(i);
+		parentStartStack.push(i);
+
+		//		System.out.println("Parent after pushParsingState: " + parentStartStack);
+	}
+
+	private static void popParsingState(final int i, final ImmutableIntRangeMap.Builder<ParsingState> builder,
+			final ArrayDeque<ParsingState> stateStack, final ArrayDeque<Integer> startTextInfoStack,
+			final ArrayDeque<Integer> parentStartStack) {
 		int startTextInfo = startTextInfoStack.pop();
 		builder.put(IntBEXRange.closed(startTextInfo, i), stateStack.pop());
+		parentStartStack.pop();
 
 		if (!stateStack.isEmpty()) {
 			// Inside a first level, so add startTextInfo for after expression blocks ends
 			startTextInfoStack.push(i + 1);
 		}
+
+		//		System.out.println("Parent after popParsingState: " + parentStartStack);
 	}
 }

@@ -1,6 +1,6 @@
 package info.codesaway.bex.matching;
 
-import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.hasText;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 

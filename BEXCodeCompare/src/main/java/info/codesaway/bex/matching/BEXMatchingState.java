@@ -1,6 +1,6 @@
 package info.codesaway.bex.matching;
 
-import static info.codesaway.bex.matching.BEXMatchingStateOption.MISMATCHED_DELIMITERS;
+import static info.codesaway.bex.parsing.BEXParsingState.MISMATCHED_DELIMITERS;
 import static info.codesaway.bex.util.BEXUtilities.not;
 
 import java.util.ArrayList;
@@ -11,26 +11,28 @@ import java.util.HashSet;
 import java.util.Set;
 
 import info.codesaway.bex.BEXPair;
+import info.codesaway.bex.parsing.BEXParsingState;
+import info.codesaway.bex.parsing.ParsingState;
 
 final class BEXMatchingState {
 	private final int position;
 	private final Collection<BEXPair<String>> delimiters;
 	//	private final String brackets;
-	private final Set<MatchingStateOption> options;
+	private final Set<ParsingState> options;
 
 	public static final BEXMatchingState DEFAULT = new BEXMatchingState(-1, Collections.emptyList());
 
 	BEXMatchingState(final int position, final Collection<BEXPair<String>> delimiters,
-			final BEXMatchingStateOption... options) {
+			final BEXParsingState... options) {
 		this.position = position;
 
 		this.delimiters = delimiters.isEmpty()
 				? Collections.emptyList()
 				: Collections.unmodifiableCollection(new ArrayList<>(delimiters));
 
-		EnumSet<BEXMatchingStateOption> optionSet = EnumSet.noneOf(BEXMatchingStateOption.class);
+		EnumSet<BEXParsingState> optionSet = EnumSet.noneOf(BEXParsingState.class);
 
-		for (BEXMatchingStateOption option : options) {
+		for (BEXParsingState option : options) {
 			if (option != null) {
 				optionSet.add(option);
 			}
@@ -40,16 +42,16 @@ final class BEXMatchingState {
 	}
 
 	BEXMatchingState(final int position, final Collection<BEXPair<String>> delimiters,
-			final MatchingStateOption... options) {
+			final ParsingState... options) {
 		this.position = position;
 
 		this.delimiters = delimiters.isEmpty()
 				? Collections.emptyList()
 				: Collections.unmodifiableCollection(new ArrayList<>(delimiters));
 
-		Set<MatchingStateOption> optionSet = new HashSet<>();
+		Set<ParsingState> optionSet = new HashSet<>();
 
-		for (MatchingStateOption option : options) {
+		for (ParsingState option : options) {
 			if (option != null) {
 				optionSet.add(option);
 			}
@@ -66,7 +68,7 @@ final class BEXMatchingState {
 		return this.delimiters;
 	}
 
-	public Set<MatchingStateOption> getOptions() {
+	public Set<ParsingState> getOptions() {
 		return this.options;
 	}
 
@@ -90,13 +92,13 @@ final class BEXMatchingState {
 		return this.isValid(expectedPosition, Collections.emptySet());
 	}
 
-	public boolean isValid(final int expectedPosition, final Set<MatchingStateOption> ignoreOptions) {
+	public boolean isValid(final int expectedPosition, final Set<ParsingState> ignoreOptions) {
 		return (this.position == expectedPosition || expectedPosition == -1)
 				&& this.delimiters.isEmpty()
 				&& this.isOptionsEmpty(ignoreOptions);
 	}
 
-	private boolean isOptionsEmpty(final Set<MatchingStateOption> ignoreOptions) {
+	private boolean isOptionsEmpty(final Set<ParsingState> ignoreOptions) {
 		if (ignoreOptions.isEmpty() || this.options.isEmpty()) {
 			return this.options.isEmpty();
 		} else {
