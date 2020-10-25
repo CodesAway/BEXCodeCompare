@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import info.codesaway.bex.IntBEXRange;
+import info.codesaway.bex.parsing.BEXString;
 
 class BEXStringTest {
 

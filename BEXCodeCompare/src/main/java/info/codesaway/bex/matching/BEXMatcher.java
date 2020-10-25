@@ -2,12 +2,12 @@ package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.DEFAULT;
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.STOP_WHEN_VALID;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.MISMATCHED_DELIMITERS;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.hasNextChar;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.isWordCharacter;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.nextChar;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.parseJavaTextStates;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.hasNextChar;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.hasText;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.isWordCharacter;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.nextChar;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.parseJavaTextStates;
+import static info.codesaway.bex.parsing.BEXParsingState.MISMATCHED_DELIMITERS;
 import static info.codesaway.bex.util.BEXUtilities.entry;
 import static info.codesaway.bex.util.BEXUtilities.getSubstring;
 
@@ -34,6 +34,12 @@ import info.codesaway.bex.ImmutableIntRangeMap;
 import info.codesaway.bex.IntBEXRange;
 import info.codesaway.bex.IntRange;
 import info.codesaway.bex.MutableIntBEXPair;
+import info.codesaway.bex.parsing.BEXParsingLanguage;
+import info.codesaway.bex.parsing.BEXString;
+import info.codesaway.bex.parsing.ParsingDelimiterResult;
+import info.codesaway.bex.parsing.ParsingDelimiterState;
+import info.codesaway.bex.parsing.ParsingLanguage;
+import info.codesaway.bex.parsing.ParsingState;
 import info.codesaway.util.regex.Matcher;
 import info.codesaway.util.regex.Pattern;
 
@@ -55,12 +61,12 @@ public final class BEXMatcher implements BEXMatchResult {
 	private CharSequence text;
 
 	// TODO: should I add a public getter for language?
-	private MatchingLanguage language;
+	private ParsingLanguage language;
 
 	/**
 	 * Map from range to text state
 	 */
-	private ImmutableIntRangeMap<MatchingStateOption> textStateMap;
+	private ImmutableIntRangeMap<ParsingState> textStateMap;
 
 	/**
 	 * Offset used when resolving indexes in textStateMap (allows sharing textStateMap such as in BEXString)
@@ -85,11 +91,11 @@ public final class BEXMatcher implements BEXMatchResult {
 	private Map<String, List<IntBEXRange>> multipleValuesMap = Collections.emptyMap();
 
 	BEXMatcher(final BEXPattern parent, final CharSequence text) {
-		this(parent, text, BEXMatchingLanguage.JAVA, parseJavaTextStates(text), 0);
+		this(parent, text, BEXParsingLanguage.JAVA, parseJavaTextStates(text), 0);
 	}
 
-	BEXMatcher(final BEXPattern parent, final CharSequence text, final MatchingLanguage language,
-			final ImmutableIntRangeMap<MatchingStateOption> textStateMap, final int offset) {
+	BEXMatcher(final BEXPattern parent, final CharSequence text, final ParsingLanguage language,
+			final ImmutableIntRangeMap<ParsingState> textStateMap, final int offset) {
 		this.parentPattern = parent;
 		this.text = text;
 		this.language = language;
@@ -309,7 +315,7 @@ public final class BEXMatcher implements BEXMatchResult {
 			if (i == 0) {
 				// TODO: check that state is valid
 				int startWithOffset = matcher.start() + this.offset;
-				Entry<IntRange, MatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
+				Entry<IntRange, ParsingState> entry = this.textStateMap.getEntry(startWithOffset);
 
 				boolean isValid;
 				if (entry != null && startWithOffset != entry.getKey().getStart()
@@ -340,7 +346,7 @@ public final class BEXMatcher implements BEXMatchResult {
 			}
 
 			int startWithOffset = start + this.offset;
-			Entry<IntRange, MatchingStateOption> entry = this.textStateMap.getEntry(startWithOffset);
+			Entry<IntRange, ParsingState> entry = this.textStateMap.getEntry(startWithOffset);
 
 			BEXMatchingState initialState;
 			if (entry != null && startWithOffset != entry.getKey().getStart()
@@ -558,7 +564,7 @@ public final class BEXMatcher implements BEXMatchResult {
 		// TODO: how to handle multiple levels? Currently, only get top most level
 		// For example, JSP expression within String literal gets JSP expression, but doesn't know about String literal outside
 
-		MatchingStateOption stateOption = null;
+		ParsingState stateOption = null;
 
 		if (state != null) {
 			delimiters.addAll(state.getDelimiters());
@@ -568,7 +574,7 @@ public final class BEXMatcher implements BEXMatchResult {
 
 		for (int i = start; i < end; i++) {
 			int indexWithOffset = i + this.offset;
-			Entry<IntRange, MatchingStateOption> entry = this.textStateMap.getEntry(indexWithOffset);
+			Entry<IntRange, ParsingState> entry = this.textStateMap.getEntry(indexWithOffset);
 
 			if (entry != null && !entry.getValue().isCode()) {
 				// Has a state option
@@ -589,15 +595,15 @@ public final class BEXMatcher implements BEXMatchResult {
 					delimiters.add(startDelimiter.get());
 					i += startDelimiter.get().getLeft().length() - 1;
 				} else {
-					MatchingDelimiterState delimiterState = this.language.findEndDelimiter(delimiters.peekLast(),
+					ParsingDelimiterState delimiterState = this.language.findEndDelimiter(delimiters.peekLast(),
 							this.text, i, settings);
-					MatchingDelimiterResult result = delimiterState.getResult();
+					ParsingDelimiterResult result = delimiterState.getResult();
 
-					if (result == MatchingDelimiterResult.MISMATCHED) {
+					if (result == ParsingDelimiterResult.MISMATCHED) {
 						// XXX: should position be after the mismatch - so can try again at this point
 						return new BEXMatchingState(i + delimiterState.getDelimiter().length(), delimiters,
 								MISMATCHED_DELIMITERS);
-					} else if (result == MatchingDelimiterResult.FOUND) {
+					} else if (result == ParsingDelimiterResult.FOUND) {
 						// Remove last delimiter
 						delimiters.removeLast();
 
@@ -770,7 +776,7 @@ public final class BEXMatcher implements BEXMatchResult {
 	 */
 	public BEXMatcher reset(final CharSequence input) {
 		this.text = input;
-		this.language = BEXMatchingLanguage.JAVA;
+		this.language = BEXParsingLanguage.JAVA;
 		this.textStateMap = parseJavaTextStates(input);
 		this.offset = 0;
 		return this.reset();

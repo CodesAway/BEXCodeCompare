@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Map.Entry;
 
 import info.codesaway.bex.IntBEXRange;
+import info.codesaway.bex.parsing.BEXParsingLanguage;
+import info.codesaway.bex.parsing.BEXString;
+import info.codesaway.bex.parsing.ParsingLanguage;
 
 public final class MatcherTestHelper {
 	private MatcherTestHelper() {
@@ -26,7 +29,7 @@ public final class MatcherTestHelper {
 		assertFalse(bexMatcher.find(), "Should not find match");
 	}
 
-	static void testNoBEXMatch(final String pattern, final String text, final BEXMatchingLanguage language,
+	static void testNoBEXMatch(final String pattern, final String text, final BEXParsingLanguage language,
 			final BEXPatternFlag... flags) {
 		BEXPattern bexPattern = BEXPattern.compile(pattern, flags);
 		BEXMatcher bexMatcher = bexPattern.matcher(new BEXString(text, language));
@@ -47,7 +50,7 @@ public final class MatcherTestHelper {
 		return bexMatcher;
 	}
 
-	static BEXMatcher testJustBEXMatch(final String pattern, final String text, final MatchingLanguage language,
+	static BEXMatcher testJustBEXMatch(final String pattern, final String text, final ParsingLanguage language,
 			final BEXPatternFlag... flags) {
 		BEXPattern bexPattern = BEXPattern.compile(pattern, flags);
 		BEXString bexString = new BEXString(text, language);

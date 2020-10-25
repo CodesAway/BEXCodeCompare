@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
+import info.codesaway.bex.parsing.BEXParsingLanguage;
+
 public class BEXJSPMatcherTest {
 	@Test
 	void testExpressionInString() {
@@ -22,7 +24,7 @@ public class BEXJSPMatcherTest {
 
 	private static BEXMatcher testJustBEXJSPMatch(final String pattern, final String text,
 			final BEXPatternFlag... flags) {
-		return testJustBEXMatch(pattern, text, BEXMatchingLanguage.JSP, flags);
+		return testJustBEXMatch(pattern, text, BEXParsingLanguage.JSP, flags);
 	}
 
 	/**

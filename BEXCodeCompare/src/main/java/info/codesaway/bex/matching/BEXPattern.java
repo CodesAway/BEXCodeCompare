@@ -2,13 +2,13 @@ package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.MATCH_ANGLE_BRACKETS;
 import static info.codesaway.bex.matching.BEXGroupMatchSetting.OPTIONAL;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.currentChar;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.hasNextChar;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.hasText;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.isWordCharacter;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.nextChar;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.previousChar;
-import static info.codesaway.bex.matching.BEXMatchingUtilities.stringChar;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.currentChar;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.hasNextChar;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.hasText;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.isWordCharacter;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.nextChar;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.previousChar;
+import static info.codesaway.bex.parsing.BEXParsingUtilities.stringChar;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import info.codesaway.bex.parsing.BEXString;
 import info.codesaway.util.regex.Pattern;
 
 public final class BEXPattern {

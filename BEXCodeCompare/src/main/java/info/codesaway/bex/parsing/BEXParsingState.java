@@ -1,8 +1,8 @@
-package info.codesaway.bex.matching;
+package info.codesaway.bex.parsing;
 
 import static info.codesaway.bex.util.BEXUtilities.in;
 
-public enum BEXMatchingStateOption implements MatchingStateOption {
+public enum BEXParsingState implements ParsingState {
 	// Code
 	IN_EXPRESSION_BLOCK, IN_TAG,
 	// Comment

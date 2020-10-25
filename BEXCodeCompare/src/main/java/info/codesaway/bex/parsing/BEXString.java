@@ -1,4 +1,4 @@
-package info.codesaway.bex.matching;
+package info.codesaway.bex.parsing;
 
 import java.util.Map.Entry;
 
@@ -10,12 +10,12 @@ import info.codesaway.bex.IntRange;
 public final class BEXString implements CharSequence {
 	private final String text;
 
-	private final MatchingLanguage language;
+	private final ParsingLanguage language;
 
 	/**
 	 * Map from range to text state
 	 */
-	private final ImmutableIntRangeMap<MatchingStateOption> textStateMap;
+	private final ImmutableIntRangeMap<ParsingState> textStateMap;
 
 	/**
 	 * The offset, so can resolve indexes in text to indexes in textStateMap (such as if use BEXString.substring)
@@ -23,19 +23,19 @@ public final class BEXString implements CharSequence {
 	private final int offset;
 
 	/**
-	 * Creates a BEXString from the specified text using the {@link BEXMatchingUtilities#parseJavaTextStates(CharSequence)}
+	 * Creates a BEXString from the specified text using the {@link BEXParsingUtilities#parseJavaTextStates(CharSequence)}
 	 * @param text the Java source code
 	 */
 	public BEXString(final String text) {
-		this(text, BEXMatchingLanguage.JAVA);
+		this(text, BEXParsingLanguage.JAVA);
 	}
 
-	public BEXString(final String text, final MatchingLanguage language) {
+	public BEXString(final String text, final ParsingLanguage language) {
 		this(text, language, language.parse(text), 0);
 	}
 
-	private BEXString(final String text, final MatchingLanguage language,
-			final ImmutableIntRangeMap<MatchingStateOption> textStateMap,
+	private BEXString(final String text, final ParsingLanguage language,
+			final ImmutableIntRangeMap<ParsingState> textStateMap,
 			final int offset) {
 		this.text = text;
 		this.language = language;
@@ -47,11 +47,11 @@ public final class BEXString implements CharSequence {
 		return this.text;
 	}
 
-	public MatchingLanguage getLanguage() {
+	public ParsingLanguage getLanguage() {
 		return this.language;
 	}
 
-	public ImmutableIntRangeMap<MatchingStateOption> getTextStateMap() {
+	public ImmutableIntRangeMap<ParsingState> getTextStateMap() {
 		return this.textStateMap;
 	}
 
@@ -119,7 +119,7 @@ public final class BEXString implements CharSequence {
 		int inclusiveStart = range.getInclusiveStart();
 		int inclusiveEnd = range.getInclusiveEnd();
 
-		ImmutableIntRangeMap<MatchingStateOption> textStateMap = this.getTextStateMap();
+		ImmutableIntRangeMap<ParsingState> textStateMap = this.getTextStateMap();
 
 		// Determine when the comment ends
 		// Can combine multiple consecutive comments into this
@@ -127,7 +127,7 @@ public final class BEXString implements CharSequence {
 		boolean hasComment = false;
 
 		do {
-			Entry<IntRange, MatchingStateOption> entry = textStateMap.getEntry(end);
+			Entry<IntRange, ParsingState> entry = textStateMap.getEntry(end);
 
 			if (entry == null) {
 				return false;
@@ -161,14 +161,14 @@ public final class BEXString implements CharSequence {
 		int inclusiveStart = range.getInclusiveStart();
 		int inclusiveEnd = range.getInclusiveEnd();
 
-		ImmutableIntRangeMap<MatchingStateOption> textStateMap = this.getTextStateMap();
+		ImmutableIntRangeMap<ParsingState> textStateMap = this.getTextStateMap();
 
 		// Determine when the whitespace ends
 		// Can combine multiple consecutive whitespace into this
 		int end = inclusiveStart;
 
 		do {
-			Entry<IntRange, MatchingStateOption> entry = textStateMap.getEntry(end);
+			Entry<IntRange, ParsingState> entry = textStateMap.getEntry(end);
 
 			if (entry == null || !entry.getValue().isWhitespace()) {
 				return false;
