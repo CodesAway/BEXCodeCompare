@@ -147,4 +147,28 @@ class BEXStringTest {
 
 		assertFalse(bexString.isComment(range, false));
 	}
+
+	@Test
+	void testCommentOutWithLeadingAndTrailingSpaces() {
+		String text = "    /*  + \" AND (something \"\r\n" +
+				"+ \" OR \"\r\n" +
+				"+ \" something else \" */ /*block comment*/     //comment   \r\n          ";
+
+		BEXString bexString = new BEXString(text);
+
+		IntBEXRange range = IntBEXRange.of(0, text.length());
+
+		assertTrue(bexString.isComment(range));
+	}
+
+	@Test
+	void testOnlySpacesNotCommentOut() {
+		String text = "   ";
+
+		BEXString bexString = new BEXString(text);
+
+		IntBEXRange range = IntBEXRange.of(0, text.length());
+
+		assertFalse(bexString.isComment(range));
+	}
 }

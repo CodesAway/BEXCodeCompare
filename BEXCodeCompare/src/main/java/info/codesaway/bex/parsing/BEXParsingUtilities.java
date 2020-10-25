@@ -14,6 +14,7 @@ import static info.codesaway.bex.util.BEXUtilities.index;
 import java.util.ArrayDeque;
 
 import info.codesaway.bex.ImmutableIntRangeMap;
+import info.codesaway.bex.ImmutableIntRangeMap.Builder;
 import info.codesaway.bex.Indexed;
 import info.codesaway.bex.IntBEXRange;
 
@@ -174,13 +175,32 @@ public class BEXParsingUtilities {
 
 	/**
 	 *
-	 * @param parsingState
-	 * @param parent
-	 * @return
+	 * @param parsingState the parsing state
+	 * @param parent the parent (or <code>null</code> if none)
+	 * @return the ParsingState with the parent or the passed ParsingState if parent is <code>null</code>
 	 * @since 0.13
 	 */
 	public static ParsingState parsingState(final ParsingState parsingState, final Indexed<ParsingState> parent) {
+		if (parent == null) {
+			return parsingState;
+		}
+
 		return new ParsingStateValue(parsingState, parent);
+	}
+
+	/**
+	 * Unwraps the parsing state for ParsingStateValue
+	 * @param parsingState the parsing state
+	 * @return the unwrapped parsing state for ParsingStateValue; otherwise, the passed ParsingState
+	 * @since 0.13
+	 */
+	// Issue #108
+	public static ParsingState unwrapParsingState(final ParsingState parsingState) {
+		if (parsingState instanceof ParsingStateValue) {
+			return ((ParsingStateValue) parsingState).getParsingState();
+		}
+
+		return parsingState;
 	}
 
 	/**
@@ -239,13 +259,7 @@ public class BEXParsingUtilities {
 				if (c == '\n' || c == '\r') {
 					int startTextInfo = startTextInfoStack.pop();
 					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.pop());
-
-					if (c == '\r' && nextChar(text, i) == '\n') {
-						builder.put(IntBEXRange.closed(i, i + 1), LINE_TERMINATOR);
-						i++;
-					} else {
-						builder.put(IntBEXRange.singleton(i), LINE_TERMINATOR);
-					}
+					i = handleLineTerminator(i, c, text, builder, stateStack, startTextInfoStack, null);
 				}
 				// Other characters don't matter?
 			} else if (stateStack.peek() == IN_MULTILINE_COMMENT) {
@@ -264,33 +278,8 @@ public class BEXParsingUtilities {
 				pushParsingState(IN_STRING_LITERAL, i, stateStack, startTextInfoStack, startTextInfoStack);
 			} else if (c == '\'') {
 				pushParsingState(IN_SECONDARY_STRING_LITERAL, i, stateStack, startTextInfoStack, startTextInfoStack);
-			} else if (c == '\n' || c == '\r') {
-				if (c == '\r' && nextChar(text, i) == '\n') {
-					builder.put(IntBEXRange.closed(i, i + 1), LINE_TERMINATOR);
-					i++;
-				} else {
-					builder.put(IntBEXRange.singleton(i), LINE_TERMINATOR);
-				}
 			} else if (Character.isWhitespace(c)) {
-				char nextChar = nextChar(text, i);
-				if (hasNextChar(text, i) && Character.isWhitespace(nextChar)) {
-					// Multiple whitespace
-					int start = i;
-
-					do {
-						if (nextChar == '\n' || nextChar == '\r') {
-							break;
-						}
-
-						i++;
-						nextChar = nextChar(text, i);
-					} while (hasNextChar(text, i) && Character.isWhitespace(nextChar));
-
-					builder.put(IntBEXRange.closed(start, i), WHITESPACE);
-				} else {
-					// Single whitespace
-					builder.put(IntBEXRange.singleton(i), WHITESPACE);
-				}
+				i = handleWhitespace(i, c, text, builder, stateStack, startTextInfoStack, null);
 			}
 		}
 
@@ -360,11 +349,7 @@ public class BEXParsingUtilities {
 			//					+ "Start %s%n"
 			//					+ "Parent %s%n", i, c, stateStack, startTextInfoStack, parentStartStack);
 
-			ParsingState currentState = stateStack.peek();
-
-			if (currentState instanceof ParsingStateValue) {
-				currentState = ((ParsingStateValue) currentState).getParsingState();
-			}
+			ParsingState currentState = unwrapParsingState(stateStack.peek());
 
 			if (currentState == IN_STRING_LITERAL) {
 				if (c == '\\') {
@@ -419,6 +404,7 @@ public class BEXParsingUtilities {
 			} else if (isJava && currentState == IN_LINE_COMMENT) {
 				if (c == '\n' || c == '\r') {
 					popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
+					i = handleLineTerminator(i, c, text, builder, stateStack, startTextInfoStack, parentStartStack);
 					//					int startTextInfo = startTextInfoStack.pop();
 					//					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.pop());
 				}
@@ -480,6 +466,8 @@ public class BEXParsingUtilities {
 			} else if (c == '>' && isTag) {
 				isTag = false;
 				popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
+			} else if (Character.isWhitespace(c)) {
+				i = handleWhitespace(i, c, text, builder, stateStack, startTextInfoStack, parentStartStack);
 			}
 		}
 
@@ -557,6 +545,7 @@ public class BEXParsingUtilities {
 				if (c == '\n' || c == '\r') {
 					int startTextInfo = startTextInfoStack.pop();
 					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.pop());
+					i = handleLineTerminator(i, c, text, builder, stateStack, startTextInfoStack, null);
 				}
 				// Other characters don't matter?
 			} else if (stateStack.peek() == IN_MULTILINE_COMMENT) {
@@ -571,15 +560,7 @@ public class BEXParsingUtilities {
 					}
 				} else if (hasText(text, i, "/*")) {
 					// SQL supports nested block comments
-
-					// Going into second level, so end current level
-					int startTextInfo = startTextInfoStack.pop();
-					if (startTextInfo != i) {
-						// Only add if not empty range
-						// Would be empty for example if ended one expression then immediately started next one
-						builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
-					}
-
+					endCurrentLevel(i, builder, stateStack, startTextInfoStack);
 					stateStack.push(IN_MULTILINE_COMMENT);
 					startTextInfoStack.push(i);
 					i++;
@@ -598,6 +579,8 @@ public class BEXParsingUtilities {
 				//			} else if (c == '"') {
 				//				stateStack.push(IN_SECONDARY_STRING_LITERAL);
 				//				startTextInfoStack.push(i);
+			} else if (Character.isWhitespace(c)) {
+				i = handleWhitespace(i, c, text, builder, stateStack, startTextInfoStack, null);
 			}
 		}
 
@@ -614,18 +597,22 @@ public class BEXParsingUtilities {
 	private static void pushNextLevelParsingState(final ParsingState parsingState, final int i,
 			final ImmutableIntRangeMap.Builder<ParsingState> builder, final ArrayDeque<ParsingState> stateStack,
 			final ArrayDeque<Integer> startTextInfoStack, final ArrayDeque<Integer> parentStartStack) {
-		// Going into second level, so end current level
-		int startTextInfo = startTextInfoStack.pop();
-		if (startTextInfo != i) {
-			// Only add if not empty range
-			// Would be empty for example if ended one expression then immediately started next one
-			builder.put(IntBEXRange.of(startTextInfo, i), stateStack.peek());
-		}
-
-		//		System.out.println("Parent: " + parentStartStack);
+		endCurrentLevel(i, builder, stateStack, startTextInfoStack);
 		Indexed<ParsingState> parent = index(parentStartStack.peek(), stateStack.peek());
 		ParsingState newParsingState = parsingState(parsingState, parent);
 		pushParsingState(newParsingState, i, stateStack, startTextInfoStack, parentStartStack);
+	}
+
+	private static void endCurrentLevel(final int index,
+			final ImmutableIntRangeMap.Builder<ParsingState> builder, final ArrayDeque<ParsingState> stateStack,
+			final ArrayDeque<Integer> startTextInfoStack) {
+		// Going into next level, so end current level
+		int startTextInfo = startTextInfoStack.pop();
+		if (startTextInfo != index) {
+			// Only add if not empty range
+			// Would be empty for example if ended one expression then immediately started next one
+			builder.put(IntBEXRange.of(startTextInfo, index), stateStack.peek());
+		}
 	}
 
 	private static void pushParsingState(final ParsingState parsingState, final int i,
@@ -651,5 +638,85 @@ public class BEXParsingUtilities {
 		}
 
 		//		System.out.println("Parent after popParsingState: " + parentStartStack);
+	}
+
+	/**
+	 * Handle line terminator
+	 * @param i current index
+	 * @param c current character
+	 * @param text the text
+	 * @param builder the builder
+	 * @return the new index after handling the line terminator
+	 */
+	private static int handleLineTerminator(final int i, final char c, final CharSequence text,
+			final Builder<ParsingState> builder, final ArrayDeque<ParsingState> stateStack,
+			final ArrayDeque<Integer> startTextInfoStack, final ArrayDeque<Integer> parentStartStack) {
+		int end = (c == '\r' && nextChar(text, i) == '\n') ? i + 1 : i;
+
+		boolean hasParentParsingState = !stateStack.isEmpty();
+		Indexed<ParsingState> parent;
+		if (hasParentParsingState) {
+			endCurrentLevel(i, builder, stateStack, startTextInfoStack);
+			parent = index(parentStartStack.peek(), stateStack.peek());
+		} else {
+			parent = null;
+		}
+
+		builder.put(IntBEXRange.closed(i, end), parsingState(LINE_TERMINATOR, parent));
+
+		if (hasParentParsingState) {
+			startTextInfoStack.push(end + 1);
+		}
+
+		return end;
+	}
+
+	/**
+	 * Handle whitespace
+	 * @param i current index
+	 * @param c current charecter
+	 * @param text the text
+	 * @param builder the builder
+	 * @return the new index after handling the whitespace
+	 */
+	private static int handleWhitespace(final int i, final char c, final CharSequence text,
+			final Builder<ParsingState> builder, final ArrayDeque<ParsingState> stateStack,
+			final ArrayDeque<Integer> startTextInfoStack, final ArrayDeque<Integer> parentStartStack) {
+		if (c == '\n' || c == '\r') {
+			return handleLineTerminator(i, c, text, builder, stateStack, startTextInfoStack, parentStartStack);
+		}
+
+		int start = i;
+		int end = i;
+		char nextChar = nextChar(text, i);
+		if (hasNextChar(text, i) && Character.isWhitespace(nextChar)) {
+			// Multiple whitespace
+
+			do {
+				if (nextChar == '\n' || nextChar == '\r') {
+					break;
+				}
+
+				end++;
+				nextChar = nextChar(text, end);
+			} while (hasNextChar(text, end) && Character.isWhitespace(nextChar));
+		}
+
+		boolean hasParentParsingState = !stateStack.isEmpty();
+		Indexed<ParsingState> parent;
+		if (hasParentParsingState) {
+			endCurrentLevel(start, builder, stateStack, startTextInfoStack);
+			parent = index(parentStartStack.peek(), stateStack.peek());
+		} else {
+			parent = null;
+		}
+
+		builder.put(IntBEXRange.closed(start, end), parsingState(WHITESPACE, parent));
+
+		if (hasParentParsingState) {
+			startTextInfoStack.push(end + 1);
+		}
+
+		return end;
 	}
 }

@@ -2,18 +2,19 @@ package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.IntBEXRange.closed;
 import static info.codesaway.bex.IntBEXRange.closedOpen;
+import static info.codesaway.bex.IntBEXRange.singleton;
 import static info.codesaway.bex.matching.MatcherTestHelper.testJustBEXMatch;
 import static info.codesaway.bex.matching.MatcherTestHelper.testNoBEXMatch;
 import static info.codesaway.bex.parsing.BEXParsingState.IN_LINE_COMMENT;
 import static info.codesaway.bex.parsing.BEXParsingState.IN_MULTILINE_COMMENT;
 import static info.codesaway.bex.parsing.BEXParsingState.IN_STRING_LITERAL;
+import static info.codesaway.bex.parsing.BEXParsingState.LINE_TERMINATOR;
+import static info.codesaway.bex.parsing.BEXParsingState.WHITESPACE;
 import static info.codesaway.bex.util.BEXUtilities.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-import info.codesaway.bex.matching.BEXMatcher;
-import info.codesaway.bex.matching.BEXPatternFlag;
 import info.codesaway.bex.parsing.BEXParsingLanguage;
 import info.codesaway.bex.parsing.BEXString;
 
@@ -51,9 +52,13 @@ public class BEXParseSQLTest {
 
 		assertThat(bexString.getTextStateMap().asMapOfRanges())
 				.containsExactly(
+						entry(closed(0, 1), LINE_TERMINATOR),
 						entry(closedOpen(2, 11), IN_MULTILINE_COMMENT),
 						entry(closed(11, 21), IN_MULTILINE_COMMENT),
-						entry(closed(22, 51), IN_MULTILINE_COMMENT));
+						entry(closed(22, 51), IN_MULTILINE_COMMENT),
+						entry(closed(52, 53), LINE_TERMINATOR),
+						entry(closed(54, 55), LINE_TERMINATOR),
+						entry(singleton(62), WHITESPACE));
 
 		assertThat(bexString.substring(closed(11, 21))).asString()
 				.isEqualTo("/*\r\n" +
@@ -67,7 +72,8 @@ public class BEXParseSQLTest {
 		BEXString bexString = new BEXString(text, BEXParsingLanguage.SQL);
 
 		assertThat(bexString.getTextStateMap().asMapOfRanges())
-				.containsExactly(entry(closedOpen(2, text.length()), IN_LINE_COMMENT));
+				.containsExactly(entry(singleton(1), WHITESPACE),
+						entry(closedOpen(2, text.length()), IN_LINE_COMMENT));
 	}
 
 	@Test
@@ -85,7 +91,10 @@ public class BEXParseSQLTest {
 		BEXString bexString = new BEXString(text, BEXParsingLanguage.SQL);
 
 		assertThat(bexString.getTextStateMap().asMapOfRanges())
-				.containsExactly(entry(closed(7, 13), IN_STRING_LITERAL));
+				.containsExactly(entry(singleton(6), WHITESPACE),
+						entry(closed(7, 13), IN_STRING_LITERAL),
+						entry(singleton(14), WHITESPACE),
+						entry(singleton(17), WHITESPACE));
 	}
 
 	@Test
