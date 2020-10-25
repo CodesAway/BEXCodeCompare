@@ -129,11 +129,11 @@ public final class RangeComparatorBEX {
 
 		if (shouldUseEnhancedCompare) {
 			// Look first for common refactorings, so can group changes together
-			DiffHelper.handleSubstitution(diff, normalizationFunction, JAVA_SEMICOLON, SUBSTITUTION_CONTAINS,
-					new EnhancedForLoopRefactoring(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE, JAVA_UNBOXING, JAVA_CAST,
-					// TODO: think need to move Final check earlier (since noticed didn't pick up as Final was difference (not important)
-					JAVA_FINAL_KEYWORD, JAVA_DIAMOND_OPERATOR,
-					SubstitutionType.LCS_MAX_OPERATOR);
+			// Issue #107 - moved JAVA_FINAL_KEYWORD before SUBSTITUTION_CONTAINS
+			// so that adding / removing the final keyword is seen as a non-important change
+			DiffHelper.handleSubstitution(diff, normalizationFunction, JAVA_SEMICOLON, JAVA_FINAL_KEYWORD,
+					SUBSTITUTION_CONTAINS, new EnhancedForLoopRefactoring(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
+					JAVA_UNBOXING, JAVA_CAST, JAVA_DIAMOND_OPERATOR, SubstitutionType.LCS_MAX_OPERATOR);
 		} else {
 			DiffHelper.handleSubstitution(diff, normalizationFunction, SUBSTITUTION_CONTAINS,
 					new EnhancedForLoopRefactoring(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
