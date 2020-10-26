@@ -18,6 +18,9 @@ public final class DiffWithIndex implements Indexed<DiffEdit> {
 		return this.diffEdit;
 	}
 
+	/**
+	 * @since 0.13
+	 */
 	@Override
 	public DiffEdit getValue() {
 		return this.getDiffEdit();

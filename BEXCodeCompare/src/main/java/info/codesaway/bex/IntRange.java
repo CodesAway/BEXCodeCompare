@@ -66,8 +66,9 @@ public interface IntRange extends IntPair {
 	}
 
 	/**
+	 * Indicates if the range is a closed range containing one value
 	 *
-	 * @return
+	 * @return <code>true</code> if the range is a closed range containing one value
 	 * @since 0.13
 	 */
 	public default boolean isSingleValue() {
