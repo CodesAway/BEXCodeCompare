@@ -8,6 +8,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2020-10-27
+
+### Added
+* BEX Parsing now indicates if a state occurs within a parent state (such as a String literal within a JSP tag) (fixes #104 and fixes #105)
+  * Interface Indexed<T>
+  * Class IndexedValue<T> (implementation of Indexed interface)
+  * Class ParsingStateValue - implementation of ParsingState with a current state and the parent state
+  * BEXUtilities.index - static method to create IndexedValue
+  * Add unwrap parsing state utility method (fixes #108)
+
+* BEXParsingLanguage.TEXT - language which gives no special meaning to any characters
+
+* ParsingState default methods (fixes #95)
+  * isComment
+  * isStringLiteral
+  * isWhitespace
+  * hasParent
+  * getParent
+
+* IntRange default methods
+  * getInclusiveStart
+  * getInclusiveEnd
+  * getCanonicalEnd
+  * isSingleValue
+
+* Overriden method DiffHelper.combineToDiffBlocks which takes a BiPredicate to give control whether two blocks are combined
+* BEXPair.hasEqualValues (fixes #97)
+* Method BEXPattern.pattern which returns the pattern used to create the BEXPattern
+* BEXChangeInfo constructor taking boolean and int change number (in BEX plugin)
+
+### Changed
+* Moved parsing functionality from package info.codesaway.bex.matching to info.codesaway.bex.parsing
+  * Renamed BEXMatchingLanguage to BEXParsingLanguage
+  * Renamed MatchingLanguage to ParsingLanguage
+
+  * Renamed BEXMatchingStateOption to BEXParsingState
+  * Renamed MatchingStateOption to ParsingState
+
+  * Renamed MatchingDelimiterState  to ParsingDelimiterState
+  * Renamed MatchingDelimiterResult to ParsingDelimiterResult
+
+  * Renamed BEXMatchingUtilities to BEXParsingUtilities
+  
+* ParsingLanguage has been annotated as a `@FunctionalInterface` (fixes #94)
+* DiffWithIndex now implements Indexed<DiffEdit>
+
+### Fixed
+* BEXParsingLanguage.JSP
+  * Fix JSP parsing (#102)
+  * Recognize comments (fixes #93)
+
+* BEX Eclipse Plugin 
+  * Regression bug where final keyword only change should be seen as non-important change (fixes #107)
+  * Recognition of commented out lines (now uses BEXString to perform the parsing) (fixes #100)
+  * When combining changes, keep important and non-important changes separately (so UI shows fewer changes when important and non-important changes are on consecutive lines) (fixes #103)
+* Combine changes if have same type and are not important (fixes #91)
+* Click top level should go to first change (fixes #92)
+* Ignoring comments didn't show range in BEX view if lines are on right side (fixes #99)
+* In compare window, if selecting inserted / deleted line in BEX View, remove selection from side where there is no line (fixes #10)
+
+* MethodSignature.getSignatureWithClass doesn't return short classname if getting short signature (fixes #101)
+
 ## [0.12.0] - 2020-08-31
 ### Added
 * Method IntBEXRange.singleton
