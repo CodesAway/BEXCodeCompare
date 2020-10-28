@@ -21,18 +21,18 @@ The library has no dependency on Eclipse and can be used in commercial or privat
     <dependency>
         <groupId>info.codesaway</groupId>
         <artifactId>bex</artifactId>
-        <version>0.12.0</version>
+        <version>0.13.0</version>
     </dependency>
     <dependency>
         <groupId>info.codesaway</groupId>
         <artifactId>becr</artifactId>
-        <version>0.12.0</version>
+        <version>0.13.0</version>
     </dependency>
     
     <dependency>
         <groupId>info.codesaway</groupId>
         <artifactId>becr.examples</artifactId>
-        <version>0.10.0</version>
+        <version>0.11.0</version>
     </dependency>
 
 <a name="screenshots"></a>
@@ -95,12 +95,12 @@ Check out the [Wiki](https://github.com/CodesAway/BEXCodeCompare/wiki) to learn 
 ### Stable
 * **Name**: BEX Code Compare
 * **Location**: https://codesaway.info/eclipse
-* **Version**: 0.3.0
+* **Version**: 0.5.0
 
 ### Beta
 * **Name**: BEX Code Compare
 * **Location**: https://codesaway.info/eclipse-beta
-* **Version**: 0.4.0
+* **Version**: 0.5.0
 
 <a name="install"></a>
 ## Installation
