@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
@@ -971,6 +972,8 @@ public final class DiffHelper {
 		return combineToDiffBlocks(diff, false);
 	}
 
+	private static final BiPredicate<DiffEdit, DiffEdit> ALWAYS_SHOULD_COMBINE = (x, y) -> true;
+
 	/**
 	 * Combines consecutive DiffEdit to form DiffBlock when possible
 	 *
@@ -980,12 +983,32 @@ public final class DiffHelper {
 	 * @return
 	 */
 	public static List<DiffUnit> combineToDiffBlocks(final List<DiffEdit> diff, final boolean allowReplacements) {
+		return combineToDiffBlocks(diff, allowReplacements, ALWAYS_SHOULD_COMBINE);
+	}
+
+	/**
+	 * Combines consecutive DiffEdit to form DiffBlock when possible and <code>shouldCombinePredicate</code> returns true
+	 *
+	 * <p>The returned list will consist of DiffUnit objects (either DiffBlock or DiffEdit)</p>
+	 *
+	 * @param diff
+	 * @param allowReplacements
+	 * @param shouldCombinePredicate indicates whether the two DiffEdits should be combined, if this method determines they can be combined (return <code>false</code> to prevent the combining)
+	 * @return
+	 * @since 0.13
+	 */
+	public static List<DiffUnit> combineToDiffBlocks(final List<DiffEdit> diff, final boolean allowReplacements,
+			final BiPredicate<DiffEdit, DiffEdit> shouldCombinePredicate) {
 		List<DiffUnit> diffBlocks = new ArrayList<>();
+
+		BiPredicate<DiffEdit, DiffEdit> usedShouldCombinePredicate = shouldCombinePredicate != null
+				? shouldCombinePredicate
+				: ALWAYS_SHOULD_COMBINE;
 
 		for (int i = 0; i < diff.size(); i++) {
 			DiffEdit diffEdit = diff.get(i);
 
-			if (isNextDiffPartOfBlock(diff, i, allowReplacements)) {
+			if (isNextDiffPartOfBlock(diff, i, allowReplacements, usedShouldCombinePredicate)) {
 				DiffType blockDiffType = diffEdit.getType();
 
 				List<DiffEdit> edits = new ArrayList<>();
@@ -997,7 +1020,7 @@ public final class DiffHelper {
 					if (blockDiffType != REPLACEMENT_BLOCK && !blockDiffType.equals(nextDiffEdit.getType())) {
 						blockDiffType = REPLACEMENT_BLOCK;
 					}
-				} while (isNextDiffPartOfBlock(diff, i, allowReplacements));
+				} while (isNextDiffPartOfBlock(diff, i, allowReplacements, usedShouldCombinePredicate));
 
 				diffBlocks.add(new DiffBlock(blockDiffType, edits));
 			} else {
@@ -1017,7 +1040,7 @@ public final class DiffHelper {
 	 * @return
 	 */
 	private static boolean isNextDiffPartOfBlock(final List<DiffEdit> diff, final int i,
-			final boolean allowReplacements) {
+			final boolean allowReplacements, final BiPredicate<DiffEdit, DiffEdit> shouldCombinePredicate) {
 
 		if (i + 1 >= diff.size()) {
 			return false;
@@ -1040,7 +1063,8 @@ public final class DiffHelper {
 			}
 		}
 
-		return hasConsecutiveLines(diffEdit, nextDiffEdit, isReplancement);
+		return hasConsecutiveLines(diffEdit, nextDiffEdit, isReplancement)
+				&& shouldCombinePredicate.test(diffEdit, nextDiffEdit);
 	}
 
 	private static boolean canBePartOfReplacement(final DiffEdit diffEdit) {

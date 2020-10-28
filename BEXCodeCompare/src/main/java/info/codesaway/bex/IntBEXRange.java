@@ -126,5 +126,4 @@ public final class IntBEXRange implements IntRange {
 		IntBEXRange other = (IntBEXRange) obj;
 		return this.end == other.end && this.hasInclusiveEnd == other.hasInclusiveEnd && this.start == other.start;
 	}
-
 }

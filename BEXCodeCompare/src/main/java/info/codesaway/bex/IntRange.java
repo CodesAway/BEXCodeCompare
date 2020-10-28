@@ -27,6 +27,33 @@ public interface IntRange extends IntPair {
 
 	public boolean hasInclusiveEnd();
 
+	/**
+	 *
+	 * @return
+	 * @since 0.13
+	 */
+	public default int getInclusiveStart() {
+		return this.hasInclusiveStart() ? this.getStart() : this.getStart() + 1;
+	}
+
+	/**
+	 *
+	 * @return
+	 * @since 0.13
+	 */
+	public default int getInclusiveEnd() {
+		return this.hasInclusiveEnd() ? this.getEnd() : this.getEnd() - 1;
+	}
+
+	/**
+	 *
+	 * @return
+	 * @since 0.13
+	 */
+	public default int getCanonicalEnd() {
+		return this.hasInclusiveEnd() ? this.getEnd() + 1 : this.getEnd();
+	}
+
 	public default boolean contains(final int value) {
 		return value > this.getStart() && value < this.getEnd()
 				|| this.hasInclusiveStart() && value == this.getStart()
@@ -39,16 +66,23 @@ public interface IntRange extends IntPair {
 	}
 
 	/**
+	 * Indicates if the range is a closed range containing one value
+	 *
+	 * @return <code>true</code> if the range is a closed range containing one value
+	 * @since 0.13
+	 */
+	public default boolean isSingleValue() {
+		return this.getStart() == this.getEnd()
+				&& this.hasInclusiveStart() && this.hasInclusiveEnd();
+	}
+
+	/**
 	 *
 	 * @return the length of the range
 	 * @since 0.10
 	 */
 	public default int length() {
-		// Logic from canonical
-		int start = this.hasInclusiveStart() ? this.getStart() : this.getStart() + 1;
-		int end = this.hasInclusiveEnd() ? this.getEnd() + 1 : this.getEnd();
-
-		return end - start;
+		return this.getCanonicalEnd() - this.getInclusiveStart();
 	}
 
 	public default IntRange canonical() {
@@ -56,9 +90,7 @@ public interface IntRange extends IntPair {
 			return this;
 		}
 
-		int start = this.hasInclusiveStart() ? this.getStart() : this.getStart() + 1;
-		int end = this.hasInclusiveEnd() ? this.getEnd() + 1 : this.getEnd();
-		return IntBEXRange.of(start, end);
+		return IntBEXRange.of(this.getInclusiveStart(), this.getCanonicalEnd());
 	}
 
 	/**

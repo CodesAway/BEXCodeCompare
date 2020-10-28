@@ -1,10 +1,14 @@
 package info.codesaway.bex.matching;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
+import info.codesaway.bex.IntBEXRange;
+import info.codesaway.bex.parsing.BEXString;
 
 class BEXStringTest {
 
@@ -103,5 +107,68 @@ class BEXStringTest {
 		assertTrue(bexSubMatcher.find(), "Could not find match");
 
 		assertThat(bexSubMatcher.get("1")).isEqualTo("lah\"");
+	}
+
+	@Test
+	void testIsCommentedOut() {
+		String text = "/*  + \" AND (something \"\r\n" +
+				"+ \" OR \"\r\n" +
+				"+ \" something else \" *//*block comment*///comment";
+
+		BEXString bexString = new BEXString(text);
+
+		IntBEXRange range = IntBEXRange.of(0, text.length());
+
+		assertTrue(bexString.isComment(range));
+	}
+
+	@Test
+	void testIsCommentedOutIgnoreWhitespace() {
+		String text = "/*  + \" AND (something \"\r\n" +
+				"+ \" OR \"\r\n" +
+				"+ \" something else \" */ /*block comment*/     //comment\r\n";
+
+		BEXString bexString = new BEXString(text);
+
+		IntBEXRange range = IntBEXRange.of(0, text.length());
+
+		assertTrue(bexString.isComment(range));
+	}
+
+	@Test
+	void testNotCommentedOutDueToWhitespace() {
+		String text = "/*  + \" AND (something \"\r\n" +
+				"+ \" OR \"\r\n" +
+				"+ \" something else \" */ /*block comment*/     //comment\r\n";
+
+		BEXString bexString = new BEXString(text);
+
+		IntBEXRange range = IntBEXRange.of(0, text.length());
+
+		assertFalse(bexString.isComment(range, false));
+	}
+
+	@Test
+	void testCommentOutWithLeadingAndTrailingSpaces() {
+		String text = "    /*  + \" AND (something \"\r\n" +
+				"+ \" OR \"\r\n" +
+				"+ \" something else \" */ /*block comment*/     //comment   \r\n          ";
+
+		BEXString bexString = new BEXString(text);
+
+		IntBEXRange range = IntBEXRange.of(0, text.length());
+
+		assertTrue(bexString.isComment(range));
+	}
+
+	@Test
+	void testOnlySpacesNotCommentOut() {
+		String text = "   ";
+
+		BEXString bexString = new BEXString(text);
+
+		IntBEXRange range = IntBEXRange.of(0, text.length());
+
+		assertFalse(bexString.isComment(range));
 	}
 }

@@ -10,12 +10,12 @@ import static info.codesaway.bex.diff.BasicDiffType.MOVE_LEFT;
 import static info.codesaway.bex.diff.BasicDiffType.MOVE_RIGHT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -30,6 +30,7 @@ import info.codesaway.bex.IntRange;
 import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.patience.PatienceMatch;
+import info.codesaway.bex.diff.substitution.SubstitutionDiffTypeValue;
 
 class DiffHelperTests {
 
@@ -128,6 +129,72 @@ class DiffHelperTests {
 	}
 
 	@Test
+	public void testCombineToDiffBlocksLimitWhenShouldCombine() {
+		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, "a"), new DiffLine(1, "b"), new DiffLine(2, "c"));
+		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(3, "a"), new DiffLine(4, "b"), new DiffLine(5, "c"));
+
+		DiffEdit third = new DiffEdit(MOVE_LEFT, leftLines.get(2), rightLines.get(2));
+
+		List<DiffEdit> diff = ImmutableList.of(
+				new DiffEdit(MOVE_LEFT, leftLines.get(0), rightLines.get(0)),
+				new DiffEdit(MOVE_LEFT, leftLines.get(1), rightLines.get(1)),
+				third);
+
+		List<DiffUnit> diffUnits = DiffHelper.combineToDiffBlocks(diff, true, (x, y) -> y.getRightLineNumber() != 5);
+
+		List<DiffUnit> expected = ImmutableList.of(new DiffBlock(MOVE_LEFT, diff.subList(0, 2)), third);
+
+		assertEquals(expected, diffUnits);
+	}
+
+	@Test
+	public void testNeverCombineToDiffBlocks() {
+		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, "a"), new DiffLine(1, "b"), new DiffLine(2, "c"));
+		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(3, "a"), new DiffLine(4, "b"), new DiffLine(5, "c"));
+
+		DiffEdit first = new DiffEdit(MOVE_LEFT, leftLines.get(0), rightLines.get(0));
+		DiffEdit second = new DiffEdit(MOVE_LEFT, leftLines.get(1), rightLines.get(1));
+		DiffEdit third = new DiffEdit(MOVE_LEFT, leftLines.get(2), rightLines.get(2));
+
+		List<DiffEdit> diff = ImmutableList.of(first, second, third);
+
+		// Never combine, since always return false (silly to call combine, but used for testing purposes)
+		List<DiffUnit> diffUnits = DiffHelper.combineToDiffBlocks(diff, true, (x, y) -> false);
+
+		List<DiffUnit> expected = ImmutableList.of(first, second, third);
+
+		assertEquals(expected, diffUnits);
+	}
+
+	@Test
+	// Issue #103
+	public void testCombineToDiffBlocksPartitionImportantAndNonImportantChanges() {
+		// Text doesn't matter, since combine focuses on DiffType
+		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, ""), new DiffLine(1, ""), new DiffLine(2, ""),
+				new DiffLine(3, ""));
+		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(0, ""), new DiffLine(1, ""), new DiffLine(2, ""),
+				new DiffLine(3, ""));
+
+		DiffType shouldTreatAsNormalizedEqual = new SubstitutionDiffTypeValue(' ', "", false, true);
+
+		DiffEdit first = new DiffEdit(INSERT, leftLines.get(0), rightLines.get(0));
+		DiffEdit second = new DiffEdit(shouldTreatAsNormalizedEqual, leftLines.get(1), rightLines.get(1));
+		DiffEdit third = new DiffEdit(shouldTreatAsNormalizedEqual, leftLines.get(2), rightLines.get(2));
+		DiffEdit fourth = new DiffEdit(INSERT, leftLines.get(3), rightLines.get(3));
+
+		List<DiffEdit> diff = ImmutableList.of(first, second, third, fourth);
+
+		List<DiffUnit> diffUnits = DiffHelper.combineToDiffBlocks(diff, true,
+				(x, y) -> x.shouldTreatAsNormalizedEqual() == y.shouldTreatAsNormalizedEqual());
+
+		List<DiffUnit> expected = ImmutableList.of(first,
+				new DiffBlock(shouldTreatAsNormalizedEqual, diff.subList(1, 3)),
+				fourth);
+
+		assertEquals(expected, diffUnits);
+	}
+
+	@Test
 	public void testDetermineEnclosedRange() {
 		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, "a"), new DiffLine(1, "b"), new DiffLine(2, "c"));
 		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(3, "a"), new DiffLine(4, "b"), new DiffLine(5, "c"));
@@ -147,7 +214,7 @@ class DiffHelperTests {
 	}
 
 	@Test
-	@Disabled("Not sure if I plan or need to add functionality for consecutive ranges")
+	//	@Disabled("Not sure if I plan or need to add functionality for consecutive ranges")
 	public void testHasConsecutiveRanges() {
 		IntRange left1 = closed(0, 2);
 		IntRange left2 = closed(3, 5);
@@ -158,6 +225,6 @@ class DiffHelperTests {
 		IntBEXPair line1 = IntBEXPair.of(left1.getEnd(), right1.getEnd());
 		IntBEXPair line2 = IntBEXPair.of(left2.getStart(), right2.getStart());
 
-		System.out.println(DiffHelper.isConsecutive(line1, line2, false));
+		assertTrue(DiffHelper.isConsecutive(line1, line2, false));
 	}
 }

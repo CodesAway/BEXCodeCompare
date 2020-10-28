@@ -2,15 +2,21 @@ package info.codesaway.bex.matching;
 
 import static info.codesaway.bex.IntBEXRange.closed;
 import static info.codesaway.bex.IntBEXRange.closedOpen;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_LINE_COMMENT;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_MULTILINE_COMMENT;
-import static info.codesaway.bex.matching.BEXMatchingStateOption.IN_STRING_LITERAL;
+import static info.codesaway.bex.IntBEXRange.singleton;
 import static info.codesaway.bex.matching.MatcherTestHelper.testJustBEXMatch;
 import static info.codesaway.bex.matching.MatcherTestHelper.testNoBEXMatch;
+import static info.codesaway.bex.parsing.BEXParsingState.IN_LINE_COMMENT;
+import static info.codesaway.bex.parsing.BEXParsingState.IN_MULTILINE_COMMENT;
+import static info.codesaway.bex.parsing.BEXParsingState.IN_STRING_LITERAL;
+import static info.codesaway.bex.parsing.BEXParsingState.LINE_TERMINATOR;
+import static info.codesaway.bex.parsing.BEXParsingState.WHITESPACE;
 import static info.codesaway.bex.util.BEXUtilities.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+
+import info.codesaway.bex.parsing.BEXParsingLanguage;
+import info.codesaway.bex.parsing.BEXString;
 
 public class BEXParseSQLTest {
 	@Test
@@ -42,45 +48,53 @@ public class BEXParseSQLTest {
 				"*/\r\n" +
 				"\r\n" +
 				"select 1";
-		BEXString bexString = new BEXString(text, BEXMatchingLanguage.SQL);
+		BEXString bexString = new BEXString(text, BEXParsingLanguage.SQL);
 
 		assertThat(bexString.getTextStateMap().asMapOfRanges())
-		.containsExactly(
-				entry(closedOpen(2, 11), IN_MULTILINE_COMMENT),
-				entry(closed(11, 21), IN_MULTILINE_COMMENT),
-				entry(closed(22, 51), IN_MULTILINE_COMMENT));
+				.containsExactly(
+						entry(closed(0, 1), LINE_TERMINATOR),
+						entry(closedOpen(2, 11), IN_MULTILINE_COMMENT),
+						entry(closed(11, 21), IN_MULTILINE_COMMENT),
+						entry(closed(22, 51), IN_MULTILINE_COMMENT),
+						entry(closed(52, 53), LINE_TERMINATOR),
+						entry(closed(54, 55), LINE_TERMINATOR),
+						entry(singleton(62), WHITESPACE));
 
 		assertThat(bexString.substring(closed(11, 21))).asString()
-		.isEqualTo("/*\r\n" +
-				"def\r\n" +
-				"*/");
+				.isEqualTo("/*\r\n" +
+						"def\r\n" +
+						"*/");
 	}
 
 	@Test
 	void testLineComment() {
 		String text = "1 -- text";
-		BEXString bexString = new BEXString(text, BEXMatchingLanguage.SQL);
+		BEXString bexString = new BEXString(text, BEXParsingLanguage.SQL);
 
 		assertThat(bexString.getTextStateMap().asMapOfRanges())
-		.containsExactly(entry(closedOpen(2, text.length()), IN_LINE_COMMENT));
+				.containsExactly(entry(singleton(1), WHITESPACE),
+						entry(closedOpen(2, text.length()), IN_LINE_COMMENT));
 	}
 
 	@Test
 	void testSingleQuoteEscape() {
 		String text = "'before''after'";
-		BEXString bexString = new BEXString(text, BEXMatchingLanguage.SQL);
+		BEXString bexString = new BEXString(text, BEXParsingLanguage.SQL);
 
 		assertThat(bexString.getTextStateMap().asMapOfRanges())
-		.containsExactly(entry(closed(0, text.length() - 1), IN_STRING_LITERAL));
+				.containsExactly(entry(closed(0, text.length() - 1), IN_STRING_LITERAL));
 	}
 
 	@Test
 	void testBackslashDoesNotEscapeSingleQuote() {
 		String text = "select 'text\\' as text";
-		BEXString bexString = new BEXString(text, BEXMatchingLanguage.SQL);
+		BEXString bexString = new BEXString(text, BEXParsingLanguage.SQL);
 
 		assertThat(bexString.getTextStateMap().asMapOfRanges())
-		.containsExactly(entry(closed(7, 13), IN_STRING_LITERAL));
+				.containsExactly(entry(singleton(6), WHITESPACE),
+						entry(closed(7, 13), IN_STRING_LITERAL),
+						entry(singleton(14), WHITESPACE),
+						entry(singleton(17), WHITESPACE));
 	}
 
 	@Test
@@ -113,7 +127,7 @@ public class BEXParseSQLTest {
 
 		String pattern = "if :[condition] begin :[stuff] end";
 
-		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXMatchingLanguage.SQL,
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXParsingLanguage.SQL,
 				BEXPatternFlag.CASE_INSENSITIVE);
 
 		assertThat(bexMatcher.get("stuff")).isEqualTo("print 'First if'\r\n" +
@@ -129,7 +143,7 @@ public class BEXParseSQLTest {
 		String pattern = ":[stuff]";
 		String text = "BEGIN";
 
-		testNoBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+		testNoBEXMatch(pattern, text, BEXParsingLanguage.SQL);
 	}
 
 	@Test
@@ -137,7 +151,7 @@ public class BEXParseSQLTest {
 		String pattern = ":[value]";
 		String text = "@BEGIN";
 
-		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXParsingLanguage.SQL);
 		assertThat(bexMatcher.group("value")).isEqualTo("@BEGIN");
 	}
 
@@ -146,7 +160,7 @@ public class BEXParseSQLTest {
 		String pattern = ":[value]";
 		String text = "@lets_begin";
 
-		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXParsingLanguage.SQL);
 		assertThat(bexMatcher.group("value")).isEqualTo("@lets_begin");
 	}
 
@@ -155,7 +169,7 @@ public class BEXParseSQLTest {
 		String pattern = ":[stuff]";
 		String text = "END";
 
-		testNoBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+		testNoBEXMatch(pattern, text, BEXParsingLanguage.SQL);
 	}
 
 	@Test
@@ -163,7 +177,7 @@ public class BEXParseSQLTest {
 		String pattern = ":[value]";
 		String text = "@end";
 
-		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXParsingLanguage.SQL);
 		assertThat(bexMatcher.group("value")).isEqualTo("@end");
 	}
 
@@ -172,7 +186,7 @@ public class BEXParseSQLTest {
 		String pattern = ":[value]";
 		String text = "@the_end";
 
-		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXParsingLanguage.SQL);
 		assertThat(bexMatcher.group("value")).isEqualTo("@the_end");
 	}
 
@@ -182,7 +196,7 @@ public class BEXParseSQLTest {
 		String pattern = ":[value]";
 		String text = "#end";
 
-		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXMatchingLanguage.SQL);
+		BEXMatcher bexMatcher = testJustBEXMatch(pattern, text, BEXParsingLanguage.SQL);
 		assertThat(bexMatcher.group("value")).isEqualTo("#end");
 	}
 }

@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 import java.util.function.BiFunction;
@@ -38,7 +37,6 @@ import info.codesaway.bex.BEXListPair;
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXPairValue;
 import info.codesaway.bex.IntBEXRange;
-import info.codesaway.bex.IntRange;
 import info.codesaway.bex.diff.DiffBlock;
 import info.codesaway.bex.diff.DiffChange;
 import info.codesaway.bex.diff.DiffEdit;
@@ -51,9 +49,7 @@ import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.substitution.SubstitutionType;
 import info.codesaway.bex.diff.substitution.java.EnhancedForLoopRefactoring;
-import info.codesaway.bex.matching.BEXMatchingStateOption;
-import info.codesaway.bex.matching.BEXString;
-import info.codesaway.bex.matching.MatchingStateOption;
+import info.codesaway.bex.parsing.BEXString;
 import info.codesaway.bex.views.BEXView;
 import info.codesaway.eclipse.compare.internal.DocLineComparator;
 import info.codesaway.eclipse.compare.rangedifferencer.AbstractRangeDifferenceFactory;
@@ -133,11 +129,11 @@ public final class RangeComparatorBEX {
 
 		if (shouldUseEnhancedCompare) {
 			// Look first for common refactorings, so can group changes together
-			DiffHelper.handleSubstitution(diff, normalizationFunction, JAVA_SEMICOLON, SUBSTITUTION_CONTAINS,
-					new EnhancedForLoopRefactoring(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE, JAVA_UNBOXING, JAVA_CAST,
-					// TODO: think need to move Final check earlier (since noticed didn't pick up as Final was difference (not important)
-					JAVA_FINAL_KEYWORD, JAVA_DIAMOND_OPERATOR,
-					SubstitutionType.LCS_MAX_OPERATOR);
+			// Issue #107 - moved JAVA_FINAL_KEYWORD before SUBSTITUTION_CONTAINS
+			// so that adding / removing the final keyword is seen as a non-important change
+			DiffHelper.handleSubstitution(diff, normalizationFunction, JAVA_SEMICOLON, JAVA_FINAL_KEYWORD,
+					SUBSTITUTION_CONTAINS, new EnhancedForLoopRefactoring(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
+					JAVA_UNBOXING, JAVA_CAST, JAVA_DIAMOND_OPERATOR, SubstitutionType.LCS_MAX_OPERATOR);
 		} else {
 			DiffHelper.handleSubstitution(diff, normalizationFunction, SUBSTITUTION_CONTAINS,
 					new EnhancedForLoopRefactoring(), IMPORT_SAME_CLASSNAME_DIFFERENT_PACKAGE,
@@ -184,7 +180,7 @@ public final class RangeComparatorBEX {
 						IntBEXRange lineRange = this.determineLineRange(text, tokenStart);
 
 						// Check if line is comment (either line or multi-line comment)
-						if (this.isCommentedOut(bexString.get(side), lineRange)) {
+						if (bexString.get(side).isComment(lineRange)) {
 							lineComments.get(side).add(diffEdit.getLineNumber(side));
 							//						System.out.printf("Commented out line %d: %s%n", edit.getLineNumber(side), lineRange);
 						}
@@ -229,7 +225,16 @@ public final class RangeComparatorBEX {
 		// (should be helpful when ignore comments)
 		// TODO: though, makes ignoring split line differences challenging
 		// TODO: write logic that recognizes split lines even if not in blocks
-		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, true);
+
+		// TODO: pass BiPredicate which indicates if can combine
+		// (if true, okay to combine using existing logic)
+		// (if false, should never combine, even if current logic would allow)
+		// This way, can ensure we don't combine unimportant refactorings in the same change as important changes
+		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, true,
+				// Fixes issue #103 - only combine if both diffs either should or should not
+				// (what was happening was it was combining non-important changes with important changes)
+				// (this caused Eclipse to show more differences than expected)
+				(x, y) -> x.shouldTreatAsNormalizedEqual() == y.shouldTreatAsNormalizedEqual());
 		//		List<DiffUnit> diffBlocks = DiffHelper.combineToDiffBlocks(diff, false);
 
 		// Handle ignoring blank lines or comments (if option is enabled)
@@ -388,7 +393,7 @@ public final class RangeComparatorBEX {
 					}
 				} else {
 					if (!currentChanges.isEmpty()) {
-						BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, "Change " + (++index));
+						BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, ++index);
 						changes.add(new DiffChange<>(currentChangeType, currentChanges, info));
 						currentChanges.clear();
 					}
@@ -403,7 +408,7 @@ public final class RangeComparatorBEX {
 
 		if (updateView) {
 			if (!currentChanges.isEmpty()) {
-				BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, "Change " + (++index));
+				BEXChangeInfo info = new BEXChangeInfo(isCurrentChangeImportant, ++index);
 				changes.add(new DiffChange<>(currentChangeType, currentChanges, info));
 			}
 
@@ -424,40 +429,26 @@ public final class RangeComparatorBEX {
 		}
 	}
 
-	private boolean isCommentedOut(final BEXString bexString, final IntBEXRange lineRange) {
-		Entry<IntRange, MatchingStateOption> entry = bexString.getTextStateMap().getEntry(lineRange.getStart());
-
-		if (entry == null) {
-			return false;
-		}
-
-		if (!in(entry.getValue(), BEXMatchingStateOption.IN_LINE_COMMENT,
-				BEXMatchingStateOption.IN_MULTILINE_COMMENT)) {
-			return false;
-		}
-
-		return entry.getKey().contains(lineRange.getEnd());
-	}
-
 	private IntBEXRange determineLineRange(final String text, final int tokenStart) {
 		// Ignore leading and trailing whitespace
-		int leadingSpaces = 0;
-		while (leadingSpaces < text.length() && Character.isWhitespace(text.charAt(leadingSpaces))) {
-			leadingSpaces++;
+		int relativeInclusiveStart = 0;
+		while (relativeInclusiveStart < text.length() && Character.isWhitespace(text.charAt(relativeInclusiveStart))) {
+			relativeInclusiveStart++;
 		}
 
-		int trailingSpaces = text.length() - 1;
-		while (trailingSpaces > leadingSpaces && Character.isWhitespace(text.charAt(trailingSpaces))) {
-			trailingSpaces--;
+		int relativeInclusiveEnd = text.length() - 1;
+		while (relativeInclusiveEnd > relativeInclusiveStart
+				&& Character.isWhitespace(text.charAt(relativeInclusiveEnd))) {
+			relativeInclusiveEnd--;
 		}
 
 		// Inclusive on both ends
 		int lineStart = tokenStart;
 		// Don't include the line terminator for the line end
-		int lineEnd = lineStart + trailingSpaces;
+		int lineEnd = lineStart + relativeInclusiveEnd;
 
 		// Intentionally done after set lineEnd
-		lineStart += leadingSpaces;
+		lineStart += relativeInclusiveStart;
 
 		if (lineStart > lineEnd) {
 			// Entire line is whitespace

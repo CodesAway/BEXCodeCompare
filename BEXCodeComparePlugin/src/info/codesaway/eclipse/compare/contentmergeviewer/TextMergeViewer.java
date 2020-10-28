@@ -140,7 +140,6 @@ import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
-import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.osgi.util.NLS;
@@ -6202,7 +6201,8 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 			// Issue #10
 			MergeSourceViewer otherMergeSourceViewer = mergeSourceViewer == this.fLeft ? this.fRight : this.fLeft;
 			// Source: https://www.eclipse.org/forums/index.php/t/369341/
-			otherMergeSourceViewer.getSourceViewer().setSelection(StructuredSelection.EMPTY);
+			//			otherMergeSourceViewer.getSourceViewer().setSelection(StructuredSelection.EMPTY);
+			otherMergeSourceViewer.getSourceViewer().setSelectedRange(0, 0);
 		}
 
 		mergeSourceViewer.setSelection(position);

@@ -9,6 +9,8 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import info.codesaway.bex.Indexed;
+import info.codesaway.bex.IndexedValue;
 import info.codesaway.bex.IntPair;
 
 public final class BEXUtilities {
@@ -145,6 +147,18 @@ public final class BEXUtilities {
 		Objects.requireNonNull(k);
 		Objects.requireNonNull(v);
 		return new AbstractMap.SimpleImmutableEntry<>(k, v);
+	}
+
+	/**
+	 *
+	 * @param <T>
+	 * @param index
+	 * @param value
+	 * @return
+	 * @since 0.13
+	 */
+	public static <T> Indexed<T> index(final int index, final T value) {
+		return new IndexedValue<>(index, value);
 	}
 
 	//	public static <T extends IntRange> Optional<Entry<Integer, T>> getEntryInRanges(final int index,
