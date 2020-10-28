@@ -49,7 +49,7 @@ import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.substitution.SubstitutionType;
 import info.codesaway.bex.diff.substitution.java.EnhancedForLoopRefactoring;
-import info.codesaway.bex.matching.BEXString;
+import info.codesaway.bex.parsing.BEXString;
 import info.codesaway.bex.views.BEXView;
 import info.codesaway.eclipse.compare.internal.DocLineComparator;
 import info.codesaway.eclipse.compare.rangedifferencer.AbstractRangeDifferenceFactory;
