@@ -63,10 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Regression bug where final keyword only change should be seen as non-important change (fixes #107)
   * Recognition of commented out lines (now uses BEXString to perform the parsing) (fixes #100)
   * When combining changes, keep important and non-important changes separately (so UI shows fewer changes when important and non-important changes are on consecutive lines) (fixes #103)
-* Combine changes if have same type and are not important (fixes #91)
-* Click top level should go to first change (fixes #92)
-* Ignoring comments didn't show range in BEX view if lines are on right side (fixes #99)
-* In compare window, if selecting inserted / deleted line in BEX View, remove selection from side where there is no line (fixes #10)
+  * Combine changes if have same type and are not important (fixes #91)
+  * Click top level should go to first change (fixes #92)
+  * Ignoring comments didn't show range in BEX view if lines are on right side (fixes #99)
+  * In compare window, if selecting inserted / deleted line in BEX View, remove selection from side where there is no line (fixes #10)
 
 * MethodSignature.getSignatureWithClass doesn't return short classname if getting short signature (fixes #101)
 
