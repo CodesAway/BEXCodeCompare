@@ -36,6 +36,7 @@ import info.codesaway.bex.Activator;
 import info.codesaway.bex.BEXListPair;
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXPairValue;
+import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.IntBEXRange;
 import info.codesaway.bex.diff.DiffBlock;
 import info.codesaway.bex.diff.DiffChange;
@@ -50,6 +51,7 @@ import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.substitution.SubstitutionType;
 import info.codesaway.bex.diff.substitution.java.EnhancedForLoopRefactoring;
 import info.codesaway.bex.parsing.BEXString;
+import info.codesaway.bex.parsing.ParsingState;
 import info.codesaway.bex.views.BEXView;
 import info.codesaway.eclipse.compare.internal.DocLineComparator;
 import info.codesaway.eclipse.compare.rangedifferencer.AbstractRangeDifferenceFactory;
@@ -87,6 +89,13 @@ public final class RangeComparatorBEX {
 	}
 
 	private void computeDifferences(final SubMonitor newChild, final boolean updateView) {
+
+		// TODO: if ignore comments, define normalization function which ignores comments
+		// (this isn't possible, since normalization function doesn't know the line number)
+		// (it only knows about text, but without line number cannot determine if the text is comments or not)
+		// TODO: see if can override to allow normalization function which is an Indexed<String>, so it would have the line number
+
+		// TODO: use new NormalizationFunction class
 
 		BiFunction<String, String, DiffNormalizedText> normalizationFunction = this.ignoreWhitespace
 				? DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION
@@ -143,14 +152,17 @@ public final class RangeComparatorBEX {
 		// Do separately, so LCS max can find better matches and do only run LCS min on leftovers
 		DiffHelper.handleSubstitution(diff, normalizationFunction, SubstitutionType.LCS_MIN_OPERATOR);
 
+		// Mark comments as ignored line, so can group together
+		// Also, if ignoreWhitespace, also mark blank lines added / deleted before and after comments as ignored lines
+		// Determine which lines of code are commented out
+		BEXPair<BEXString> bexString = ignoreComments
+				? this.comparator
+						.map(DocLineComparator::getText)
+						.map(BEXString::new)
+				: null;
+
 		BEXPair<NavigableSet<Integer>> lineComments = new BEXPairValue<>(TreeSet::new);
-		if (ignoreComments) {
-			// Mark comments as ignored line, so can group together
-			// Also, if ignoreWhitespace, also mark blank lines added / deleted before and after comments as ignored lines
-			// Determine which lines of code are commented out
-			BEXPair<BEXString> bexString = this.comparator
-					.map(DocLineComparator::getText)
-					.map(BEXString::new);
+		if (ignoreComments && bexString != null) {
 
 			//			System.out.println("Left text:");
 			//			System.out.println(bexString.getLeft());
@@ -173,11 +185,7 @@ public final class RangeComparatorBEX {
 
 				BEX_SIDES.acceptBoth(side -> {
 					if (diffEdit.hasLine(side)) {
-						int lineNumber = diffEdit.getLineNumber(side) - 1 - this.comparator.get(side).getLineOffset();
-						String text = diffEdit.getText(side);
-						int tokenStart = this.comparator.get(side).getTokenStart(lineNumber);
-
-						IntBEXRange lineRange = this.determineLineRange(text, tokenStart);
+						IntBEXRange lineRange = this.determineLineRange(diffEdit, side);
 
 						// Check if line is comment (either line or multi-line comment)
 						if (bexString.get(side).isComment(lineRange)) {
@@ -275,6 +283,34 @@ public final class RangeComparatorBEX {
 						if (isLineComment) {
 							shouldIgnoreDiff = true;
 						}
+					}
+
+					// Check if difference in line is comment
+					// (such as add line comment or block comment)
+					if (!shouldIgnoreDiff && ignoreComments && bexString != null
+							&& !diffEdit.shouldTreatAsNormalizedEqual()
+							&& !leftTextTrimmed.isEmpty() && !rightTexTrimmed.isEmpty()) {
+
+						// TODO: take line and remove comments
+						// TODO: should I also ignore whitespace before / after comments
+						// TODO: If ignoring whitespace, also normalize whitespace
+						// 1) Do trim
+						// 2) Normalize one or more whitespace with a single regular space
+
+						// TODO: Finally, will compare normalized text (if equal then ignore diff)
+
+						BEXPair<IntBEXRange> lineRange = BEX_SIDES.map(side -> this.determineLineRange(diffEdit, side));
+
+						boolean isChangeOnlyComments = BEX_SIDES
+								.map(side -> this.normalizeLine(lineRange.get(side), bexString.get(side)))
+								.hasEqualValues();
+
+						if (isChangeOnlyComments) {
+							shouldIgnoreDiff = true;
+						}
+
+						System.out.println("Comments?" + System.lineSeparator() + diffEdit.toString(true));
+						System.out.println(lineRange);
 					}
 
 					if (shouldIgnoreDiff) {
@@ -427,6 +463,38 @@ public final class RangeComparatorBEX {
 
 			BEXView.show(changes);
 		}
+	}
+
+	private String normalizeLine(final IntBEXRange lineRange, final BEXString bexString) {
+		BEXString bexText = bexString.substring(lineRange);
+		int offset = bexText.getOffset();
+
+		StringBuilder resultBuilder = new StringBuilder(bexText.length());
+
+		for (int i = 0; i < bexText.length(); i++) {
+			ParsingState state = bexString.getTextStateMap().get(i + offset);
+			if (state != null && state.isComment()) {
+				continue;
+			} else {
+				resultBuilder.append(bexText.charAt(i));
+			}
+		}
+
+		String result = resultBuilder.toString();
+
+		if (this.ignoreWhitespace) {
+			result = result.trim();
+		}
+
+		return result;
+	}
+
+	private IntBEXRange determineLineRange(final DiffEdit diffEdit, final BEXSide side) {
+		int lineNumber = diffEdit.getLineNumber(side) - 1 - this.comparator.get(side).getLineOffset();
+		String text = diffEdit.getText(side);
+		int tokenStart = this.comparator.get(side).getTokenStart(lineNumber);
+
+		return this.determineLineRange(text, tokenStart);
 	}
 
 	private IntBEXRange determineLineRange(final String text, final int tokenStart) {

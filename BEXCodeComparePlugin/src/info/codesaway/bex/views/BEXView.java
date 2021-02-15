@@ -465,9 +465,16 @@ public final class BEXView extends ViewPart {
 					? "[" + rightRange.getStart() + "]"
 					: rightRange.toString();
 
-			changeName = String.format("%s%s%s%n", change,
+			changeName = String.format("%s%s - %s: %s%s%n",
+					change.getInfo().isImportantChange() ? "(IMPORTANT) " : "",
+					change.getType(),
+					change.getInfo().getInfo(),
 					leftRange.getLeft() != -1 ? " LEFT " + leftRangeText : "",
 					rightRange.getLeft() != -1 ? " RIGHT " + rightRangeText : "");
+
+			//			changeName = String.format("%s%s%s%n", change,
+			//					leftRange.getLeft() != -1 ? " LEFT " + leftRangeText : "",
+			//					rightRange.getLeft() != -1 ? " RIGHT " + rightRangeText : "");
 			//			}
 
 			// Issue #92 - BEX plugin - click top level, should go to first change

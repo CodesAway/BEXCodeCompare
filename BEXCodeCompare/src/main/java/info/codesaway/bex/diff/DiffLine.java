@@ -1,6 +1,8 @@
 package info.codesaway.bex.diff;
 
-public final class DiffLine {
+import info.codesaway.bex.Indexed;
+
+public final class DiffLine implements Indexed<String> {
 	private final int number;
 	private final String text;
 
@@ -20,6 +22,22 @@ public final class DiffLine {
 	@Override
 	public String toString() {
 		return this.getNumber() + ": " + this.getText();
+	}
+
+	/**
+	 * @since 0.14
+	 */
+	@Override
+	public int getIndex() {
+		return this.getNumber();
+	}
+
+	/**
+	 * @since 0.14
+	 */
+	@Override
+	public String getValue() {
+		return this.getText();
 	}
 
 	// Intentionally don't create equals method

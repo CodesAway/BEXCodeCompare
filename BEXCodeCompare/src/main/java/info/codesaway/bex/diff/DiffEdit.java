@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXSide;
+import info.codesaway.bex.Indexed;
 import info.codesaway.bex.IntBEXPair;
 
 // TODO: see if can simplify this code by using BEXPair
@@ -179,6 +180,26 @@ public final class DiffEdit implements DiffUnit {
 	 */
 	public String getRightText() {
 		return this.getText(RIGHT);
+	}
+
+	/**
+	 * Gets the text and line number for the left line.
+	 *
+	 * @return the left text and line number
+	 * @since 0.14
+	 */
+	public Indexed<String> getLeftIndexedText() {
+		return this.getLeftLine().orElse(ABSENT_LINE);
+	}
+
+	/**
+	 * Gets the text and line number for the right line.
+	 *
+	 * @return the right text and line number
+	 * @since 0.14
+	 */
+	public Indexed<String> getRightIndexedText() {
+		return this.getRightLine().orElse(ABSENT_LINE);
 	}
 
 	/**

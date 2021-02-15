@@ -7,6 +7,7 @@ import static info.codesaway.bex.BEXSide.LEFT;
 import static info.codesaway.bex.BEXSide.RIGHT;
 import static info.codesaway.bex.IntBEXRange.closed;
 import static info.codesaway.bex.diff.BasicDiffType.REPLACEMENT_BLOCK;
+import static info.codesaway.bex.diff.NormalizationFunction.normalization;
 import static info.codesaway.bex.util.BEXUtilities.firstNonNull;
 import static info.codesaway.bex.util.BEXUtilities.not;
 import static info.codesaway.util.regex.Pattern.getThreadLocalMatcher;
@@ -104,7 +105,6 @@ public final class DiffHelper {
 
 	public static DiffNormalizedText normalize(final String leftText, final String rightText,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
-
 		return firstNonNull(normalizationFunction, NO_NORMALIZATION_FUNCTION).apply(leftText, rightText);
 	}
 
@@ -1121,6 +1121,17 @@ public final class DiffHelper {
 
 	public static void handleSplitLines(final List<DiffUnit> diffUnits,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+		handleSplitLines(diffUnits, normalization(normalizationFunction));
+	}
+
+	/**
+	 *
+	 * @param diffUnits
+	 * @param normalizationFunction
+	 * @since 0.14
+	 */
+	public static void handleSplitLines(final List<DiffUnit> diffUnits,
+			final NormalizationFunction normalizationFunction) {
 		for (int i = 0; i < diffUnits.size(); i++) {
 			DiffUnit block = diffUnits.get(i);
 
@@ -1144,7 +1155,7 @@ public final class DiffHelper {
 					continue;
 				}
 
-				DiffNormalizedText normalizedText = normalize(diffEdit, normalizationFunction);
+				DiffNormalizedText normalizedText = normalizationFunction.normalize(diffEdit);
 				//				System.out.println(diffEdit.toString(true));
 				hasEntry = true;
 

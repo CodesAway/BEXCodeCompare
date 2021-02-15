@@ -21,6 +21,10 @@ public final class BEXChangeInfo {
 		return this.isImportantChange;
 	}
 
+	public String getInfo() {
+		return this.info;
+	}
+
 	public int getNumber() {
 		return this.number;
 	}
