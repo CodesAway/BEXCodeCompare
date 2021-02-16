@@ -2,6 +2,8 @@ package info.codesaway.bex.compare;
 
 import static info.codesaway.bex.BEXPairs.bexPair;
 import static info.codesaway.bex.BEXSide.BEX_SIDES;
+import static info.codesaway.bex.BEXSide.LEFT;
+import static info.codesaway.bex.BEXSide.RIGHT;
 import static info.codesaway.bex.diff.BasicDiffType.DELETE;
 import static info.codesaway.bex.diff.BasicDiffType.EQUAL;
 import static info.codesaway.bex.diff.BasicDiffType.IGNORE;
@@ -37,7 +39,9 @@ import info.codesaway.bex.BEXListPair;
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXPairValue;
 import info.codesaway.bex.BEXSide;
+import info.codesaway.bex.Indexed;
 import info.codesaway.bex.IntBEXRange;
+import info.codesaway.bex.diff.BEXNormalizationFunction;
 import info.codesaway.bex.diff.DiffBlock;
 import info.codesaway.bex.diff.DiffChange;
 import info.codesaway.bex.diff.DiffEdit;
@@ -46,6 +50,7 @@ import info.codesaway.bex.diff.DiffLine;
 import info.codesaway.bex.diff.DiffNormalizedText;
 import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.DiffUnit;
+import info.codesaway.bex.diff.NormalizationFunction;
 import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.substitution.SubstitutionType;
@@ -101,6 +106,29 @@ public final class RangeComparatorBEX {
 				? DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION
 				: DiffHelper.NO_NORMALIZATION_FUNCTION;
 
+		boolean ignoreComments = Activator.ignoreComments();
+
+		BEXPair<BEXString> bexString = ignoreComments
+				? this.comparator
+						.map(DocLineComparator::getText)
+						.map(BEXString::new)
+				: null;
+
+		// TODO: for now, only using comment-aware NormalizationFunction for handling split lines
+		// (should all code use this normalizer - see if benefits diff compare)
+		NormalizationFunction normalizer = BEXNormalizationFunction.indexedNormalization((l, r) -> {
+			if (bexString != null) {
+				BEXPair<IntBEXRange> lineRange = new BEXPairValue<>(this.determineLineRange(l, LEFT),
+						this.determineLineRange(r, RIGHT));
+
+				return BEX_SIDES
+						.map(side -> this.normalizeLine(lineRange.get(side), bexString.get(side)))
+						.apply(normalizationFunction);
+			}
+
+			return normalizationFunction.apply(l.getValue(), r.getValue());
+		});
+
 		BEXListPair<DiffLine> lines = new BEXListPair<>(this.comparator.map(
 				c -> IntStream.range(0, c.getRangeCount())
 						.mapToObj(i -> new DiffLine(i + 1 + c.getLineOffset(), c.extract(i, false)))
@@ -134,7 +162,6 @@ public final class RangeComparatorBEX {
 		// Block comments are more challenging
 		// Might need to run full file check to identify lines which are comments
 		// Can use logic from CASTLE Searching to identify commented out code versus regular code
-		boolean ignoreComments = Activator.ignoreComments();
 
 		if (shouldUseEnhancedCompare) {
 			// Look first for common refactorings, so can group changes together
@@ -155,12 +182,6 @@ public final class RangeComparatorBEX {
 		// Mark comments as ignored line, so can group together
 		// Also, if ignoreWhitespace, also mark blank lines added / deleted before and after comments as ignored lines
 		// Determine which lines of code are commented out
-		BEXPair<BEXString> bexString = ignoreComments
-				? this.comparator
-						.map(DocLineComparator::getText)
-						.map(BEXString::new)
-				: null;
-
 		BEXPair<NavigableSet<Integer>> lineComments = new BEXPairValue<>(TreeSet::new);
 		if (ignoreComments && bexString != null) {
 
@@ -298,19 +319,20 @@ public final class RangeComparatorBEX {
 						// 2) Normalize one or more whitespace with a single regular space
 
 						// TODO: Finally, will compare normalized text (if equal then ignore diff)
+						boolean isChangeOnlyComments = normalizer.normalize(diffEdit).hasEqualText();
 
-						BEXPair<IntBEXRange> lineRange = BEX_SIDES.map(side -> this.determineLineRange(diffEdit, side));
-
-						boolean isChangeOnlyComments = BEX_SIDES
-								.map(side -> this.normalizeLine(lineRange.get(side), bexString.get(side)))
-								.hasEqualValues();
+						//						BEXPair<IntBEXRange> lineRange = BEX_SIDES.map(side -> this.determineLineRange(diffEdit, side));
+						//
+						//						boolean isChangeOnlyComments = BEX_SIDES
+						//								.map(side -> this.normalizeLine(lineRange.get(side), bexString.get(side)))
+						//								.hasEqualValues();
 
 						if (isChangeOnlyComments) {
 							shouldIgnoreDiff = true;
 						}
 
-						System.out.println("Comments?" + System.lineSeparator() + diffEdit.toString(true));
-						System.out.println(lineRange);
+						//						System.out.println("Comments?" + System.lineSeparator() + diffEdit.toString(true));
+						//						System.out.println(lineRange);
 					}
 
 					if (shouldIgnoreDiff) {
@@ -330,7 +352,8 @@ public final class RangeComparatorBEX {
 		}
 
 		if (shouldUseEnhancedCompare && this.ignoreWhitespace) {
-			DiffHelper.handleSplitLines(diffBlocks, normalizationFunction);
+			//			DiffHelper.handleSplitLines(diffBlocks, normalizationFunction);
+			DiffHelper.handleSplitLines(diffBlocks, normalizer);
 		}
 
 		DiffHelper.handleBlankLines(diffBlocks, normalizationFunction);
@@ -492,6 +515,14 @@ public final class RangeComparatorBEX {
 	private IntBEXRange determineLineRange(final DiffEdit diffEdit, final BEXSide side) {
 		int lineNumber = diffEdit.getLineNumber(side) - 1 - this.comparator.get(side).getLineOffset();
 		String text = diffEdit.getText(side);
+		int tokenStart = this.comparator.get(side).getTokenStart(lineNumber);
+
+		return this.determineLineRange(text, tokenStart);
+	}
+
+	private IntBEXRange determineLineRange(final Indexed<String> indexedText, final BEXSide side) {
+		int lineNumber = indexedText.getIndex() - 1 - this.comparator.get(side).getLineOffset();
+		String text = indexedText.getValue();
 		int tokenStart = this.comparator.get(side).getTokenStart(lineNumber);
 
 		return this.determineLineRange(text, tokenStart);
