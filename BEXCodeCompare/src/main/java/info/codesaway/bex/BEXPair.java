@@ -100,7 +100,7 @@ public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 
 	/**
 	 * Applies the specified BiFunction, passing {@link #getLeft()} and {@link #getRight()} as arguments
-
+	
 	 * @param function the BiFunction to apply
 	 * @return the result of applying the BiFunction
 	 */
@@ -110,7 +110,7 @@ public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 
 	/**
 	 * Applies the specified ToIntBiFunction, passing {@link #getLeft()} and {@link #getRight()} as arguments
-
+	
 	 * @param function the ToIntBiFunction to apply
 	 * @return the result of applying the ToIntBiFunction
 	 */
@@ -120,7 +120,7 @@ public interface BEXPair<T> extends Comparable<BEXPair<T>> {
 
 	/**
 	 * Evaluates the specified BiPredicate, passing {@link #getLeft()} and {@link #getRight()} as arguments
-
+	
 	 * @param predicate the BiPredicate to apply
 	 * @return <code>true</code> if the predicate matches when applying the arugments; otherwise, <code>false</code>
 	 */

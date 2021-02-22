@@ -1,5 +1,6 @@
 package info.codesaway.bex.diff.substitution.java;
 
+import static info.codesaway.bex.diff.NormalizationFunction.WHITESPACE_NORMALIZATION;
 import static info.codesaway.bex.diff.TestUtilities.acceptSubstitutionType;
 import static info.codesaway.bex.diff.substitution.java.JavaRefactorings.JAVA_DIAMOND_OPERATOR;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -7,7 +8,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import info.codesaway.bex.BEXSide;
-import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
@@ -39,7 +39,7 @@ class JavaDiamondOperatorSubstitutionTests {
 		DiffType expectedType = new RefactoringDiffTypeValue('R', BEXSide.RIGHT, "diamond operator", type, true);
 
 		SubstitutionDiffType diffType = acceptSubstitutionType(JAVA_DIAMOND_OPERATOR, leftText, rightText,
-				DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION);
+				WHITESPACE_NORMALIZATION);
 
 		assertThat(diffType).isEqualTo(expectedType);
 	}

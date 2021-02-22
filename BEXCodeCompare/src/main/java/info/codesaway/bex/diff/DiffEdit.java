@@ -13,7 +13,6 @@ import java.util.stream.Stream;
 
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXSide;
-import info.codesaway.bex.Indexed;
 import info.codesaway.bex.IntBEXPair;
 
 // TODO: see if can simplify this code by using BEXPair
@@ -124,7 +123,7 @@ public final class DiffEdit implements DiffUnit {
 	 * @since 0.4
 	 */
 	public boolean hasLine(final BEXSide side) {
-		return side == LEFT ? this.hasLeftLine() : this.hasRightLine();
+		return this.getLine(side).isPresent();
 	}
 
 	/**
@@ -133,7 +132,7 @@ public final class DiffEdit implements DiffUnit {
 	 * @return <code>true</code> if has left line
 	 */
 	public boolean hasLeftLine() {
-		return this.getLeftLine().isPresent();
+		return this.hasLine(LEFT);
 	}
 
 	/**
@@ -142,7 +141,7 @@ public final class DiffEdit implements DiffUnit {
 	 * @return <code>true</code> if has right line
 	 */
 	public boolean hasRightLine() {
-		return this.getRightLine().isPresent();
+		return this.hasLine(RIGHT);
 	}
 
 	/**
@@ -161,7 +160,7 @@ public final class DiffEdit implements DiffUnit {
 	 * @return the text
 	 */
 	public String getText(final BEXSide side) {
-		return this.getLine(side).orElse(ABSENT_LINE).getText();
+		return this.getIndexedText(side).getText();
 	}
 
 	/**
@@ -183,23 +182,39 @@ public final class DiffEdit implements DiffUnit {
 	}
 
 	/**
-	 * Gets the text and line number for the left line.
+	 * Gets the line number and text for the line on the specified side.
 	 *
-	 * @return the left text and line number
+	 * @param side the side
+	 * @return the line number for the specified side (or -1 and empty string if there is no text on the specified side)
 	 * @since 0.14
 	 */
-	public Indexed<String> getLeftIndexedText() {
-		return this.getLeftLine().orElse(ABSENT_LINE);
+	// NOTE: opted to use method name getIndexedText, since this reflects the purpose of the method (to get the line number of text as an Indexed<String>)
+	// I thought naming the method getDiffLine would be confusing with getLine
+	// For example, the result of this method can be passed to NormalizationFunction to normalized the indexed text
+	// Originally, the return type was going to be Indexed<String>, but changed to DiffLine, since this reflect the actual type
+	// Also, allowed minor simplification of implementation of this class' methods
+	public DiffLine getIndexedText(final BEXSide side) {
+		return this.getLine(side).orElse(ABSENT_LINE);
 	}
 
 	/**
-	 * Gets the text and line number for the right line.
+	 * Gets the line number and text for the left line.
 	 *
-	 * @return the right text and line number
+	 * @return the left line number and text
 	 * @since 0.14
 	 */
-	public Indexed<String> getRightIndexedText() {
-		return this.getRightLine().orElse(ABSENT_LINE);
+	public DiffLine getLeftIndexedText() {
+		return this.getIndexedText(LEFT);
+	}
+
+	/**
+	 * Gets the line number and text for the right line.
+	 *
+	 * @return the right line number and text
+	 * @since 0.14
+	 */
+	public DiffLine getRightIndexedText() {
+		return this.getIndexedText(RIGHT);
 	}
 
 	/**
@@ -219,7 +234,7 @@ public final class DiffEdit implements DiffUnit {
 	 * @since 0.4
 	 */
 	public int getLineNumber(final BEXSide side) {
-		return side == LEFT ? this.getLeftLineNumber() : this.getRightLineNumber();
+		return this.getLine(side).orElse(ABSENT_LINE).getNumber();
 	}
 
 	/**
@@ -228,7 +243,7 @@ public final class DiffEdit implements DiffUnit {
 	 * @return the line number of the left line (or -1 if there is no left line)
 	 */
 	public int getLeftLineNumber() {
-		return this.leftLine.orElse(ABSENT_LINE).getNumber();
+		return this.getLineNumber(LEFT);
 	}
 
 	/**
@@ -237,7 +252,7 @@ public final class DiffEdit implements DiffUnit {
 	 * @return the line number of the right line (or -1 if there is no right line, such as for a deleted line)
 	 */
 	public int getRightLineNumber() {
-		return this.rightLine.orElse(ABSENT_LINE).getNumber();
+		return this.getLineNumber(RIGHT);
 	}
 
 	/**

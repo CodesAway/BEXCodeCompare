@@ -1,13 +1,12 @@
 package info.codesaway.bex.diff.substitution;
 
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.function.IntBinaryOperator;
 
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.diff.BasicDiffType;
 import info.codesaway.bex.diff.DiffEdit;
-import info.codesaway.bex.diff.DiffNormalizedText;
+import info.codesaway.bex.diff.NormalizationFunction;
 import info.codesaway.util.lcs.LcsString;
 
 public final class LcsSubstitution implements SubstitutionType {
@@ -24,7 +23,7 @@ public final class LcsSubstitution implements SubstitutionType {
 	@Override
 	public SubstitutionDiffType accept(final BEXPair<DiffEdit> checkPair,
 			final Map<DiffEdit, String> normalizedTexts,
-			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+			final NormalizationFunction normalizationFunction) {
 		BEXPair<String> normalizedText = checkPair.map(normalizedTexts::get);
 
 		if (normalizedText.testOrBoth(t -> t.length() > this.lcsMaxLineLength)) {

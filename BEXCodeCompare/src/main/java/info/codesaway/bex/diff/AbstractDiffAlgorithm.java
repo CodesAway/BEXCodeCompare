@@ -1,5 +1,7 @@
 package info.codesaway.bex.diff;
 
+import static info.codesaway.bex.diff.BEXNormalizationFunction.normalization;
+import static info.codesaway.bex.diff.NormalizationFunction.NO_NORMALIZATION;
 import static info.codesaway.bex.util.BEXUtilities.firstNonNull;
 import static info.codesaway.bex.util.BEXUtilities.immutableCopyOf;
 
@@ -17,7 +19,8 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	private final List<DiffLine> leftLines;
 	private final List<DiffLine> rightLines;
 
-	private final BiFunction<String, String, DiffNormalizedText> normalizationFunction;
+	private final NormalizationFunction normalizationFunction;
+	//	private final BiFunction<String, String, DiffNormalizedText> normalizationFunction;
 
 	private final AtomicReference<List<DiffEdit>> cachedDiff = new AtomicReference<>();
 
@@ -25,16 +28,27 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	 *
 	 * @param leftLines
 	 * @param rightLines
-	 * @param normalizationFunction the normalization function (if null, will be {@link DiffHelper#NO_NORMALIZATION_FUNCTION})
+	 * @param normalizationFunction the normalization function (if null, mimics {@link DiffHelper#NO_NORMALIZATION_FUNCTION})
 	 */
 	protected AbstractDiffAlgorithm(final List<DiffLine> leftLines, final List<DiffLine> rightLines,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+		this(leftLines, rightLines, normalization(normalizationFunction));
+	}
+
+	/**
+	 *
+	 * @param leftLines
+	 * @param rightLines
+	 * @param normalizationFunction the normalization function (if null, mimics {@link NormalizationFunction#NO_NORMALIZATION})
+	 */
+	protected AbstractDiffAlgorithm(final List<DiffLine> leftLines, final List<DiffLine> rightLines,
+			final NormalizationFunction normalizationFunction) {
 		// Take a defensive clone of the passed values and retain them as immutable lists
 		//		this.leftLines = ImmutableList.copyOf(leftLines);
 		//		this.rightLines = ImmutableList.copyOf(rightLines);
 		this.leftLines = immutableCopyOf(leftLines);
 		this.rightLines = immutableCopyOf(rightLines);
-		this.normalizationFunction = firstNonNull(normalizationFunction, DiffHelper.NO_NORMALIZATION_FUNCTION);
+		this.normalizationFunction = firstNonNull(normalizationFunction, NO_NORMALIZATION);
 	}
 
 	/**
@@ -54,8 +68,9 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 		return this.rightLines;
 	}
 
+	// Note: breaking change in 0.14
 	@Override
-	public BiFunction<String, String, DiffNormalizedText> getNormalizationFunction() {
+	public NormalizationFunction getNormalizationFunction() {
 		return this.normalizationFunction;
 	}
 
@@ -64,21 +79,41 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	/**
 	 * Gets the text from the specified line in {@link #getLeftLines()}
 	 *
-	 * @param index the line number
+	 * @param position the position
 	 * @return the left text on the specified line number
 	 */
-	public String getLeftText(final int index) {
-		return this.getLeftLines().get(index).getText();
+	public String getLeftText(final int position) {
+		return this.getLeftIndexedText(position).getText();
 	}
 
 	/**
 	 * Gets the text from the specified line in {@link #getRightLines()}
 	 *
-	 * @param index the line number
+	 * @param position the position
 	 * @return the right text on the specified line
 	 */
-	public String getRightText(final int index) {
-		return this.getRightLines().get(index).getText();
+	public String getRightText(final int position) {
+		return this.getRightIndexedText(position).getText();
+	}
+
+	/**
+	 * Gets the line number and text from the specified line in {@link #getLeftLines()}
+	 *
+	 * @param position the position
+	 * @return the left line number and text on the specified line number
+	 */
+	public DiffLine getLeftIndexedText(final int position) {
+		return this.getLeftLines().get(position);
+	}
+
+	/**
+	 * Gets the line number and text from the specified line in {@link #getRightLines()}
+	 *
+	 * @param position the position
+	 * @return the right line number and text on the specified line
+	 */
+	public DiffLine getRightIndexedText(final int position) {
+		return this.getRightLines().get(position);
 	}
 
 	/**

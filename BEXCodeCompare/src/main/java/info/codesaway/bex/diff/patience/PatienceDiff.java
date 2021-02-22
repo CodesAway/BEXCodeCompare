@@ -1,5 +1,9 @@
 package info.codesaway.bex.diff.patience;
 
+import static info.codesaway.bex.diff.BEXNormalizationFunction.normalization;
+import static info.codesaway.bex.diff.NormalizationFunction.NO_NORMALIZATION;
+import static info.codesaway.bex.util.BEXUtilities.index;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -11,6 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import info.codesaway.bex.BEXSide;
+import info.codesaway.bex.Indexed;
 import info.codesaway.bex.IntPair;
 import info.codesaway.bex.MutableIntBEXPair;
 import info.codesaway.bex.diff.AbstractDiffAlgorithm;
@@ -19,12 +24,13 @@ import info.codesaway.bex.diff.DiffEdit;
 import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffLine;
 import info.codesaway.bex.diff.DiffNormalizedText;
+import info.codesaway.bex.diff.NormalizationFunction;
 
 public final class PatienceDiff extends AbstractDiffAlgorithm {
 	private final BiFunction<List<DiffLine>, List<DiffLine>, List<DiffEdit>> fallbackDiffAlgorithm;
 
 	private PatienceDiff(final List<DiffLine> leftLines, final List<DiffLine> rightLines,
-			final BiFunction<String, String, DiffNormalizedText> normalizationFunction,
+			final NormalizationFunction normalizationFunction,
 			final BiFunction<List<DiffLine>, List<DiffLine>, List<DiffEdit>> fallbackDiffAlgorithm) {
 		super(leftLines, rightLines, normalizationFunction);
 		this.fallbackDiffAlgorithm = fallbackDiffAlgorithm;
@@ -39,7 +45,7 @@ public final class PatienceDiff extends AbstractDiffAlgorithm {
 	*/
 	public static List<DiffEdit> diff(final List<DiffLine> leftLines, final List<DiffLine> rightLines,
 			final BiFunction<List<DiffLine>, List<DiffLine>, List<DiffEdit>> fallbackDiffAlgorithm) {
-		return diff(leftLines, rightLines, DiffHelper.NO_NORMALIZATION_FUNCTION, fallbackDiffAlgorithm);
+		return diff(leftLines, rightLines, NO_NORMALIZATION, fallbackDiffAlgorithm);
 	}
 
 	/**
@@ -51,6 +57,20 @@ public final class PatienceDiff extends AbstractDiffAlgorithm {
 	 */
 	public static List<DiffEdit> diff(final List<DiffLine> leftLines, final List<DiffLine> rightLines,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction,
+			final BiFunction<List<DiffLine>, List<DiffLine>, List<DiffEdit>> fallbackDiffAlgorithm) {
+		return diff(leftLines, rightLines, normalization(normalizationFunction), fallbackDiffAlgorithm);
+	}
+
+	/**
+	 * Calculates the diff
+	 *
+	 * @param leftLines
+	 * @param rightLines
+	 * @return
+	 * @since 0.14
+	 */
+	public static List<DiffEdit> diff(final List<DiffLine> leftLines, final List<DiffLine> rightLines,
+			final NormalizationFunction normalizationFunction,
 			final BiFunction<List<DiffLine>, List<DiffLine>, List<DiffEdit>> fallbackDiffAlgorithm) {
 		return new PatienceDiff(leftLines, rightLines, normalizationFunction, fallbackDiffAlgorithm).getDiff();
 	}
@@ -109,7 +129,6 @@ public final class PatienceDiff extends AbstractDiffAlgorithm {
 			if (match == null) {
 				// End of chain of matches
 				sliceMatches.add(new PatienceSliceMatch(subslice, Collections.emptyList()));
-				//				sliceMatches.add(new PatienceSliceMatch(subslice, ImmutableList.of()));
 				break;
 			}
 
@@ -131,7 +150,6 @@ public final class PatienceDiff extends AbstractDiffAlgorithm {
 			} else {
 				// No consecutive matches, so just add this match
 				sliceMatches.add(new PatienceSliceMatch(subslice, Arrays.asList(match)));
-				//				sliceMatches.add(new PatienceSliceMatch(subslice, ImmutableList.of(match)));
 			}
 
 			// Calculate start of next slice, which starts the line after the match
@@ -183,9 +201,8 @@ public final class PatienceDiff extends AbstractDiffAlgorithm {
 
 		List<DiffEdit> head = new ArrayList<>();
 
-		while (!slice.isEmpty()
-				&& this.normalize(this.getLeftText(slice.getLeftStart()), this.getRightText(slice.getRightStart()))
-						.hasEqualText()) {
+		while (!slice.isEmpty() && this.isNormalizedEqualText(this.getLeftIndexedText(slice.getLeftStart()),
+				this.getRightIndexedText(slice.getRightStart()))) {
 			head.add(this.newEqualOrNormalizeEdit(
 					this.getLeftLines().get(slice.getLeftStart()),
 					this.getRightLines().get(slice.getRightStart())));
@@ -204,9 +221,8 @@ public final class PatienceDiff extends AbstractDiffAlgorithm {
 		// Note: Instead, plan to add in regular order and reverse at end
 		List<DiffEdit> tail = new ArrayList<>();
 
-		while (!slice.isEmpty()
-				&& this.normalize(this.getLeftText(slice.getLeftEnd() - 1), this.getRightText(slice.getRightEnd() - 1))
-						.hasEqualText()) {
+		while (!slice.isEmpty() && this.isNormalizedEqualText(this.getLeftIndexedText(slice.getLeftEnd() - 1),
+				this.getRightIndexedText(slice.getRightEnd() - 1))) {
 			slice.decrementEnds();
 			tail.add(this.newEqualOrNormalizeEdit(
 					this.getLeftLines().get(slice.getLeftEnd()),
@@ -227,10 +243,12 @@ public final class PatienceDiff extends AbstractDiffAlgorithm {
 		// (this is used to determine if the line is unique in each text and where in the text the line is)
 		HashMap<String, FrequencyCount> counts = new LinkedHashMap<>();
 
+		Indexed<String> indexedBlank = index(-1, "");
+
 		// TODO: refactor to combine logic using LEFT / RIGHT
 		// Iterate over the range of the slice for left lines
 		for (int n = slice.getLeftStart(); n < slice.getLeftEnd(); n++) {
-			String text = this.normalize(this.getLeftText(n), "").getLeft();
+			String text = this.normalize(this.getLeftIndexedText(n), indexedBlank).getLeft();
 
 			// Introduced variable to make lambda happy
 			int lineNumber = n;
@@ -242,7 +260,7 @@ public final class PatienceDiff extends AbstractDiffAlgorithm {
 
 		// Iterate over the range of the slice for right lines
 		for (int n = slice.getRightStart(); n < slice.getRightEnd(); n++) {
-			String text = this.normalize("", this.getRightText(n)).getRight();
+			String text = this.normalize(indexedBlank, this.getRightIndexedText(n)).getRight();
 
 			// Introduced variable to make lambda happy
 			int lineNumber = n;

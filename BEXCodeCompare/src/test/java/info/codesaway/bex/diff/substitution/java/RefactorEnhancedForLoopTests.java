@@ -2,6 +2,9 @@ package info.codesaway.bex.diff.substitution.java;
 
 import static info.codesaway.bex.diff.BasicDiffType.DELETE;
 import static info.codesaway.bex.diff.BasicDiffType.INSERT;
+import static info.codesaway.bex.diff.DiffHelper.handleSubstitution;
+import static info.codesaway.bex.diff.NormalizationFunction.NO_NORMALIZATION;
+import static info.codesaway.bex.diff.NormalizationFunction.WHITESPACE_NORMALIZATION;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
@@ -13,7 +16,6 @@ import com.google.common.collect.ImmutableList;
 
 import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.diff.DiffEdit;
-import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffLine;
 import info.codesaway.bex.diff.DiffType;
 import info.codesaway.bex.diff.substitution.RefactoringDiffTypeValue;
@@ -33,8 +35,7 @@ class RefactorEnhancedForLoopTests {
 				new DiffEdit(INSERT, null, indexedLine2),
 				new DiffEdit(DELETE, enhancedLine, null)));
 
-		DiffHelper.handleSubstitution(diff, DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION,
-				new EnhancedForLoopRefactoring());
+		handleSubstitution(diff, WHITESPACE_NORMALIZATION, new EnhancedForLoopRefactoring());
 
 		DiffType expectedType = new RefactoringDiffTypeValue('R', BEXSide.LEFT, "enhanced for", "myList", true);
 
@@ -77,8 +78,9 @@ class RefactorEnhancedForLoopTests {
 				new DiffEdit(INSERT, null, indexedLine),
 				new DiffEdit(DELETE, enhancedLine, null)));
 
-		DiffHelper.handleSubstitution(diff, DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION,
-				new EnhancedForLoopRefactoring());
+		// TODO: old code was using WHITESPACE_NORMALIZATION_FUNCTION
+		// Though, noticed don't need whitespace normalization, due to how EnhancedForLoopRefactoring is implemented
+		handleSubstitution(diff, NO_NORMALIZATION, new EnhancedForLoopRefactoring());
 
 		DiffType expectedType = new RefactoringDiffTypeValue('R', BEXSide.LEFT, "enhanced for", iterableName, true);
 

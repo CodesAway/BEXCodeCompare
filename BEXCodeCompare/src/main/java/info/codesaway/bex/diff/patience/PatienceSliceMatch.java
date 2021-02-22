@@ -16,7 +16,6 @@ public final class PatienceSliceMatch {
 	public PatienceSliceMatch(final PatienceSlice slice, final List<PatienceMatch> matches) {
 		this.slice = slice;
 		this.matches = immutableCopyOf(matches);
-		//		this.matches = ImmutableList.copyOf(matches);
 	}
 
 	public PatienceSlice getSlice() {
