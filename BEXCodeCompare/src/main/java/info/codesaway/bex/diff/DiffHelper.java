@@ -155,7 +155,7 @@ public final class DiffHelper {
 
 	/**
 	 *
-	 * <p>Implementation note: text is wrapped in an Indexed<String> with line number -1 in order to normalize using NormalizationFunction</p>
+	 * <p>Implementation note: text is wrapped in an Indexed&lt;String&gt; with line number -1 in order to normalize using NormalizationFunction</p>
 	 * @since 0.14
 	 */
 	public static String normalize(final BEXSide side, final String text,
