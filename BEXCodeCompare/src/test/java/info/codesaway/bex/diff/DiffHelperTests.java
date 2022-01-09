@@ -2,19 +2,32 @@ package info.codesaway.bex.diff;
 
 import static com.google.common.collect.Maps.immutableEntry;
 import static info.codesaway.bex.BEXPairs.bexPair;
+import static info.codesaway.bex.BEXSide.LEFT;
+import static info.codesaway.bex.BEXSide.RIGHT;
 import static info.codesaway.bex.IntBEXRange.closed;
 import static info.codesaway.bex.diff.BasicDiffType.DELETE;
 import static info.codesaway.bex.diff.BasicDiffType.EQUAL;
 import static info.codesaway.bex.diff.BasicDiffType.INSERT;
 import static info.codesaway.bex.diff.BasicDiffType.MOVE_LEFT;
 import static info.codesaway.bex.diff.BasicDiffType.MOVE_RIGHT;
+import static info.codesaway.bex.diff.BasicDiffType.NORMALIZE;
+import static info.codesaway.bex.diff.BasicDiffType.REPLACEMENT_BLOCK;
+import static info.codesaway.bex.diff.BasicDiffType.SUBSTITUTE;
+import static info.codesaway.bex.diff.DiffHelper.handleBlankLines;
+import static info.codesaway.bex.diff.DiffHelper.handleSplitLines;
+import static info.codesaway.bex.diff.DiffHelper.handleSubstitution;
+import static info.codesaway.bex.diff.DiffHelper.normalize;
+import static info.codesaway.bex.diff.substitution.SubstitutionType.LCS_MIN_OPERATOR;
+import static info.codesaway.bex.util.BEXUtilities.index;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.function.BiFunction;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,7 +43,9 @@ import info.codesaway.bex.IntRange;
 import info.codesaway.bex.diff.myers.MyersLinearDiff;
 import info.codesaway.bex.diff.patience.PatienceDiff;
 import info.codesaway.bex.diff.patience.PatienceMatch;
+import info.codesaway.bex.diff.substitution.SubstitutionDiffType;
 import info.codesaway.bex.diff.substitution.SubstitutionDiffTypeValue;
+import info.codesaway.bex.diff.substitution.SubstitutionType;
 
 class DiffHelperTests {
 
@@ -226,5 +241,345 @@ class DiffHelperTests {
 		IntBEXPair line2 = IntBEXPair.of(left2.getStart(), right2.getStart());
 
 		assertTrue(DiffHelper.isConsecutive(line1, line2, false));
+	}
+
+	@Test
+	public void testMyersDiffNullNormalizationBiFunction() {
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = null;
+
+		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, "a"), new DiffLine(1, "b"), new DiffLine(2, "c"));
+		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(0, "c"), new DiffLine(1, "b"), new DiffLine(2, "a"));
+
+		List<DiffEdit> diff = MyersLinearDiff.diff(leftLines, rightLines, normalizationFunction);
+		assertThat(diff).hasSize(5);
+	}
+
+	@Test
+	public void testMyersDiffNullNormalizationFunction() {
+		NormalizationFunction normalizationFunction = null;
+
+		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, "a"), new DiffLine(1, "b"), new DiffLine(2, "c"));
+		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(0, "c"), new DiffLine(1, "b"), new DiffLine(2, "a"));
+
+		List<DiffEdit> diff = MyersLinearDiff.diff(leftLines, rightLines, normalizationFunction);
+		assertThat(diff).hasSize(5);
+	}
+
+	@Test
+	public void testPatienceDiffNullNormalizationBiFunction() {
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = null;
+
+		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, "a"), new DiffLine(1, "b"), new DiffLine(2, "c"));
+		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(0, "c"), new DiffLine(1, "b"), new DiffLine(2, "a"));
+
+		List<DiffEdit> diff = PatienceDiff.diff(leftLines, rightLines, normalizationFunction,
+				MyersLinearDiff.with(normalizationFunction));
+		assertThat(diff).hasSize(5);
+	}
+
+	@Test
+	public void testPatienceDiffNullNormalizationFunction() {
+		NormalizationFunction normalizationFunction = null;
+
+		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, "a"), new DiffLine(1, "b"), new DiffLine(2, "c"));
+		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(0, "c"), new DiffLine(1, "b"), new DiffLine(2, "a"));
+
+		List<DiffEdit> diff = PatienceDiff.diff(leftLines, rightLines, normalizationFunction,
+				MyersLinearDiff.with(normalizationFunction));
+		assertThat(diff).hasSize(5);
+	}
+
+	/**
+	 * @see DiffHelper#normalize(DiffEdit, BiFunction)
+	 */
+	@Test
+	public void testNormalizeDiffEditNullNormalizationBiFunction() {
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = null;
+
+		DiffEdit diffEdit = new DiffEdit(EQUAL, new DiffLine(0, "left"), new DiffLine(0, "right"));
+		DiffNormalizedText normalizedText = normalize(diffEdit, normalizationFunction);
+
+		DiffNormalizedText expectedValue = new DiffNormalizedText("left", "right");
+		assertThat(normalizedText).isEqualTo(expectedValue);
+	}
+
+	/**
+	 * @see DiffHelper#normalize(String, String, BiFunction)
+	 */
+	@Test
+	public void testNormalizeTextNullNormalizationBiFunction() {
+		DiffNormalizedText normalizedText = normalize("left", "right", null);
+
+		DiffNormalizedText expectedValue = new DiffNormalizedText("left", "right");
+		assertThat(normalizedText).isEqualTo(expectedValue);
+	}
+
+	/**
+	 * @see DiffHelper#normalize(DiffEdit, NormalizationFunction)
+	 */
+	@Test
+	public void testNormalizeDiffEditNullNormalizationFunction() {
+		NormalizationFunction normalizationFunction = null;
+
+		DiffEdit diffEdit = new DiffEdit(EQUAL, new DiffLine(0, "left"), new DiffLine(0, "right"));
+		DiffNormalizedText normalizedText = normalize(diffEdit, normalizationFunction);
+
+		DiffNormalizedText expectedValue = new DiffNormalizedText("left", "right");
+		assertThat(normalizedText).isEqualTo(expectedValue);
+	}
+
+	/**
+	 * @see DiffHelper#normalize(info.codesaway.bex.BEXSide, String, BiFunction)
+	 */
+	@Test
+	public void testNormalizeSidedTextNullNormalizationBiFunction() {
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = null;
+
+		String leftNormalizedText = normalize(LEFT, "left", normalizationFunction);
+		assertThat(leftNormalizedText).isEqualTo("left");
+
+		String rightNormalizedText = normalize(RIGHT, "right", normalizationFunction);
+		assertThat(rightNormalizedText).isEqualTo("right");
+	}
+
+	/**
+	 * @see DiffHelper#normalize(info.codesaway.bex.BEXSide, String, NormalizationFunction)
+	 */
+	@Test
+	public void testNormalizeSidedTextNullNormalizationFunction() {
+		NormalizationFunction normalizationFunction = null;
+
+		String leftNormalizedText = normalize(LEFT, "left", normalizationFunction);
+		assertThat(leftNormalizedText).isEqualTo("left");
+
+		String rightNormalizedText = normalize(RIGHT, "right", normalizationFunction);
+		assertThat(rightNormalizedText).isEqualTo("right");
+	}
+
+	/**
+	 * @see DiffHelper#normalize(info.codesaway.bex.BEXSide, String, NormalizationFunction)
+	 */
+	@Test
+	public void testNormalizeSidedIndexedTextNullNormalizationFunction() {
+		NormalizationFunction normalizationFunction = null;
+
+		DiffNormalizedText normalizedText = normalize(index(-1, "left"), index(-1, "right"), normalizationFunction);
+
+		DiffNormalizedText expectedValue = new DiffNormalizedText("left", "right");
+		assertThat(normalizedText).isEqualTo(expectedValue);
+	}
+
+	/**
+	 * @see DiffHelper#handleMovedLines(List, BiFunction)
+	 */
+	@Test
+	public void testHandleMovedLinesNullNormalizationBiFunction() {
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = null;
+
+		// TODO: not really a unit test since tests diff and handleMovedLines
+		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, "a"), new DiffLine(1, "b"), new DiffLine(2, "c"));
+		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(0, "c"), new DiffLine(1, "b"), new DiffLine(2, "a"));
+		List<DiffEdit> diff = PatienceDiff.diff(leftLines, rightLines, MyersLinearDiff::diff);
+		DiffHelper.handleMovedLines(diff, normalizationFunction);
+
+		List<DiffEdit> expected = ImmutableList.of(
+				new DiffEdit(MOVE_LEFT, leftLines.get(0), rightLines.get(2)),
+				new DiffEdit(MOVE_LEFT, leftLines.get(1), rightLines.get(1)),
+				new DiffEdit(EQUAL, leftLines.get(2), rightLines.get(0)),
+				new DiffEdit(MOVE_RIGHT, leftLines.get(1), rightLines.get(1)),
+				new DiffEdit(MOVE_RIGHT, leftLines.get(0), rightLines.get(2)));
+
+		assertEquals(expected, diff);
+	}
+
+	/**
+	 * @see DiffHelper#handleMovedLines(List, NormalizationFunction)
+	 */
+	@Test
+	public void testHandleMovedLinesNullNormalizationFunction() {
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = null;
+
+		// TODO: not really a unit test since tests diff and handleMovedLines
+		List<DiffLine> leftLines = ImmutableList.of(new DiffLine(0, "a"), new DiffLine(1, "b"), new DiffLine(2, "c"));
+		List<DiffLine> rightLines = ImmutableList.of(new DiffLine(0, "c"), new DiffLine(1, "b"), new DiffLine(2, "a"));
+		List<DiffEdit> diff = PatienceDiff.diff(leftLines, rightLines, MyersLinearDiff::diff);
+		DiffHelper.handleMovedLines(diff, normalizationFunction);
+
+		List<DiffEdit> expected = ImmutableList.of(
+				new DiffEdit(MOVE_LEFT, leftLines.get(0), rightLines.get(2)),
+				new DiffEdit(MOVE_LEFT, leftLines.get(1), rightLines.get(1)),
+				new DiffEdit(EQUAL, leftLines.get(2), rightLines.get(0)),
+				new DiffEdit(MOVE_RIGHT, leftLines.get(1), rightLines.get(1)),
+				new DiffEdit(MOVE_RIGHT, leftLines.get(0), rightLines.get(2)));
+
+		assertEquals(expected, diff);
+	}
+
+	/**
+	 * @see DiffHelper#handleSubstitution(List, BiFunction, SubstitutionType...)
+	 */
+	@Test
+	public void testHandleSubstitutionNullNormalizationBiFunction() {
+		DiffLine leftLine = new DiffLine(1, "blahL");
+		DiffLine rightLine = new DiffLine(1, "blahR");
+
+		List<DiffEdit> diff = new ArrayList<>(ImmutableList.of(
+				new DiffEdit(DELETE, leftLine, null),
+				new DiffEdit(INSERT, null, rightLine)));
+
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = null;
+		handleSubstitution(diff, normalizationFunction, LCS_MIN_OPERATOR);
+
+		List<DiffEdit> expected = ImmutableList.of(
+				new DiffEdit(SUBSTITUTE, leftLine, rightLine));
+
+		assertEquals(expected, diff);
+	}
+
+	/**
+	 * @see DiffHelper#handleSubstitution(List, NormalizationFunction, SubstitutionType...)
+	 */
+	@Test
+	public void testHandleSubstitutionNullNormalizationFunction() {
+		DiffLine leftLine = new DiffLine(1, "blahL");
+		DiffLine rightLine = new DiffLine(1, "blahR");
+
+		List<DiffEdit> diff = new ArrayList<>(ImmutableList.of(
+				new DiffEdit(DELETE, leftLine, null),
+				new DiffEdit(INSERT, null, rightLine)));
+
+		NormalizationFunction normalizationFunction = null;
+		handleSubstitution(diff, normalizationFunction, LCS_MIN_OPERATOR);
+
+		List<DiffEdit> expected = ImmutableList.of(
+				new DiffEdit(SUBSTITUTE, leftLine, rightLine));
+
+		assertEquals(expected, diff);
+	}
+
+	@Test
+	public void testHandleSubstitutionNullNormalizationBiFunctionCustomSubstitution() {
+		DiffLine leftLine = new DiffLine(1, "blahL");
+		DiffLine rightLine = new DiffLine(1, "blahR");
+
+		List<DiffEdit> diff = new ArrayList<>(ImmutableList.of(
+				new DiffEdit(DELETE, leftLine, null),
+				new DiffEdit(INSERT, null, rightLine)));
+
+		SubstitutionDiffType expectedDiffType = new SubstitutionDiffTypeValue('!', "sub");
+
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = null;
+		SubstitutionType substitutionType = (checkPair, normalizedTexts,
+				normalizationFunction1) -> normalizationFunction1.normalize(index(0, ""), index(0, "")).hasEqualText()
+						? expectedDiffType
+						: null;
+
+		handleSubstitution(diff, normalizationFunction, substitutionType);
+
+		List<DiffEdit> expected = ImmutableList.of(
+				new DiffEdit(expectedDiffType, leftLine, rightLine));
+
+		assertEquals(expected, diff);
+	}
+
+	@Test
+	public void testHandleSubstitutionNullNormalizationFunctionCustomSubstitution() {
+		DiffLine leftLine = new DiffLine(1, "blahL");
+		DiffLine rightLine = new DiffLine(1, "blahR");
+
+		List<DiffEdit> diff = new ArrayList<>(ImmutableList.of(
+				new DiffEdit(DELETE, leftLine, null),
+				new DiffEdit(INSERT, null, rightLine)));
+
+		SubstitutionDiffType expectedDiffType = new SubstitutionDiffTypeValue('!', "sub");
+
+		NormalizationFunction normalizationFunction = null;
+		SubstitutionType substitutionType = (checkPair, normalizedTexts,
+				normalizationFunction1) -> normalizationFunction1.normalize(index(0, ""), index(0, "")).hasEqualText()
+						? expectedDiffType
+						: null;
+
+		handleSubstitution(diff, normalizationFunction, substitutionType);
+
+		List<DiffEdit> expected = ImmutableList.of(
+				new DiffEdit(expectedDiffType, leftLine, rightLine));
+
+		assertEquals(expected, diff);
+	}
+
+	/**
+	 * @see DiffHelper#handleSplitLines(List, BiFunction)
+	 */
+	@Test
+	public void testHandleSplitLinesNullNormalizationBiFunction() {
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = null;
+
+		List<DiffEdit> diffEdits = ImmutableList.of(new DiffEdit(INSERT, new DiffLine(1, "ABC"), null),
+				new DiffEdit(INSERT, new DiffLine(2, "123"), null),
+				new DiffEdit(DELETE, null, new DiffLine(10, "ABC123")));
+
+		DiffBlock diffBlock = new DiffBlock(REPLACEMENT_BLOCK, diffEdits);
+		List<DiffUnit> diffUnits = Arrays.asList(diffBlock);
+
+		handleSplitLines(diffUnits, normalizationFunction);
+
+		assertThat(diffUnits.get(0).getType()).isEqualTo(NORMALIZE);
+	}
+
+	/**
+	 * @see DiffHelper#handleSplitLines(List, NormalizationFunction)
+	 */
+	@Test
+	public void testHandleSplitLinesNullNormalizationFunction() {
+		NormalizationFunction normalizationFunction = null;
+
+		List<DiffEdit> diffEdits = ImmutableList.of(new DiffEdit(INSERT, new DiffLine(1, "ABC"), null),
+				new DiffEdit(INSERT, new DiffLine(2, "123"), null),
+				new DiffEdit(DELETE, null, new DiffLine(10, "ABC123")));
+
+		DiffBlock diffBlock = new DiffBlock(REPLACEMENT_BLOCK, diffEdits);
+		List<DiffUnit> diffUnits = Arrays.asList(diffBlock);
+
+		handleSplitLines(diffUnits, normalizationFunction);
+
+		assertThat(diffUnits.get(0).getType()).isEqualTo(NORMALIZE);
+	}
+
+	/**
+	 * @see DiffHelper#handleSplitLines(List, BiFunction)
+	 */
+	@Test
+	public void testHandleBlankLinesNullNormalizationBiFunction() {
+		BiFunction<String, String, DiffNormalizedText> normalizationFunction = null;
+
+		List<DiffEdit> diffEdits = ImmutableList.of(new DiffEdit(INSERT, new DiffLine(1, ""), null),
+				new DiffEdit(INSERT, new DiffLine(2, ""), null),
+				new DiffEdit(DELETE, null, new DiffLine(10, "")));
+
+		DiffBlock diffBlock = new DiffBlock(REPLACEMENT_BLOCK, diffEdits);
+		List<DiffUnit> diffUnits = Arrays.asList(diffBlock);
+
+		handleBlankLines(diffUnits, normalizationFunction);
+
+		assertThat(diffUnits.get(0).getType()).isEqualTo(NORMALIZE);
+	}
+
+	/**
+	 * @see DiffHelper#handleSplitLines(List, NormalizationFunction)
+	 */
+	@Test
+	public void testHandleBlankLinesNullNormalizationFunction() {
+		NormalizationFunction normalizationFunction = null;
+
+		List<DiffEdit> diffEdits = ImmutableList.of(new DiffEdit(INSERT, new DiffLine(1, ""), null),
+				new DiffEdit(INSERT, new DiffLine(2, ""), null),
+				new DiffEdit(DELETE, null, new DiffLine(10, "")));
+
+		DiffBlock diffBlock = new DiffBlock(REPLACEMENT_BLOCK, diffEdits);
+		List<DiffUnit> diffUnits = Arrays.asList(diffBlock);
+
+		handleBlankLines(diffUnits, normalizationFunction);
+
+		assertThat(diffUnits.get(0).getType()).isEqualTo(NORMALIZE);
 	}
 }

@@ -1,5 +1,7 @@
 package info.codesaway.bex.diff.myers;
 
+import static info.codesaway.bex.diff.NormalizationFunction.NO_NORMALIZATION;
+import static info.codesaway.bex.diff.NormalizationFunction.normalization;
 import static info.codesaway.bex.util.BEXUtilities.isBetween;
 
 import java.util.ArrayList;
@@ -10,9 +12,9 @@ import java.util.function.BiFunction;
 import info.codesaway.bex.diff.AbstractDiffAlgorithm;
 import info.codesaway.bex.diff.BasicDiffType;
 import info.codesaway.bex.diff.DiffEdit;
-import info.codesaway.bex.diff.DiffHelper;
 import info.codesaway.bex.diff.DiffLine;
 import info.codesaway.bex.diff.DiffNormalizedText;
+import info.codesaway.bex.diff.NormalizationFunction;
 
 public final class MyersLinearDiff extends AbstractDiffAlgorithm {
 	// Java implementation of Ruby source code found at
@@ -38,13 +40,20 @@ public final class MyersLinearDiff extends AbstractDiffAlgorithm {
 	//    private static final ForkJoinPool FORK_JOIN_POOL = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
 	private MyersLinearDiff(final List<DiffLine> leftLines, final List<DiffLine> rightLines,
-			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+			final NormalizationFunction normalizationFunction) {
 		super(leftLines, rightLines, normalizationFunction);
 	}
 
-	// TODO: is this a good method name?
 	public static BiFunction<List<DiffLine>, List<DiffLine>, List<DiffEdit>> with(
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+		return with(normalization(normalizationFunction));
+	}
+
+	/**
+	 * @since 0.14
+	 */
+	public static BiFunction<List<DiffLine>, List<DiffLine>, List<DiffEdit>> with(
+			final NormalizationFunction normalizationFunction) {
 		return (l, r) -> diff(l, r, normalizationFunction);
 	}
 
@@ -56,7 +65,7 @@ public final class MyersLinearDiff extends AbstractDiffAlgorithm {
 	 * @return
 	 */
 	public static List<DiffEdit> diff(final List<DiffLine> leftLines, final List<DiffLine> rightLines) {
-		return diff(leftLines, rightLines, DiffHelper.NO_NORMALIZATION_FUNCTION);
+		return diff(leftLines, rightLines, NO_NORMALIZATION);
 	}
 
 	/**
@@ -68,6 +77,19 @@ public final class MyersLinearDiff extends AbstractDiffAlgorithm {
 	 */
 	public static List<DiffEdit> diff(final List<DiffLine> leftLines, final List<DiffLine> rightLines,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+		return diff(leftLines, rightLines, normalization(normalizationFunction));
+	}
+
+	/**
+	 * Calculates the diff
+	 *
+	 * @param leftLines
+	 * @param rightLines
+	 * @return
+	 * @since 0.14
+	 */
+	public static List<DiffEdit> diff(final List<DiffLine> leftLines, final List<DiffLine> rightLines,
+			final NormalizationFunction normalizationFunction) {
 		return new MyersLinearDiff(leftLines, rightLines, normalizationFunction).getDiff();
 	}
 
@@ -153,7 +175,8 @@ public final class MyersLinearDiff extends AbstractDiffAlgorithm {
 		MyersPoint point = point1;
 
 		while (point.getX() < point2.getX() && point.getY() < point2.getY()
-				&& this.normalize(this.getLeftText(point.getX()), this.getRightText(point.getY())).hasEqualText()) {
+				&& this.isNormalizedEqualText(this.getLeftIndexedText(point.getX()),
+						this.getRightIndexedText(point.getY()))) {
 			// Create new point by going along diagonal, incrementing both X and Y
 
 			MyersPoint newPoint = new MyersPoint(point.getX() + 1, point.getY() + 1);
@@ -281,7 +304,7 @@ public final class MyersLinearDiff extends AbstractDiffAlgorithm {
 			int py = (d == 0 || x != px) ? y : y - 1;
 
 			while (x < box.getRight() && y < box.getBottom()
-					&& this.normalize(this.getLeftText(x), this.getRightText(y)).hasEqualText()) {
+					&& this.isNormalizedEqualText(this.getLeftIndexedText(x), this.getRightIndexedText(y))) {
 				x++;
 				y++;
 			}
@@ -323,7 +346,7 @@ public final class MyersLinearDiff extends AbstractDiffAlgorithm {
 			int px = (d == 0 || y != py) ? x : x + 1;
 
 			while (x > box.getLeft() && y > box.getTop()
-					&& this.normalize(this.getLeftText(x - 1), this.getRightText(y - 1)).hasEqualText()) {
+					&& this.isNormalizedEqualText(this.getLeftIndexedText(x - 1), this.getRightIndexedText(y - 1))) {
 				x--;
 				y--;
 			}

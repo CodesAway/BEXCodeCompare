@@ -133,7 +133,8 @@ public final class ParsingUtilities {
 	 * @return
 	 */
 	public static ASTParser getParser(final String workspace, final String jrePathname) {
-		ASTParser parser = ASTParser.newParser(AST.JLS8);
+		// Fix for #126
+		ASTParser parser = ASTParser.newParser(AST.JLS14);
 		parser.setResolveBindings(true);
 		parser.setKind(ASTParser.K_COMPILATION_UNIT);
 
@@ -195,10 +196,20 @@ public final class ParsingUtilities {
 				useJrePathname = jrePathTest.toString();
 			}
 
+			// Issue #125
 			Path jrePath = Paths.get(useJrePathname, "lib\\rt.jar");
 
 			if (!Files.exists(jrePath)) {
-				throw new IllegalArgumentException("JRE pathname is not a valid JRE directory: " + jrePathname);
+				// Reference: https://github.com/superblaubeere27/obfuscator/issues/63
+				// 9/12/2021 - updated to handle changes starting with JDK9
+				Path jdkModulePath = Paths.get(useJrePathname, "jmods/java.base.jmod");
+				if (Files.exists(jdkModulePath)) {
+					jrePath = jdkModulePath;
+
+					addJmods(useJrePathname, classpath, "java.sql.jmod");
+				} else {
+					throw new IllegalArgumentException("JRE pathname is not a valid JRE directory: " + jrePathname);
+				}
 			}
 
 			classpath.add(jrePath.toString());
@@ -219,6 +230,12 @@ public final class ParsingUtilities {
 		classpath.removeIf(c -> Files.notExists(Paths.get(c)));
 
 		return classpath;
+	}
+
+	private static void addJmods(final String jrePathname, final List<String> classpath, final String... modules) {
+		for (String module : modules) {
+			classpath.add(Paths.get(jrePathname, "jmods", module).toString());
+		}
 	}
 
 	public static void createASTs(final ASTParser parser, final List<Path> paths,

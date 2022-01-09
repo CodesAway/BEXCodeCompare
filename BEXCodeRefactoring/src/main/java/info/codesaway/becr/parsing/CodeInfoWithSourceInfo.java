@@ -17,18 +17,26 @@ public final class CodeInfoWithSourceInfo implements Comparable<CodeInfoWithSour
 
 	private final String sourcePathname;
 
+	/*
+	 // TODO: getLineInfo() should not be null
+	 // TODO: getSignature() should not be null
+	 // TODO: getFieldName() should not be null
+	*/
+
 	public CodeInfoWithSourceInfo(final String project, final String packageName,
 			final String javaFilenameWithoutExtension,
 			final CodeInfo codeInfo, final String info, final String sourcePathname) {
-		this.project = project;
-		this.packageName = packageName;
-		this.javaFilenameWithoutExtension = javaFilenameWithoutExtension;
+		this.project = Objects.requireNonNull(project, "project is null");
+		// Fix for #122
+		this.packageName = packageName == null ? "" : packageName;
+		this.javaFilenameWithoutExtension = Objects.requireNonNull(javaFilenameWithoutExtension,
+				"javaFilenameWithoutExtension is null");
 
 		this.codeInfo = codeInfo;
 
-		this.info = info;
+		this.info = Objects.requireNonNull(info, "info is null");
 
-		this.sourcePathname = sourcePathname;
+		this.sourcePathname = Objects.requireNonNull(sourcePathname, "sourcePathname is null");
 	}
 
 	public String getProject() {
@@ -48,7 +56,7 @@ public final class CodeInfoWithSourceInfo implements Comparable<CodeInfoWithSour
 			return this.codeInfo.getClassName();
 		}
 
-		return this.packageName + "." + this.javaFilenameWithoutExtension;
+		return this.getQualifiedClassName();
 	}
 
 	public String getJavaFilenameWithoutExtension() {
@@ -56,6 +64,11 @@ public final class CodeInfoWithSourceInfo implements Comparable<CodeInfoWithSour
 	}
 
 	public String getQualifiedClassName() {
+		// Fix for #122
+		if (this.packageName.isEmpty()) {
+			return this.javaFilenameWithoutExtension;
+		}
+
 		return this.packageName + "." + this.javaFilenameWithoutExtension;
 	}
 

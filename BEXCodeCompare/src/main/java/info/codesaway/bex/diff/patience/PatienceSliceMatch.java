@@ -4,6 +4,8 @@ import static info.codesaway.bex.util.BEXUtilities.immutableCopyOf;
 
 import java.util.List;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 public final class PatienceSliceMatch {
 	private final PatienceSlice slice;
 	private final List<PatienceMatch> matches;
@@ -16,13 +18,13 @@ public final class PatienceSliceMatch {
 	public PatienceSliceMatch(final PatienceSlice slice, final List<PatienceMatch> matches) {
 		this.slice = slice;
 		this.matches = immutableCopyOf(matches);
-		//		this.matches = ImmutableList.copyOf(matches);
 	}
 
 	public PatienceSlice getSlice() {
 		return this.slice;
 	}
 
+	@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Immutable copy in constructor")
 	public List<PatienceMatch> getMatches() {
 		return this.matches;
 	}

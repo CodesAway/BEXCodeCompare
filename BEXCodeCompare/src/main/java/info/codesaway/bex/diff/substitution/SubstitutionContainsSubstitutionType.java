@@ -1,11 +1,10 @@
 package info.codesaway.bex.diff.substitution;
 
 import java.util.Map;
-import java.util.function.BiFunction;
 
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.diff.DiffEdit;
-import info.codesaway.bex.diff.DiffNormalizedText;
+import info.codesaway.bex.diff.NormalizationFunction;
 import info.codesaway.bex.diff.substitution.SubstitutionContainsDiffType.Direction;
 
 // TODO: give better name
@@ -13,7 +12,7 @@ public final class SubstitutionContainsSubstitutionType implements SubstitutionT
 	@Override
 	public SubstitutionDiffType accept(final BEXPair<DiffEdit> checkPair,
 			final Map<DiffEdit, String> normalizedTexts,
-			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+			final NormalizationFunction normalizationFunction) {
 
 		BEXPair<String> normalizedText = checkPair.map(normalizedTexts::get);
 		String normalizedLeft = normalizedText.getLeft();

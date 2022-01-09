@@ -5,6 +5,8 @@ import static java.util.stream.Collectors.toList;
 
 import java.util.List;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 /**
  * Class representing a change (such as a refactoring), which affects multiple DiffUnit (such as DiffEdit or DiffBlock)
  * which may or may not be consecutive lines
@@ -29,6 +31,7 @@ public final class DiffChange<T> implements DiffUnit {
 		return !this.changes.isEmpty();
 	}
 
+	@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Immutable copy in constructor")
 	public List<DiffUnit> getChanges() {
 		return this.changes;
 	}

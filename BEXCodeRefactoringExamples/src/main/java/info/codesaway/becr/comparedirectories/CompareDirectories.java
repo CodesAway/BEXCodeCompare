@@ -1995,7 +1995,8 @@ public class CompareDirectories {
 
 			BEXPair<Path> relativePath = BEXPairValue.from(side -> rootPath.get(side).relativize(path.get(side)));
 
-			int compare = relativePath.applyAsInt(Path::compareTo);
+			// Issue #128
+			int compare = relativePath.applyAsInt(this.pathComparator::compare);
 			BEXSide side = compare < 0 ? LEFT : RIGHT;
 
 			// Progress output

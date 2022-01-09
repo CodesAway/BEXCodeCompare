@@ -39,7 +39,9 @@ public final class BEXUtilities {
 	}
 
 	public static <T> List<T> immutableCopyOf(final List<T> list) {
-		return Collections.unmodifiableList(new ArrayList<>(list));
+		return list.isEmpty()
+				? Collections.emptyList()
+				: Collections.unmodifiableList(new ArrayList<>(list));
 	}
 
 	public static <T> T firstNonNull(final T first, final T second) {

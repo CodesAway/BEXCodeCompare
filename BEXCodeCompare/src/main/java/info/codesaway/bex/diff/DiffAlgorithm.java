@@ -1,14 +1,28 @@
 package info.codesaway.bex.diff;
 
-import java.util.function.BiFunction;
+import info.codesaway.bex.Indexed;
 
 public interface DiffAlgorithm {
+	// Breaking changes in 0.14
 	/**
 	 * Gets the normalization function
+	 * @since 0.14
 	 */
-	public BiFunction<String, String, DiffNormalizedText> getNormalizationFunction();
+	public NormalizationFunction getNormalizationFunction();
 
-	public default DiffNormalizedText normalize(final String leftText, final String rightText) {
-		return DiffHelper.normalize(leftText, rightText, this.getNormalizationFunction());
+	/**
+	 * @since 0.14
+	 */
+	public default boolean isNormalizedEqualText(final Indexed<String> leftIndexedText,
+			final Indexed<String> rightIndexedText) {
+		return this.normalize(leftIndexedText, rightIndexedText).hasEqualText();
+	}
+
+	/**
+	 * @since 0.14
+	 */
+	public default DiffNormalizedText normalize(final Indexed<String> leftIndexedText,
+			final Indexed<String> rightIndexedText) {
+		return DiffHelper.normalize(leftIndexedText, rightIndexedText, this.getNormalizationFunction());
 	}
 }

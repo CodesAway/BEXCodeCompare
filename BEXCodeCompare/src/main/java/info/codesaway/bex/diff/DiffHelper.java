@@ -7,7 +7,10 @@ import static info.codesaway.bex.BEXSide.LEFT;
 import static info.codesaway.bex.BEXSide.RIGHT;
 import static info.codesaway.bex.IntBEXRange.closed;
 import static info.codesaway.bex.diff.BasicDiffType.REPLACEMENT_BLOCK;
+import static info.codesaway.bex.diff.NormalizationFunction.NO_NORMALIZATION;
+import static info.codesaway.bex.diff.NormalizationFunction.normalization;
 import static info.codesaway.bex.util.BEXUtilities.firstNonNull;
+import static info.codesaway.bex.util.BEXUtilities.index;
 import static info.codesaway.bex.util.BEXUtilities.not;
 import static info.codesaway.util.regex.Pattern.getThreadLocalMatcher;
 import static java.util.stream.Collectors.toMap;
@@ -40,6 +43,7 @@ import java.util.stream.Stream;
 import info.codesaway.bex.BEXPair;
 import info.codesaway.bex.BEXPairValue;
 import info.codesaway.bex.BEXSide;
+import info.codesaway.bex.Indexed;
 import info.codesaway.bex.IntPair;
 import info.codesaway.bex.IntRange;
 import info.codesaway.bex.diff.patience.FrequencyCount;
@@ -58,6 +62,9 @@ public final class DiffHelper {
 		throw new UnsupportedOperationException();
 	}
 
+	/**
+	 * @see NormalizationFunction#WHITESPACE_NORMALIZATION
+	 */
 	public static final BiFunction<String, String, DiffNormalizedText> WHITESPACE_NORMALIZATION_FUNCTION = DiffHelper::normalizeWhitespace;
 
 	private static final ThreadLocal<Matcher> MULTIPLE_WHITESPACE_MATCHER = getThreadLocalMatcher("\\s++");
@@ -94,6 +101,7 @@ public final class DiffHelper {
 	 * Function which takes text and does not normalize
 	 *
 	 * <p>Can be used for normalization function when want to compare text without normalizing it first</p>
+	 * @see NormalizationFunction#NO_NORMALIZATION
 	 */
 	public static final BiFunction<String, String, DiffNormalizedText> NO_NORMALIZATION_FUNCTION = DiffNormalizedText::new;
 
@@ -104,24 +112,38 @@ public final class DiffHelper {
 
 	public static DiffNormalizedText normalize(final String leftText, final String rightText,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
-
 		return firstNonNull(normalizationFunction, NO_NORMALIZATION_FUNCTION).apply(leftText, rightText);
 	}
 
-	private static Map<DiffEdit, String> normalizeTexts(final List<DiffEdit> diffEdits,
-			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
-		Map<DiffEdit, String> result = new HashMap<>(diffEdits.size());
+	/**
+	 *
+	 * @param diffEdit
+	 * @param normalizationFunction
+	 * @return
+	 * @since 0.14
+	 */
+	public static DiffNormalizedText normalize(final DiffEdit diffEdit,
+			final NormalizationFunction normalizationFunction) {
+		return normalize(diffEdit.getLeftIndexedText(), diffEdit.getRightIndexedText(), normalizationFunction);
+	}
 
-		//		Builder<DiffEdit, String> builder = ImmutableMap.builderWithExpectedSize(diffEdits.size());
+	/**
+	 *
+	 * @param diffEdits
+	 * @param normalizationFunction
+	 * @return
+	 * @since 0.14
+	 */
+	private static Map<DiffEdit, String> normalizeTexts(final List<DiffEdit> diffEdits,
+			final NormalizationFunction normalizationFunction) {
+		Map<DiffEdit, String> result = new HashMap<>(diffEdits.size());
 
 		for (DiffEdit diffEdit : diffEdits) {
 			String normalizedText = normalize(diffEdit.getFirstSide(), diffEdit.getText(), normalizationFunction);
 			result.put(diffEdit, normalizedText);
-			//			builder.put(diffEdit, normalizedText);
 		}
 
 		return Collections.unmodifiableMap(result);
-		//		return builder.build();
 	}
 
 	public static String normalize(final BEXSide side, final String text,
@@ -129,6 +151,30 @@ public final class DiffHelper {
 		return side == BEXSide.LEFT
 				? normalize(text, "", normalizationFunction).getLeft()
 				: normalize("", text, normalizationFunction).getRight();
+	}
+
+	/**
+	 *
+	 * <p>Implementation note: text is wrapped in an Indexed<String> with line number -1 in order to normalize using NormalizationFunction</p>
+	 * @since 0.14
+	 */
+	public static String normalize(final BEXSide side, final String text,
+			final NormalizationFunction normalizationFunction) {
+		Indexed<String> indexedText = index(-1, text);
+		Indexed<String> indexedBlank = index(-1, "");
+
+		return side == BEXSide.LEFT
+				? normalize(indexedText, indexedBlank, normalizationFunction).getLeft()
+				: normalize(indexedBlank, indexedText, normalizationFunction).getRight();
+	}
+
+	/**
+	 * @since 0.14
+	 */
+	public static DiffNormalizedText normalize(final Indexed<String> leftIndexedText,
+			final Indexed<String> rightIndexedText,
+			final NormalizationFunction normalizationFunction) {
+		return firstNonNull(normalizationFunction, NO_NORMALIZATION).normalize(leftIndexedText, rightIndexedText);
 	}
 
 	/**
@@ -193,7 +239,7 @@ public final class DiffHelper {
 	* @param diff
 	*/
 	public static void handleMovedLines(final List<DiffEdit> diff) {
-		handleMovedLines(diff, NO_NORMALIZATION_FUNCTION);
+		handleMovedLines(diff, NO_NORMALIZATION);
 	}
 
 	/**
@@ -204,6 +250,18 @@ public final class DiffHelper {
 	 */
 	public static void handleMovedLines(final List<DiffEdit> diff,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+		handleMovedLines(diff, normalization(normalizationFunction));
+	}
+
+	/**
+	 * Modifies the passed list of DiffEdit to handle moved lines
+	 *
+	 * @param diff
+	 * @param normalizationFunction
+	 * @since 0.14
+	 */
+	public static void handleMovedLines(final List<DiffEdit> diff,
+			final NormalizationFunction normalizationFunction) {
 
 		Map<Integer, DiffWithIndex> leftMap = createMap(diff, LEFT);
 		Map<Integer, DiffWithIndex> rightMap = createMap(diff, RIGHT);
@@ -272,35 +330,35 @@ public final class DiffHelper {
 				.filter(DiffWithIndex::isInsertOrDelete)
 				.filter(d -> d.getDiffEdit().getText().trim().startsWith("import"))
 				.collect(toList());
-
+	
 		// Group imports by classname
 		Map<String, List<DiffWithIndex>> importsByClassName = new HashMap<>();
 		Map<DiffWithIndex, MatchResult> matchResults = new HashMap<>();
-
+	
 		for (DiffWithIndex possibleImport : possibleImports) {
 			Matcher matcher = IMPORT_MATCHER.get().reset(possibleImport.getDiffEdit().getText());
-
+	
 			if (!matcher.find()) {
 				continue;
 			}
-
+	
 			matchResults.put(possibleImport, matcher.toMatchResult());
 			importsByClassName.computeIfAbsent(matcher.group("class"), k -> new ArrayList<>()).add(possibleImport);
 		}
-
+	
 		// Check results
 		for (Entry<String, List<DiffWithIndex>> entry : importsByClassName.entrySet()) {
 			List<DiffWithIndex> list = entry.getValue();
 			if (list.size() != 2) {
 				continue;
 			}
-
+	
 			DiffWithIndex firstDiff = list.get(0);
 			DiffWithIndex secondDiff = list.get(1);
-
+	
 			DiffWithIndex left = null;
 			DiffWithIndex right = null;
-
+	
 			if (firstDiff.hasLeftLine()) {
 				if (secondDiff.hasRightLine()) {
 					left = firstDiff;
@@ -310,13 +368,13 @@ public final class DiffHelper {
 				left = secondDiff;
 				right = firstDiff;
 			}
-
+	
 			if (left != null && right != null) {
 				ImportSameClassnameDiffType diffType = determineImportSameClassnameDiffType(matchResults.get(left),
 						matchResults.get(right), true);
-
+	
 				//				System.out.println(entry);
-
+	
 				if (diffType != null) {
 					DiffEdit diffEdit = new DiffEdit(diffType, left.getLeftLine(), right.getRightLine());
 					diff.set(left.getIndex(), diffEdit);
@@ -324,7 +382,7 @@ public final class DiffHelper {
 				}
 			}
 		}
-
+	
 		return diff;
 	}*/
 
@@ -385,7 +443,7 @@ public final class DiffHelper {
 	private static boolean findMovedLines(final int direction, final List<DiffEdit> diff,
 			final int initialLeftLine, final int initialRightLine,
 			final Map<Integer, DiffWithIndex> leftMap, final Map<Integer, DiffWithIndex> rightMap,
-			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+			final NormalizationFunction normalizationFunction) {
 
 		boolean foundMovedLines = false;
 		int leftLineIndex = initialLeftLine + direction;
@@ -410,7 +468,7 @@ public final class DiffHelper {
 	 */
 	private static boolean findMovedLines(final List<DiffEdit> diff, final int leftLine, final int rightLine,
 			final Map<Integer, DiffWithIndex> leftMap, final Map<Integer, DiffWithIndex> rightMap,
-			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+			final NormalizationFunction normalizationFunction) {
 
 		Integer leftMapKey = leftLine;
 		Integer rightMapKey = rightLine;
@@ -427,7 +485,7 @@ public final class DiffHelper {
 		Optional<DiffLine> rightDiffLine = rightDiff.getRightLine();
 
 		// For it to be considered a move, it must have equal / normalized equal lines
-		if (!normalize(leftDiffLine.get().getText(), rightDiffLine.get().getText(), normalizationFunction)
+		if (!normalize(leftDiffLine.get(), rightDiffLine.get(), normalizationFunction)
 				.hasEqualText()) {
 			return false;
 		}
@@ -450,7 +508,7 @@ public final class DiffHelper {
 	 */
 	public static void handleSubstitution(final List<DiffEdit> diff,
 			final SubstitutionType... substitutionTypes) {
-		handleSubstitution(diff, NO_NORMALIZATION_FUNCTION, substitutionTypes);
+		handleSubstitution(diff, NO_NORMALIZATION, substitutionTypes);
 	}
 
 	/**
@@ -463,6 +521,23 @@ public final class DiffHelper {
 	public static void handleSubstitution(final List<DiffEdit> diff,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction,
 			final SubstitutionType... substitutionTypes) {
+		handleSubstitution(diff, normalization(normalizationFunction), substitutionTypes);
+	}
+
+	/**
+	 * Handle substitutions
+	 *
+	 * @param diff the list of differences (will be modified by this method)
+	 * @param normalizationFunction
+	 * @param substitutionTypes
+	 * @since 0.14
+	 */
+	public static void handleSubstitution(final List<DiffEdit> diff,
+			final NormalizationFunction normalizationFunction,
+			final SubstitutionType... substitutionTypes) {
+		// Fix for issue #118
+		NormalizationFunction nullSafeNormalizationFunction = firstNonNull(normalizationFunction, NO_NORMALIZATION);
+
 		List<DiffEdit> diffEdits = new ArrayList<>();
 
 		List<DiffEdit> results = new ArrayList<>();
@@ -490,7 +565,8 @@ public final class DiffHelper {
 			} else {
 				if (!diffEdits.isEmpty()) {
 					results.addAll(hasLeftLine && hasRightLine
-							? findSubstitutions(diffEdits, normalizationFunction, substitutionTypes, refactoringTypes)
+							? findSubstitutions(diffEdits, nullSafeNormalizationFunction, substitutionTypes,
+									refactoringTypes)
 							: diffEdits);
 
 					// Reset values
@@ -505,7 +581,7 @@ public final class DiffHelper {
 
 		if (!diffEdits.isEmpty()) {
 			results.addAll(hasLeftLine && hasRightLine
-					? findSubstitutions(diffEdits, normalizationFunction, substitutionTypes, refactoringTypes)
+					? findSubstitutions(diffEdits, nullSafeNormalizationFunction, substitutionTypes, refactoringTypes)
 					: diffEdits);
 		}
 
@@ -526,7 +602,7 @@ public final class DiffHelper {
 	 * @return
 	 */
 	private static List<DiffEdit> findSubstitutions(final List<DiffEdit> diffEdits,
-			final BiFunction<String, String, DiffNormalizedText> normalizationFunction,
+			final NormalizationFunction normalizationFunction,
 			final SubstitutionType[] substitutionTypes, final List<RefactoringType> refactoringTypes) {
 
 		Map<DiffEdit, String> normalizedTexts = normalizeTexts(diffEdits, normalizationFunction);
@@ -578,7 +654,7 @@ public final class DiffHelper {
 	private static void findSubstitutionsRecursive(final List<DiffEdit> diffEdits,
 			final Map<DiffEdit, String> normalizedTexts, final Set<DiffEdit> matches,
 			final Map<DiffEdit, DiffEdit> replacements,
-			final BiFunction<String, String, DiffNormalizedText> normalizationFunction,
+			final NormalizationFunction normalizationFunction,
 			final SubstitutionType[] substitutionTypes, final List<RefactoringType> refactoringTypes) {
 		// TODO: accept as parameter (to allow user defined traversal)
 		Collection<BEXPair<DiffEdit>> checkPairs = calculateSimilarDiffEdits(diffEdits, normalizedTexts,
@@ -1121,6 +1197,17 @@ public final class DiffHelper {
 
 	public static void handleSplitLines(final List<DiffUnit> diffUnits,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+		handleSplitLines(diffUnits, normalization(normalizationFunction));
+	}
+
+	/**
+	 *
+	 * @param diffUnits
+	 * @param normalizationFunction
+	 * @since 0.14
+	 */
+	public static void handleSplitLines(final List<DiffUnit> diffUnits,
+			final NormalizationFunction normalizationFunction) {
 		for (int i = 0; i < diffUnits.size(); i++) {
 			DiffUnit block = diffUnits.get(i);
 
@@ -1144,6 +1231,7 @@ public final class DiffHelper {
 					continue;
 				}
 
+				// Fix for issue #118
 				DiffNormalizedText normalizedText = normalize(diffEdit, normalizationFunction);
 				//				System.out.println(diffEdit.toString(true));
 				hasEntry = true;
@@ -1188,6 +1276,18 @@ public final class DiffHelper {
 	 */
 	public static void handleBlankLines(final List<DiffUnit> diffUnits,
 			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+		handleBlankLines(diffUnits, normalization(normalizationFunction));
+	}
+
+	/**
+	 * Handle blank lines
+	 *
+	 * @param diffUnits
+	 * @param normalizationFunction
+	 * @since 0.14
+	 */
+	public static void handleBlankLines(final List<DiffUnit> diffUnits,
+			final NormalizationFunction normalizationFunction) {
 		for (int i = 0; i < diffUnits.size(); i++) {
 			DiffUnit unit = diffUnits.get(i);
 

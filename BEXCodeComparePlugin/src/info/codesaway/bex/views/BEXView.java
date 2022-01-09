@@ -15,8 +15,8 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.viewers.ILazyTreeContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
@@ -153,6 +153,14 @@ public final class BEXView extends ViewPart {
 			return !this.children.isEmpty();
 		}
 
+		public TreeObject getChild(final int index) {
+			return this.children.get(index);
+		}
+
+		public int getChildCount() {
+			return this.children.size();
+		}
+
 		/**
 		 * Recursively clear tree
 		 */
@@ -168,17 +176,10 @@ public final class BEXView extends ViewPart {
 		}
 	}
 
-	class ViewContentProvider implements ITreeContentProvider {
+	class ViewContentProvider implements ILazyTreeContentProvider {
+		//	class ViewContentProvider implements ITreeContentProvider {
 		// TODO: see about lazy initializing
 		private final TreeParent invisibleRoot = new TreeParent("");
-
-		@Override
-		public Object[] getElements(final Object parent) {
-			if (parent.equals(BEXView.this.getViewSite())) {
-				return this.getChildren(this.invisibleRoot);
-			}
-			return this.getChildren(parent);
-		}
 
 		@Override
 		public Object getParent(final Object child) {
@@ -188,21 +189,60 @@ public final class BEXView extends ViewPart {
 			return null;
 		}
 
+		// Reference: https://git.eclipse.org/c/platform/eclipse.platform.ui.git/plain/examples/org.eclipse.jface.snippets/Eclipse%20JFace%20Snippets/org/eclipse/jface/snippets/viewers/Snippet047VirtualLazyTreeViewer.java
 		@Override
-		public Object[] getChildren(final Object parent) {
-			if (parent instanceof TreeParent) {
-				return ((TreeParent) parent).getChildren();
+		public void updateChildCount(final Object element, final int currentChildCount) {
+			int childCount;
+			if (element.equals(BEXView.this.getViewSite())) {
+				childCount = this.invisibleRoot.getChildCount();
+			} else if (element instanceof TreeParent) {
+				childCount = ((TreeParent) element).getChildCount();
+			} else {
+				childCount = 0;
 			}
-			return new Object[0];
+
+			//			System.out.println(element + " " + childCount);
+			BEXView.this.viewer.setChildCount(element, childCount);
 		}
 
 		@Override
-		public boolean hasChildren(final Object parent) {
-			if (parent instanceof TreeParent) {
-				return ((TreeParent) parent).hasChildren();
+		public void updateElement(final Object parent, final int index) {
+			TreeObject child;
+			if (parent.equals(BEXView.this.getViewSite())) {
+				child = this.invisibleRoot.getChild(index);
+			} else {
+				child = ((TreeParent) parent).getChild(index);
 			}
-			return false;
+
+			BEXView.this.viewer.replace(parent, index, child);
+			this.updateChildCount(child, -1);
+			//			System.out.println(
+			//					"1 root, " + fParentsLoaded + " nodes and " + fGlobalChildrenLoaded + " leafs in memory...");
 		}
+
+		//		@Override
+		//		public Object[] getElements(final Object parent) {
+		//			if (parent.equals(BEXView.this.getViewSite())) {
+		//				return this.getChildren(this.invisibleRoot);
+		//			}
+		//			return this.getChildren(parent);
+		//		}
+		//
+		//		@Override
+		//		public Object[] getChildren(final Object parent) {
+		//			if (parent instanceof TreeParent) {
+		//				return ((TreeParent) parent).getChildren();
+		//			}
+		//			return new Object[0];
+		//		}
+		//
+		//		@Override
+		//		public boolean hasChildren(final Object parent) {
+		//			if (parent instanceof TreeParent) {
+		//				return ((TreeParent) parent).hasChildren();
+		//			}
+		//			return false;
+		//		}
 	}
 
 	class ViewLabelProvider extends LabelProvider {
@@ -224,13 +264,15 @@ public final class BEXView extends ViewPart {
 
 	@Override
 	public void createPartControl(final Composite parent) {
-		this.viewer = new TreeViewer(parent, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
+		this.viewer = new TreeViewer(parent, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL);
 		this.drillDownAdapter = new DrillDownAdapter(this.viewer);
 
 		this.viewContentProvider = new ViewContentProvider();
 		// TODO: look into virtual or lazy loaded TreeViewer
 		this.viewer.setContentProvider(this.viewContentProvider);
-		this.viewer.setInput(this.getViewSite());
+		this.viewer.setUseHashlookup(true);
+		this.viewer.setInput(this.viewContentProvider.invisibleRoot);
+		//		this.viewer.setInput(this.getViewSite());
 		// TODO: look into styling text
 		// This way, when showing both lines of substitution, can bold the differences
 		// https://stackoverflow.com/questions/26211705/java-swt-treeviewer-with-one-column-that-needs-to-be-styledtext
@@ -408,25 +450,32 @@ public final class BEXView extends ViewPart {
 			boolean isImportantChange = change.getInfo().isImportantChange();
 
 			String changeName;
-			if (isImportantChange) {
-				changeName = change.toString();
-			} else {
-				BEXPair<IntRange> enclosedRange = DiffHelper.determineEnclosedRange(diffEdits);
-				IntRange leftRange = enclosedRange.getLeft();
-				IntRange rightRange = enclosedRange.getRight();
+			//			if (isImportantChange) {
+			//				changeName = change.toString();
+			//			} else {
+			BEXPair<IntRange> enclosedRange = DiffHelper.determineEnclosedRange(diffEdits);
+			IntRange leftRange = enclosedRange.getLeft();
+			IntRange rightRange = enclosedRange.getRight();
 
-				String leftRangeText = leftRange.isSingleValue()
-						? "[" + leftRange.getStart() + "]"
-						: leftRange.toString();
+			String leftRangeText = leftRange.isSingleValue()
+					? "[" + leftRange.getStart() + "]"
+					: leftRange.toString();
 
-				String rightRangeText = rightRange.isSingleValue()
-						? "[" + rightRange.getStart() + "]"
-						: rightRange.toString();
+			String rightRangeText = rightRange.isSingleValue()
+					? "[" + rightRange.getStart() + "]"
+					: rightRange.toString();
 
-				changeName = String.format("%s%s%s%n", change,
-						leftRange.getLeft() != -1 ? " LEFT " + leftRangeText : "",
-						rightRange.getLeft() != -1 ? " RIGHT " + rightRangeText : "");
-			}
+			changeName = String.format("%s%s - %s: %s%s%n",
+					change.getInfo().isImportantChange() ? "(IMPORTANT) " : "",
+					change.getType(),
+					change.getInfo().getInfo(),
+					leftRange.getLeft() != -1 ? " LEFT " + leftRangeText : "",
+					rightRange.getLeft() != -1 ? " RIGHT " + rightRangeText : "");
+
+			//			changeName = String.format("%s%s%s%n", change,
+			//					leftRange.getLeft() != -1 ? " LEFT " + leftRangeText : "",
+			//					rightRange.getLeft() != -1 ? " RIGHT " + rightRangeText : "");
+			//			}
 
 			// Issue #92 - BEX plugin - click top level, should go to first change
 			TreeParent changeParent = new TreeParent(changeName, diffEdits.get(0));
@@ -496,8 +545,14 @@ public final class BEXView extends ViewPart {
 			}
 		}
 
-		this.viewer.refresh();
-		this.viewer.setExpandedElements(expandedElements.toArray());
+		this.viewer.setChildCount(invisibleRoot, -1);
+		this.viewer.refresh(invisibleRoot);
+		//		this.viewer.refresh();
+
+		// For performance of lazy loading, don't expand elements unless small number of changes
+		if (expandedElements.size() < 100) {
+			this.viewer.setExpandedElements(expandedElements.toArray());
+		}
 	}
 
 	private void addIgnoreParent(final TreeParent changeParent, final List<DiffEdit> ignoreEdits) {

@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>info.codesaway</groupId>
 	<artifactId>bex</artifactId>
-	<version>0.13.0</version>
+	<version>0.14.0</version>
 	<name>Be Enhanced Code Compare (BEϽC)</name>
 	<description>An enhanced code compare, utilities, and code matching</description>
 	<properties>
@@ -27,7 +27,7 @@
 		<dependency>
 			<groupId>com.github.spotbugs</groupId>
 			<artifactId>spotbugs-annotations</artifactId>
-			<version>4.0.3</version>
+			<version>4.4.1</version>
 			<optional>true</optional>
 		</dependency>
 		<dependency>
@@ -63,15 +63,16 @@
 			<plugin>
 				<groupId>com.github.spotbugs</groupId>
 				<artifactId>spotbugs-maven-plugin</artifactId>
-				<version>4.0.0</version>
+				<version>4.3.0</version>
 				<dependencies>
 					<!-- overwrite dependency on spotbugs if you want to specify the version 
 						of spotbugs -->
-					<dependency>
+					<!-- <dependency>
 						<groupId>com.github.spotbugs</groupId>
 						<artifactId>spotbugs</artifactId>
 						<version>4.0.3</version>
 					</dependency>
+					-->
 				</dependencies>
 				<configuration>
 					<effort>Max</effort>

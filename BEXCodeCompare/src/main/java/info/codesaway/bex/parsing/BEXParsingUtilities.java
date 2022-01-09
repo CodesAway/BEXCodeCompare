@@ -403,7 +403,8 @@ public class BEXParsingUtilities {
 				popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
 			} else if (isJava && currentState == IN_LINE_COMMENT) {
 				if (c == '\n' || c == '\r') {
-					popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
+					// Issue #127
+					popParsingState(i - 1, builder, stateStack, startTextInfoStack, parentStartStack);
 					i = handleLineTerminator(i, c, text, builder, stateStack, startTextInfoStack, parentStartStack);
 					//					int startTextInfo = startTextInfoStack.pop();
 					//					builder.put(IntBEXRange.of(startTextInfo, i), stateStack.pop());
@@ -455,6 +456,11 @@ public class BEXParsingUtilities {
 				pushParsingState(IN_EXPRESSION_BLOCK, i, stateStack, startTextInfoStack, parentStartStack);
 				i += 2;
 				isJava = true;
+				// Issue #127 (new else if block)
+			} else if (hasText(text, i, "<%!")) {
+				pushParsingState(IN_EXPRESSION_BLOCK, i, stateStack, startTextInfoStack, parentStartStack);
+				i += 2;
+				isJava = true;
 			} else if (hasText(text, i, "<%")) {
 				// In Java scriptlet
 				pushParsingState(IN_EXPRESSION_BLOCK, i, stateStack, startTextInfoStack, parentStartStack);
@@ -463,7 +469,8 @@ public class BEXParsingUtilities {
 			} else if (c == '<' && !isJava && !isTag) {
 				pushParsingState(IN_TAG, i, stateStack, startTextInfoStack, parentStartStack);
 				isTag = true;
-			} else if (c == '>' && isTag) {
+				// Issue #127 (verify not Java)
+			} else if (c == '>' && !isJava && isTag) {
 				isTag = false;
 				popParsingState(i, builder, stateStack, startTextInfoStack, parentStartStack);
 			} else if (Character.isWhitespace(c)) {
@@ -476,7 +483,10 @@ public class BEXParsingUtilities {
 			// (this would suggest improperly formatted code)
 			int startTextInfo = startTextInfoStack.pop();
 			// TODO: does there need to be a parent?
-			builder.put(IntBEXRange.of(startTextInfo, text.length()), stateStack.pop());
+			// Issue #127
+			if (startTextInfo != text.length()) {
+				builder.put(IntBEXRange.of(startTextInfo, text.length()), stateStack.pop());
+			}
 		}
 
 		return builder.build();

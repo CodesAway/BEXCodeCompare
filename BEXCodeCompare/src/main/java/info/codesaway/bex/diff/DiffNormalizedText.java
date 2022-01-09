@@ -27,4 +27,41 @@ public final class DiffNormalizedText {
 	public boolean hasEqualText() {
 		return Objects.equals(this.getLeft(), this.getRight());
 	}
+
+	/**
+	* <p>Returns a String representation of this DiffNormalizedText</p>
+	*
+	* @return a string representation of the object
+	* @since 0.14
+	*/
+	@Override
+	public String toString() {
+		return "(" + this.getLeft() + ',' + this.getRight() + ')';
+	}
+
+	/**
+	 * @since 0.14
+	 */
+	@Override
+	public int hashCode() {
+		return Objects.hash(this.left, this.right);
+	}
+
+	/**
+	 * @since 0.14
+	 */
+	@Override
+	public boolean equals(final Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (this.getClass() != obj.getClass()) {
+			return false;
+		}
+		DiffNormalizedText other = (DiffNormalizedText) obj;
+		return Objects.equals(this.left, other.left) && Objects.equals(this.right, other.right);
+	}
 }
