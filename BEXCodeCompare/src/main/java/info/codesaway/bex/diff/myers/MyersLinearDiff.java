@@ -1,7 +1,7 @@
 package info.codesaway.bex.diff.myers;
 
-import static info.codesaway.bex.diff.BEXNormalizationFunction.normalization;
 import static info.codesaway.bex.diff.NormalizationFunction.NO_NORMALIZATION;
+import static info.codesaway.bex.diff.NormalizationFunction.normalization;
 import static info.codesaway.bex.util.BEXUtilities.isBetween;
 
 import java.util.ArrayList;

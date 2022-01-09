@@ -121,4 +121,83 @@ public class BEXParseJSPTest {
 						entry(singleton(21), IN_TAG),
 						entry(closed(22, 28), IN_TAG));
 	}
+
+	// Issue #127
+	@Test
+	void testGreaterThanSignInExpressionInTag() {
+		String text = "<tr <% if(number%2>0){%>bgcolor=\"#000000\"<%}%> ></tr>";
+
+		BEXString bexString = new BEXString(text, BEXParsingLanguage.JSP);
+
+		Indexed<ParsingState> tagParent = index(0, IN_TAG);
+		Indexed<ParsingState> expressionParent = index(4, IN_EXPRESSION_BLOCK);
+
+		assertThat(bexString.getTextStateMap().asMapOfRanges())
+				.containsExactly(
+						entry(closedOpen(0, 3), IN_TAG),
+						entry(singleton(3), parsingState(WHITESPACE, tagParent)),
+						entry(closedOpen(4, 6), IN_EXPRESSION_BLOCK),
+						entry(singleton(6), parsingState(WHITESPACE, expressionParent)),
+						entry(closed(7, 23), IN_EXPRESSION_BLOCK),
+						entry(closedOpen(24, 32), IN_TAG),
+						entry(closed(32, 40), parsingState(IN_STRING_LITERAL, tagParent)),
+						entry(closed(41, 45), IN_EXPRESSION_BLOCK),
+						entry(singleton(46), parsingState(WHITESPACE, tagParent)),
+						entry(singleton(47), IN_TAG),
+						entry(closed(48, 52), IN_TAG));
+	}
+
+	// Issue #127
+	@Test
+	void testJavaLineCommentInExpression() {
+		String text = "<%! // Comment 1\r\n"
+				+ "%>";
+		BEXString bexString = new BEXString(text, BEXParsingLanguage.JSP);
+
+		Indexed<ParsingState> expressionParent = index(0, IN_EXPRESSION_BLOCK);
+
+		assertThat(bexString.getTextStateMap().asMapOfRanges())
+				.containsExactly(
+						entry(closedOpen(0, 3), IN_EXPRESSION_BLOCK),
+						entry(singleton(3), parsingState(WHITESPACE, expressionParent)),
+						entry(closed(4, 15), parsingState(IN_LINE_COMMENT, expressionParent)),
+						entry(closed(16, 17), parsingState(LINE_TERMINATOR, expressionParent)),
+						entry(closed(18, 19), IN_EXPRESSION_BLOCK));
+	}
+
+	// Examples from https://stackoverflow.com/a/30295023
+	@Test
+	void testJavaBlockCommentInExpression() {
+		String text = "<% /*= map.size()*/ %>";
+		BEXString bexString = new BEXString(text, BEXParsingLanguage.JSP);
+
+		Indexed<ParsingState> expressionParent = index(0, IN_EXPRESSION_BLOCK);
+
+		assertThat(bexString.getTextStateMap().asMapOfRanges())
+				.containsExactly(
+						entry(closedOpen(0, 2), IN_EXPRESSION_BLOCK),
+						entry(singleton(2), parsingState(WHITESPACE, expressionParent)),
+						entry(closed(3, 18), parsingState(IN_MULTILINE_COMMENT, expressionParent)),
+						entry(singleton(19), parsingState(WHITESPACE, expressionParent)),
+						entry(closed(20, 21), IN_EXPRESSION_BLOCK));
+	}
+
+	@Test
+	void testJavaLineCommentEndsExpression() {
+		String text = "<% my code //my comment %>";
+		BEXString bexString = new BEXString(text, BEXParsingLanguage.JSP);
+
+		Indexed<ParsingState> expressionParent = index(0, IN_EXPRESSION_BLOCK);
+
+		assertThat(bexString.getTextStateMap().asMapOfRanges())
+				.containsExactly(
+						entry(closedOpen(0, 2), IN_EXPRESSION_BLOCK),
+						entry(singleton(2), parsingState(WHITESPACE, expressionParent)),
+						entry(closedOpen(3, 5), IN_EXPRESSION_BLOCK),
+						entry(singleton(5), parsingState(WHITESPACE, expressionParent)),
+						entry(closedOpen(6, 10), IN_EXPRESSION_BLOCK),
+						entry(singleton(10), parsingState(WHITESPACE, expressionParent)),
+						entry(closed(11, 23), parsingState(IN_LINE_COMMENT, expressionParent)),
+						entry(closed(24, 25), IN_EXPRESSION_BLOCK));
+	}
 }

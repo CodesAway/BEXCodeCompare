@@ -35,7 +35,7 @@ public final class PatienceSlice {
 	 * @return the start
 	 */
 	public IntPair getStart() {
-		return this.start;
+		return this.start.toIntBEXPair();
 	}
 
 	/**
@@ -43,7 +43,7 @@ public final class PatienceSlice {
 	 * @return the end
 	 */
 	public IntPair getEnd() {
-		return this.end;
+		return this.end.toIntBEXPair();
 	}
 
 	/**

@@ -1,7 +1,7 @@
 package info.codesaway.bex.diff;
 
-import static info.codesaway.bex.diff.BEXNormalizationFunction.normalization;
 import static info.codesaway.bex.diff.NormalizationFunction.NO_NORMALIZATION;
+import static info.codesaway.bex.diff.NormalizationFunction.normalization;
 import static info.codesaway.bex.util.BEXUtilities.firstNonNull;
 import static info.codesaway.bex.util.BEXUtilities.immutableCopyOf;
 
@@ -55,6 +55,7 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	 * Gets the left lines
 	 * @return the left lines
 	 */
+	@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Immutable copy in constructor")
 	public List<DiffLine> getLeftLines() {
 		return this.leftLines;
 	}
@@ -64,6 +65,7 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	 *
 	 * @return the right lines
 	 */
+	@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Immutable copy in constructor")
 	public List<DiffLine> getRightLines() {
 		return this.rightLines;
 	}

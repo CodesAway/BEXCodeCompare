@@ -6,9 +6,9 @@ import static info.codesaway.bex.BEXSide.BEX_SIDES;
 import static info.codesaway.bex.BEXSide.LEFT;
 import static info.codesaway.bex.BEXSide.RIGHT;
 import static info.codesaway.bex.IntBEXRange.closed;
-import static info.codesaway.bex.diff.BEXNormalizationFunction.normalization;
 import static info.codesaway.bex.diff.BasicDiffType.REPLACEMENT_BLOCK;
 import static info.codesaway.bex.diff.NormalizationFunction.NO_NORMALIZATION;
+import static info.codesaway.bex.diff.NormalizationFunction.normalization;
 import static info.codesaway.bex.util.BEXUtilities.firstNonNull;
 import static info.codesaway.bex.util.BEXUtilities.index;
 import static info.codesaway.bex.util.BEXUtilities.not;
@@ -322,35 +322,35 @@ public final class DiffHelper {
 				.filter(DiffWithIndex::isInsertOrDelete)
 				.filter(d -> d.getDiffEdit().getText().trim().startsWith("import"))
 				.collect(toList());
-
+	
 		// Group imports by classname
 		Map<String, List<DiffWithIndex>> importsByClassName = new HashMap<>();
 		Map<DiffWithIndex, MatchResult> matchResults = new HashMap<>();
-
+	
 		for (DiffWithIndex possibleImport : possibleImports) {
 			Matcher matcher = IMPORT_MATCHER.get().reset(possibleImport.getDiffEdit().getText());
-
+	
 			if (!matcher.find()) {
 				continue;
 			}
-
+	
 			matchResults.put(possibleImport, matcher.toMatchResult());
 			importsByClassName.computeIfAbsent(matcher.group("class"), k -> new ArrayList<>()).add(possibleImport);
 		}
-
+	
 		// Check results
 		for (Entry<String, List<DiffWithIndex>> entry : importsByClassName.entrySet()) {
 			List<DiffWithIndex> list = entry.getValue();
 			if (list.size() != 2) {
 				continue;
 			}
-
+	
 			DiffWithIndex firstDiff = list.get(0);
 			DiffWithIndex secondDiff = list.get(1);
-
+	
 			DiffWithIndex left = null;
 			DiffWithIndex right = null;
-
+	
 			if (firstDiff.hasLeftLine()) {
 				if (secondDiff.hasRightLine()) {
 					left = firstDiff;
@@ -360,13 +360,13 @@ public final class DiffHelper {
 				left = secondDiff;
 				right = firstDiff;
 			}
-
+	
 			if (left != null && right != null) {
 				ImportSameClassnameDiffType diffType = determineImportSameClassnameDiffType(matchResults.get(left),
 						matchResults.get(right), true);
-
+	
 				//				System.out.println(entry);
-
+	
 				if (diffType != null) {
 					DiffEdit diffEdit = new DiffEdit(diffType, left.getLeftLine(), right.getRightLine());
 					diff.set(left.getIndex(), diffEdit);
@@ -374,7 +374,7 @@ public final class DiffHelper {
 				}
 			}
 		}
-
+	
 		return diff;
 	}*/
 

@@ -1,9 +1,11 @@
 package info.codesaway.bex.diff;
 
-import static info.codesaway.bex.diff.BEXNormalizationFunction.normalization;
 import static info.codesaway.bex.diff.DiffHelper.WHITESPACE_NORMALIZATION_FUNCTION;
 
+import java.util.function.BiFunction;
+
 import info.codesaway.bex.Indexed;
+import info.codesaway.bex.diff.BEXNormalizationFunction.BEXNormalizationFunctionHelper;
 
 /**
  * @since 0.14
@@ -26,5 +28,21 @@ public interface NormalizationFunction {
 
 	public default DiffNormalizedText normalize(final DiffEdit diffEdit) {
 		return this.normalize(diffEdit.getLeftIndexedText(), diffEdit.getRightIndexedText());
+	}
+
+	// TODO: could cache using ConcurrentHashMap to reduce number of instances created (not sure if it matters)
+
+	public static NormalizationFunction normalization(
+			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
+		return normalizationFunction == null
+				? BEXNormalizationFunctionHelper.NO_NORMALIZATION
+				: new BEXNormalizationFunction(normalizationFunction, null);
+	}
+
+	public static NormalizationFunction indexedNormalization(
+			final BiFunction<Indexed<String>, Indexed<String>, DiffNormalizedText> indexedNormalizationFunction) {
+		return indexedNormalizationFunction == null
+				? BEXNormalizationFunctionHelper.NO_NORMALIZATION
+				: new BEXNormalizationFunction(null, indexedNormalizationFunction);
 	}
 }

@@ -5,6 +5,8 @@ import static info.codesaway.bex.util.BEXUtilities.immutableCopyOf;
 import java.util.List;
 import java.util.Objects;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 /**
  * Class representing consecutive <code>DiffEdit</code>s with a common DiffType
  */
@@ -26,6 +28,7 @@ public final class DiffBlock implements DiffUnit {
 	}
 
 	@Override
+	@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Immutable copy in constructor")
 	public List<DiffEdit> getEdits() {
 		return this.edits;
 	}

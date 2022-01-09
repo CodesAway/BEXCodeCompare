@@ -43,7 +43,6 @@ import info.codesaway.bex.BEXSide;
 import info.codesaway.bex.Indexed;
 import info.codesaway.bex.IntBEXRange;
 import info.codesaway.bex.IntPair;
-import info.codesaway.bex.diff.BEXNormalizationFunction;
 import info.codesaway.bex.diff.DiffBlock;
 import info.codesaway.bex.diff.DiffChange;
 import info.codesaway.bex.diff.DiffEdit;
@@ -121,7 +120,7 @@ public final class RangeComparatorBEX {
 		// Create NormalizationFunction which ignores comments
 		// For now, only using comment-aware NormalizationFunction for handling split lines
 		// (should other code use this normalizer? - see if benefits diff compare)
-		NormalizationFunction normalizationIgnoresComments = BEXNormalizationFunction.indexedNormalization((l, r) -> {
+		NormalizationFunction normalizationIgnoresComments = NormalizationFunction.indexedNormalization((l, r) -> {
 			if (bexString != null) {
 				BEXPair<IntBEXRange> lineRange = new BEXPairValue<>(this.determineLineRange(l, LEFT),
 						this.determineLineRange(r, RIGHT));

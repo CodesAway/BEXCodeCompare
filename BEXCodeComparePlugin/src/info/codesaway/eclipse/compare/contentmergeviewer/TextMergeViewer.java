@@ -50,7 +50,6 @@ import org.eclipse.compare.contentmergeviewer.IDocumentRange;
 import org.eclipse.compare.contentmergeviewer.IMergeViewerContentProvider;
 import org.eclipse.compare.contentmergeviewer.ITokenComparator;
 import org.eclipse.compare.contentmergeviewer.TokenComparator;
-import org.eclipse.compare.internal.BufferedCanvas;
 import org.eclipse.compare.internal.ChangeCompareFilterPropertyAction;
 import org.eclipse.compare.internal.ChangePropertyAction;
 import org.eclipse.compare.internal.CompareContentViewerSwitchingPane;
@@ -440,9 +439,9 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 	private boolean fHasErrors;
 
 	// SWT widgets
-	private BufferedCanvas fAncestorCanvas;
-	private BufferedCanvas fLeftCanvas;
-	private BufferedCanvas fRightCanvas;
+	private Canvas fAncestorCanvas;
+	private Canvas fLeftCanvas;
+	private Canvas fRightCanvas;
 	private Canvas fScrollCanvas;
 	private ScrollBar fVScrollBar;
 	private Canvas fBirdsEyeCanvas;
@@ -2173,13 +2172,9 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 
 		// 1st row
 		if (this.fMarginWidth > 0) {
-			this.fAncestorCanvas = new BufferedCanvas(composite, SWT.NONE) {
-				@Override
-				public void doPaint(final GC gc) {
-					TextMergeViewer.this.paintSides(gc, TextMergeViewer.this.fAncestor,
-							TextMergeViewer.this.fAncestorCanvas, false);
-				}
-			};
+			this.fAncestorCanvas = new Canvas(composite, SWT.DOUBLE_BUFFERED);
+			this.fAncestorCanvas.addPaintListener(e -> TextMergeViewer.this.paintSides(e.gc,
+					TextMergeViewer.this.fAncestor, TextMergeViewer.this.fAncestorCanvas, false));
 			this.fAncestorCanvas.addMouseListener(
 					new MouseAdapter() {
 						@Override
@@ -2209,13 +2204,9 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 
 		// 2nd row
 		if (this.fMarginWidth > 0) {
-			this.fLeftCanvas = new BufferedCanvas(composite, SWT.NONE) {
-				@Override
-				public void doPaint(final GC gc) {
-					TextMergeViewer.this.paintSides(gc, TextMergeViewer.this.fLeft, TextMergeViewer.this.fLeftCanvas,
-							false);
-				}
-			};
+			this.fLeftCanvas = new Canvas(composite, SWT.DOUBLE_BUFFERED);
+			this.fLeftCanvas.addPaintListener(e -> TextMergeViewer.this.paintSides(e.gc, TextMergeViewer.this.fLeft,
+					TextMergeViewer.this.fLeftCanvas, false));
 			this.fLeftCanvas.addMouseListener(
 					new MouseAdapter() {
 						@Override
@@ -2280,13 +2271,9 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 				this.fLeft.getSourceViewer());
 
 		if (this.fMarginWidth > 0) {
-			this.fRightCanvas = new BufferedCanvas(composite, SWT.NONE) {
-				@Override
-				public void doPaint(final GC gc) {
-					TextMergeViewer.this.paintSides(gc, TextMergeViewer.this.fRight, TextMergeViewer.this.fRightCanvas,
-							TextMergeViewer.this.fSynchronizedScrolling);
-				}
-			};
+			this.fRightCanvas = new Canvas(composite, SWT.DOUBLE_BUFFERED);
+			this.fRightCanvas.addPaintListener(e -> TextMergeViewer.this.paintSides(e.gc, TextMergeViewer.this.fRight,
+					TextMergeViewer.this.fRightCanvas, TextMergeViewer.this.fSynchronizedScrolling));
 			this.fRightCanvas.addMouseListener(
 					new MouseAdapter() {
 						@Override
@@ -2310,13 +2297,13 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 					this.synchronizedScrollVertical(vpos);
 				});
 
-		this.fBirdsEyeCanvas = new BufferedCanvas(composite, SWT.NONE) {
-			@Override
-			public void doPaint(final GC gc) {
-				TextMergeViewer.this.updateVScrollBar(); // Update scroll bar here as initially viewport height is wrong
-				TextMergeViewer.this.paintBirdsEyeView(this, gc);
-			}
-		};
+		this.fBirdsEyeCanvas = new Canvas(composite, SWT.DOUBLE_BUFFERED);
+		this.fBirdsEyeCanvas.addPaintListener(e -> {
+			TextMergeViewer.this.updateVScrollBar(); // Update scroll bar here as initially viewport height is wrong
+			TextMergeViewer.this.paintBirdsEyeView((Canvas) e.widget, e.gc);
+
+		});
+
 		this.fBirdsEyeCanvas.addMouseListener(
 				new MouseAdapter() {
 					@Override
@@ -2615,12 +2602,10 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 	@Override
 	protected final Control createCenterControl(final Composite parent) {
 		if (this.fSynchronizedScrolling) {
-			final Canvas canvas = new BufferedCanvas(parent, SWT.NONE) {
-				@Override
-				public void doPaint(final GC gc) {
-					TextMergeViewer.this.paintCenter(this, gc);
-				}
-			};
+
+			final Canvas canvas = new Canvas(parent, SWT.DOUBLE_BUFFERED);
+
+			canvas.addPaintListener(e -> TextMergeViewer.this.paintCenter((Canvas) e.widget, e.gc));
 			new HoverResizer(canvas, HORIZONTAL);
 
 			Cursor normalCursor = canvas.getDisplay().getSystemCursor(SWT.CURSOR_ARROW);
@@ -3726,8 +3711,6 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 	private void doDiff() {
 		IDocument lDoc = this.fLeft.getSourceViewer().getDocument();
 		IDocument rDoc = this.fRight.getSourceViewer().getDocument();
-		//		System.out.println("Left document: " + lDoc);
-		//		System.out.println("Right document: " + rDoc);
 		if (lDoc == null || rDoc == null) {
 			return;
 		}
@@ -3833,14 +3816,17 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 	private boolean isNavigationButtonEnabled(final boolean down, final boolean deep) {
 		String value = this.fPreferenceStore
 				.getString(ICompareUIConstants.PREF_NAVIGATION_END_ACTION);
-		if (value.equals(ICompareUIConstants.PREF_VALUE_DO_NOTHING)) {
+		switch (value) {
+		case ICompareUIConstants.PREF_VALUE_DO_NOTHING:
 			return this.getNextVisibleDiff(down, deep) != null;
-		} else if (value.equals(ICompareUIConstants.PREF_VALUE_LOOP)) {
+		case ICompareUIConstants.PREF_VALUE_LOOP:
 			return this.isNavigationPossible();
-		} else if (value.equals(ICompareUIConstants.PREF_VALUE_NEXT)) {
+		case ICompareUIConstants.PREF_VALUE_NEXT:
 			return this.getNextVisibleDiff(down, deep) != null || this.hasNextElement(down);
-		} else if (value.equals(ICompareUIConstants.PREF_VALUE_PROMPT)) {
+		case ICompareUIConstants.PREF_VALUE_PROMPT:
 			return this.isNavigationPossible() || this.hasNextElement(true);
+		default:
+			break;
 		}
 		Assert.isTrue(false);
 		return false;
@@ -4130,9 +4116,6 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 		this.fAncestor.addTextAction(this.fIgnoreWhitespace);
 		this.fHandlerService.registerAction(this.fIgnoreWhitespace, this.fIgnoreWhitespace.getActionDefinitionId());
 
-		// By default, check ignore whitespace
-		//		this.fIgnoreWhitespace.setChecked(true);
-
 		boolean needsLeftPainter = !this.isEditorBacked(this.fLeft.getSourceViewer());
 		boolean needsRightPainter = !this.isEditorBacked(this.fRight.getSourceViewer());
 		boolean needsAncestorPainter = !this.isEditorBacked(this.fAncestor.getSourceViewer());
@@ -4163,8 +4146,7 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 		Object current = this.getCompareConfiguration()
 				.getProperty(ChangeCompareFilterPropertyAction.COMPARE_FILTER_ACTIONS);
 		boolean currentFiltersMatch = false;
-		if (current != null && current instanceof List
-				&& ((List<?>) current).size() == compareFilterDescriptors.length) {
+		if (current instanceof List && ((List<?>) current).size() == compareFilterDescriptors.length) {
 			currentFiltersMatch = true;
 			@SuppressWarnings("unchecked")
 			List<ChangeCompareFilterPropertyAction> currentFilterActions = (List<ChangeCompareFilterPropertyAction>) current;
@@ -4535,6 +4517,11 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 	}
 
 	private void paintCenter(final Canvas canvas, final GC g) {
+		if (this.fLeft == null || this.fRight == null) {
+			// The paint event for the center control can occur before the left / right controls are created.
+			// simply ignore it in this case.
+			return;
+		}
 
 		Display display = canvas.getDisplay();
 
@@ -5510,20 +5497,20 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 		this.fInScrolling = false;
 
 		if (this.isThreeWay() && this.fAncestorCanvas != null) {
-			this.fAncestorCanvas.repaint();
+			this.fAncestorCanvas.redraw();
 		}
 
 		if (this.fLeftCanvas != null) {
-			this.fLeftCanvas.repaint();
+			this.fLeftCanvas.redraw();
 		}
 
 		Control center = this.getCenterControl();
-		if (center instanceof BufferedCanvas) {
-			((BufferedCanvas) center).repaint();
+		if (center instanceof Canvas) {
+			((Canvas) center).redraw();
 		}
 
 		if (this.fRightCanvas != null) {
-			this.fRightCanvas.repaint();
+			this.fRightCanvas.redraw();
 		}
 	}
 
@@ -5788,7 +5775,7 @@ public class TextMergeViewer extends ContentMergeViewer implements IAdaptable {
 	 */
 	private int getHunkStart() {
 		Object input = this.getInput();
-		if (input != null && input instanceof DiffNode) {
+		if (input instanceof DiffNode) {
 			ITypedElement right = ((DiffNode) input).getRight();
 			if (right != null) {
 				Object element = Adapters.adapt(right, IHunk.class);

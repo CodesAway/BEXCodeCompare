@@ -15,7 +15,13 @@ public final class BEXNormalizationFunction implements NormalizationFunction {
 	/**
 	 * @see NormalizationFunction#NO_NORMALIZATION
 	 */
-	private static final BEXNormalizationFunction NO_NORMALIZATION = new BEXNormalizationFunction(null, null);
+
+	static class BEXNormalizationFunctionHelper {
+		// Used internally to allow initializing public static field in NormalizationFunction interface
+		// 9/20/2021 moved to private static class since was running into NullPointerException when running tests
+		// (due to Java initialization order)
+		static final BEXNormalizationFunction NO_NORMALIZATION = new BEXNormalizationFunction(null, null);
+	}
 
 	/**
 	 * Creates a new NormalizationFunction
@@ -24,7 +30,7 @@ public final class BEXNormalizationFunction implements NormalizationFunction {
 	 * @param normalizationFunction
 	 * @param indexedNormalizationFunction
 	 */
-	private BEXNormalizationFunction(final BiFunction<String, String, DiffNormalizedText> normalizationFunction,
+	BEXNormalizationFunction(final BiFunction<String, String, DiffNormalizedText> normalizationFunction,
 			final BiFunction<Indexed<String>, Indexed<String>, DiffNormalizedText> indexedNormalizationFunction) {
 		this.normalizationFunction = normalizationFunction;
 		this.indexedNormalizationFunction = indexedNormalizationFunction;
@@ -41,21 +47,5 @@ public final class BEXNormalizationFunction implements NormalizationFunction {
 		}
 
 		return new DiffNormalizedText(leftIndexedText.getValue(), rightIndexedText.getValue());
-	}
-
-	// TODO: could cache using ConcurrentHashMap to reduce number of instances created (not sure if it matters)
-
-	public static BEXNormalizationFunction normalization(
-			final BiFunction<String, String, DiffNormalizedText> normalizationFunction) {
-		return normalizationFunction == null
-				? NO_NORMALIZATION
-				: new BEXNormalizationFunction(normalizationFunction, null);
-	}
-
-	public static BEXNormalizationFunction indexedNormalization(
-			final BiFunction<Indexed<String>, Indexed<String>, DiffNormalizedText> indexedNormalizationFunction) {
-		return indexedNormalizationFunction == null
-				? NO_NORMALIZATION
-				: new BEXNormalizationFunction(null, indexedNormalizationFunction);
 	}
 }

@@ -2,6 +2,7 @@ package info.codesaway.bex.diff.patience;
 
 import java.util.Comparator;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import info.codesaway.bex.IntBEXPair;
 
 /**
@@ -43,6 +44,7 @@ public final class PatienceMatch {
 		return this.rightLineNumber;
 	}
 
+	@SuppressFBWarnings(value = "EI_EXPOSE_REP")
 	public PatienceMatch getPrevious() {
 		return this.previous;
 	}
@@ -51,14 +53,17 @@ public final class PatienceMatch {
 		return this.getPrevious() != null;
 	}
 
+	@SuppressFBWarnings(value = "EI_EXPOSE_REP")
 	public void setPrevious(final PatienceMatch previous) {
 		this.previous = previous;
 	}
 
+	@SuppressFBWarnings(value = "EI_EXPOSE_REP")
 	public PatienceMatch getNext() {
 		return this.next;
 	}
 
+	@SuppressFBWarnings(value = "EI_EXPOSE_REP")
 	public void setNext(final PatienceMatch next) {
 		this.next = next;
 	}

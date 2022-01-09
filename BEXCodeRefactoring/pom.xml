@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>info.codesaway</groupId>
 	<artifactId>becr</artifactId>
-	<version>0.13.0</version>
+	<version>0.14.0</version>
 	<name>Be Enhanced Code Refactoring (BECR)</name>
 	<description>Refactor better using BECR</description>
 	<properties>
@@ -22,13 +22,50 @@
 		<dependency>
 			<groupId>info.codesaway</groupId>
 			<artifactId>bex</artifactId>
-			<version>0.13.0</version>
+			<version>0.14.0</version>
 		</dependency>
 		<!-- Used to parse Java code -->
 		<dependency>
 			<groupId>org.eclipse.jdt</groupId>
 			<artifactId>org.eclipse.jdt.core</artifactId>
 			<version>3.22.0</version>
+		</dependency>
+		<!-- Added on 9/12/2021 as part of BEX version 0.14 since Eclipse introduced 
+			a breaking change with 3.12.0 which is compiled against Java 11; added transitory 
+			dependencies so can keep Java 8 compatability -->
+		<dependency>
+			<groupId>org.eclipse.platform</groupId>
+			<artifactId>org.eclipse.text</artifactId>
+			<version>3.11.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.eclipse.platform</groupId>
+			<artifactId>org.eclipse.equinox.common</artifactId>
+			<version>3.14.100</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.eclipse.platform</groupId>
+			<artifactId>org.eclipse.core.runtime</artifactId>
+			<version>3.20.100</version>
+		</dependency>
+		<!-- Added on 9/19/2021 as part of testing -->
+		<dependency>
+			<groupId>org.eclipse.platform</groupId>
+			<artifactId>org.eclipse.core.jobs</artifactId>
+			<version>3.11.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.platform</groupId>
+			<artifactId>org.eclipse.core.contenttype</artifactId>
+			<version>3.7.1000</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.eclipse.platform</groupId>
+			<artifactId>org.eclipse.core.resources</artifactId>
+			<version>3.14.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
