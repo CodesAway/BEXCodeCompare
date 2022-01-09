@@ -40,6 +40,7 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	 * @param leftLines
 	 * @param rightLines
 	 * @param normalizationFunction the normalization function (if null, mimics {@link NormalizationFunction#NO_NORMALIZATION})
+	 * @since 0.14
 	 */
 	protected AbstractDiffAlgorithm(final List<DiffLine> leftLines, final List<DiffLine> rightLines,
 			final NormalizationFunction normalizationFunction) {
@@ -103,6 +104,7 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	 *
 	 * @param position the position
 	 * @return the left line number and text on the specified line number
+	 * @since 0.14
 	 */
 	public DiffLine getLeftIndexedText(final int position) {
 		return this.getLeftLines().get(position);
@@ -113,6 +115,7 @@ public abstract class AbstractDiffAlgorithm implements DiffAlgorithm {
 	 *
 	 * @param position the position
 	 * @return the right line number and text on the specified line
+	 * @since 0.14
 	 */
 	public DiffLine getRightIndexedText(final int position) {
 		return this.getRightLines().get(position);

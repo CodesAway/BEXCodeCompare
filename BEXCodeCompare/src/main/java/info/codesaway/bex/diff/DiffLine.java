@@ -2,6 +2,7 @@ package info.codesaway.bex.diff;
 
 import info.codesaway.bex.Indexed;
 
+// Starting with 0.14 implements Indexed<String>
 public final class DiffLine implements Indexed<String> {
 	private final int number;
 	private final String text;

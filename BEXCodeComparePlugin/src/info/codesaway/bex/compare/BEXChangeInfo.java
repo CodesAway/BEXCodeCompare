@@ -21,6 +21,11 @@ public final class BEXChangeInfo {
 		return this.isImportantChange;
 	}
 
+	/**
+	 *
+	 * @return
+	 * @since 0.14
+	 */
 	public String getInfo() {
 		return this.info;
 	}

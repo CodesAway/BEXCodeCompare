@@ -127,6 +127,13 @@ public final class DiffHelper {
 		return normalize(diffEdit.getLeftIndexedText(), diffEdit.getRightIndexedText(), normalizationFunction);
 	}
 
+	/**
+	 *
+	 * @param diffEdits
+	 * @param normalizationFunction
+	 * @return
+	 * @since 0.14
+	 */
 	private static Map<DiffEdit, String> normalizeTexts(final List<DiffEdit> diffEdits,
 			final NormalizationFunction normalizationFunction) {
 		Map<DiffEdit, String> result = new HashMap<>(diffEdits.size());
@@ -251,6 +258,7 @@ public final class DiffHelper {
 	 *
 	 * @param diff
 	 * @param normalizationFunction
+	 * @since 0.14
 	 */
 	public static void handleMovedLines(final List<DiffEdit> diff,
 			final NormalizationFunction normalizationFunction) {
